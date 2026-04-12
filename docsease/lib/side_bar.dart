@@ -54,7 +54,9 @@ class _SideBarState extends State<SideBar> {
         toolbarHeight: 70,
       ),
       drawer: Drawer(
-        width: 250,
+        width: MediaQuery.of(context).size.width > 400
+            ? 300
+            : MediaQuery.of(context).size.width * 0.75,
         backgroundColor: Color.fromRGBO(230, 246, 255, 1.0),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.only(
@@ -69,12 +71,12 @@ class _SideBarState extends State<SideBar> {
                 padding: EdgeInsets.zero,
                 children: [
                   Container(
-                    height: 172,
-                    padding: EdgeInsets.all(20),
+                    padding: EdgeInsets.fromLTRB(10, 40, 10, 20),
                     decoration: BoxDecoration(
                       color: Color.fromRGBO(32, 87, 206, 1.0),
                     ),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         Align(
