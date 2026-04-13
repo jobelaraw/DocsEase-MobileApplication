@@ -71,7 +71,14 @@ class _SideBarState extends State<SideBar> {
                 padding: EdgeInsets.zero,
                 children: [
                   Container(
-                    padding: EdgeInsets.fromLTRB(10, 40, 10, 20),
+                    padding: MediaQuery.of(context).padding.top < 20
+                        ? EdgeInsets.all(20)
+                        : EdgeInsets.fromLTRB(
+                            20,
+                            MediaQuery.of(context).padding.top,
+                            20,
+                            20,
+                          ),
                     decoration: BoxDecoration(
                       color: Color.fromRGBO(32, 87, 206, 1.0),
                     ),
@@ -81,15 +88,13 @@ class _SideBarState extends State<SideBar> {
                       children: [
                         Align(
                           alignment: Alignment.topRight,
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            icon: const ImageIcon(
+                          child: GestureDetector(
+                            child: const ImageIcon(
                               AssetImage('assets/close_icon.png'),
-                              size: 17,
+                              size: 20,
                               color: Colors.white,
                             ),
-                            onPressed: () {
+                            onTap: () {
                               Navigator.pop(context);
                             },
                           ),
@@ -127,50 +132,82 @@ class _SideBarState extends State<SideBar> {
                     child: Column(
                       children: [
                         SideBarOption(
-                          imagePath: 'assets/home_icon.png',
+                          selectedImage: 'assets/home_icon.png',
+                          unselectedImage: 'assets/home_outlined_icon.png',
                           optionName: 'Home',
                           isSelected: selectedIndex == 0,
                           onTapAction: () {
-                            setState(() {
-                              selectedIndex = 0;
-                            });
                             Navigator.pop(context);
+                            Future.delayed(
+                              const Duration(milliseconds: 50),
+                              () {
+                                if (mounted) {
+                                  setState(() {
+                                    selectedIndex = 0;
+                                  });
+                                }
+                              },
+                            );
                           },
                         ),
                         SizedBox(height: 13),
                         SideBarOption(
-                          imagePath: 'assets/profile_icon.png',
+                          selectedImage: 'assets/profile_icon.png',
+                          unselectedImage: 'assets/profile_outlined_icon.png',
                           optionName: 'Profile',
                           isSelected: selectedIndex == 1,
                           onTapAction: () {
-                            setState(() {
-                              selectedIndex = 1; // Change this to 1 later on
-                            });
                             Navigator.pop(context);
+                            Future.delayed(
+                              const Duration(milliseconds: 50),
+                              () {
+                                if (mounted) {
+                                  setState(() {
+                                    selectedIndex = 1;
+                                  });
+                                }
+                              },
+                            );
                           },
                         ),
                         SizedBox(height: 13),
                         SideBarOption(
-                          imagePath: 'assets/about_icon.png',
+                          selectedImage: 'assets/about_icon.png',
+                          unselectedImage: 'assets/about_outlined_icon.png',
                           optionName: 'About',
                           isSelected: selectedIndex == 2,
                           onTapAction: () {
-                            setState(() {
-                              selectedIndex = 2; // Change this to 2 later on
-                            });
                             Navigator.pop(context);
+                            Future.delayed(
+                              const Duration(milliseconds: 50),
+                              () {
+                                if (mounted) {
+                                  setState(() {
+                                    selectedIndex = 2;
+                                  });
+                                }
+                              },
+                            );
                           },
                         ),
                         SizedBox(height: 13),
                         SideBarOption(
-                          imagePath: 'assets/settings_icon.png',
+                          selectedImage: 'assets/settings_icon.png',
+                          unselectedImage: 'assets/settings_outlined_icon.png',
                           optionName: 'Settings',
                           isSelected: selectedIndex == 3,
                           onTapAction: () {
-                            setState(() {
-                              selectedIndex = 3; // Change this to 3 later on
-                            });
                             Navigator.pop(context);
+                            Future.delayed(
+                              const Duration(milliseconds: 50),
+                              () {
+                                if (mounted) {
+                                  setState(() {
+                                    selectedIndex = 3;
+                                  });
+                                }
+                              },
+                            );
                           },
                         ),
                       ],
@@ -224,14 +261,16 @@ class _SideBarState extends State<SideBar> {
 }
 
 class SideBarOption extends StatelessWidget {
-  final String imagePath;
+  final String selectedImage;
+  final String unselectedImage;
   final String optionName;
   final bool isSelected;
   final VoidCallback onTapAction;
 
   const SideBarOption({
     super.key,
-    required this.imagePath,
+    required this.selectedImage,
+    required this.unselectedImage,
     required this.optionName,
     required this.isSelected,
     required this.onTapAction,
@@ -259,14 +298,14 @@ class SideBarOption extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Image.asset(
-                imagePath,
+                isSelected ? selectedImage : unselectedImage,
                 width: 25,
                 height: 25,
                 // colorFilter: ColorFilter.mode(currentColor, BlendMode.srcIn),
                 color: currentColor,
                 fit: BoxFit.contain,
               ),
-              SizedBox(width: 10),
+              SizedBox(width: 15),
               Text(
                 optionName,
                 style: isSelected
