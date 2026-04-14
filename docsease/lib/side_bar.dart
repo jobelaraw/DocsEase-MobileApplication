@@ -14,10 +14,10 @@ class _MyWidgetState extends State<SideBar> {
   int selectedIndex = 0;
 
   // List of screens that's gonna be used
-  final List<Widget> screens = [Services()];
+  final List<Widget> screens = [Services(), Services(), Services(), Settings()];
 
   // List of titles along with the screens
-  final List<String> titles = ['Services'];
+  late final List<String> titles = ['Services', 'Profile', 'About', 'Settings'];
 
   Widget build(BuildContext context) {
     return SafeArea(
@@ -184,14 +184,16 @@ class _MyWidgetState extends State<SideBar> {
 }
 
 class SideBarOption extends StatelessWidget {
-  final String imagePath;
+  final String selectedImage;
+  final String unselectedImage;
   final String optionName;
   final bool isSelected;
   final VoidCallback onTapAction;
 
   const SideBarOption({
     super.key,
-    required this.imagePath,
+    required this.selectedImage,
+    required this.unselectedImage,
     required this.optionName,
     required this.isSelected,
     required this.onTapAction,
@@ -216,9 +218,17 @@ class SideBarOption extends StatelessWidget {
           height: 45,
           padding: EdgeInsets.only(left: 15, right: 15),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              ImageIcon(AssetImage(imagePath), size: 18, color: currentColor),
-              SizedBox(width: 8),
+              Image.asset(
+                isSelected ? selectedImage : unselectedImage,
+                width: 25,
+                height: 25,
+                // colorFilter: ColorFilter.mode(currentColor, BlendMode.srcIn),
+                color: currentColor,
+                fit: BoxFit.contain,
+              ),
+              SizedBox(width: 15),
               Text(
                 optionName,
                 style: isSelected
