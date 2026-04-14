@@ -11,14 +11,11 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isDarkMode = false;
   String _selectedLanguage = 'English';
-  double _fontSize = 0.5; 
+  double _fontSize = 0.5;
 
-  final List<String> _languages = [
-    'English',
-    'Filipino',
-  ];
+  final List<String> _languages = ['English', 'Filipino'];
 
-void _showLanguagePicker() {
+  void _showLanguagePicker() {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -48,20 +45,21 @@ void _showLanguagePicker() {
                 ),
               ),
               const SizedBox(height: 8),
-              ..._languages.map((lang) => ListTile(
-                    title: Text(
-                      lang,
-                      style: GoogleFonts.inter(fontSize: 15),
-                    ),
-                    trailing: _selectedLanguage == lang
-                        ? const Icon(Icons.check,
-                            color: Color.fromRGBO(32, 87, 206, 1.0))
-                        : null,
-                    onTap: () {
-                      setState(() => _selectedLanguage = lang);
-                      Navigator.pop(context);
-                    },
-                  )),
+              ..._languages.map(
+                (lang) => ListTile(
+                  title: Text(lang, style: GoogleFonts.inter(fontSize: 15)),
+                  trailing: _selectedLanguage == lang
+                      ? const Icon(
+                          Icons.check,
+                          color: Color.fromRGBO(32, 87, 206, 1.0),
+                        )
+                      : null,
+                  onTap: () {
+                    setState(() => _selectedLanguage = lang);
+                    Navigator.pop(context);
+                  },
+                ),
+              ),
               const SizedBox(height: 12),
             ],
           ),
@@ -114,26 +112,6 @@ void _showLanguagePicker() {
 
       body: Column(
         children: [
-          Container(
-            color: const Color.fromRGBO(32, 87, 206, 1.0),
-            child: SafeArea(
-              bottom: false,
-              child: SizedBox(
-                height: 56,
-                child: Center(
-                  child: Text(
-                    'Settings',
-                    style: GoogleFonts.inter(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
           // ── Body ──
           Expanded(
             child: SingleChildScrollView(
@@ -155,11 +133,16 @@ void _showLanguagePicker() {
                         // Dark Mode row
                         Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 4),
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
                           child: Row(
                             children: [
-                              const Icon(Icons.dark_mode_outlined,
-                                  size: 22, color: Colors.black87),
+                              const Icon(
+                                Icons.dark_mode_outlined,
+                                size: 22,
+                                color: Colors.black87,
+                              ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
@@ -175,34 +158,49 @@ void _showLanguagePicker() {
                                 value: _isDarkMode,
                                 onChanged: (val) =>
                                     setState(() => _isDarkMode = val),
-                                activeColor:
-                                    const Color.fromRGBO(32, 87, 206, 1.0),
+                                activeColor: const Color.fromRGBO(
+                                  32,
+                                  87,
+                                  206,
+                                  1.0,
+                                ),
                                 activeTrackColor: const Color.fromRGBO(
-                                    32, 87, 206, 0.3),
+                                  32,
+                                  87,
+                                  206,
+                                  0.3,
+                                ),
                               ),
                             ],
                           ),
                         ),
 
                         Divider(
-                            height: 1,
-                            thickness: 1,
-                            color: Colors.grey.withOpacity(0.12),
-                            indent: 16,
-                            endIndent: 16),
+                          height: 1,
+                          thickness: 1,
+                          color: Colors.grey.withOpacity(0.12),
+                          indent: 16,
+                          endIndent: 16,
+                        ),
 
-                        // Language 
+                        // Language
                         InkWell(
                           onTap: _showLanguagePicker,
                           borderRadius: const BorderRadius.vertical(
-                              bottom: Radius.circular(14)),
+                            bottom: Radius.circular(14),
+                          ),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 16),
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
                             child: Row(
                               children: [
-                                const Icon(Icons.translate_outlined,
-                                    size: 22, color: Colors.black87),
+                                const Icon(
+                                  Icons.translate_outlined,
+                                  size: 22,
+                                  color: Colors.black87,
+                                ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
@@ -267,13 +265,29 @@ void _showLanguagePicker() {
                             Expanded(
                               child: SliderTheme(
                                 data: SliderTheme.of(context).copyWith(
-                                  activeTrackColor:const Color.fromRGBO(32, 87, 206, 1.0),
-                                  inactiveTrackColor:Colors.grey.shade300,
-                                  thumbColor:const Color.fromRGBO(32, 87, 206, 1.0),
-                                  overlayColor: const Color.fromRGBO(32, 87, 206, 0.15),
+                                  activeTrackColor: const Color.fromRGBO(
+                                    32,
+                                    87,
+                                    206,
+                                    1.0,
+                                  ),
+                                  inactiveTrackColor: Colors.grey.shade300,
+                                  thumbColor: const Color.fromRGBO(
+                                    32,
+                                    87,
+                                    206,
+                                    1.0,
+                                  ),
+                                  overlayColor: const Color.fromRGBO(
+                                    32,
+                                    87,
+                                    206,
+                                    0.15,
+                                  ),
                                   trackHeight: 3.0,
                                   thumbShape: const RoundSliderThumbShape(
-                                      enabledThumbRadius: 10),
+                                    enabledThumbRadius: 10,
+                                  ),
                                 ),
                                 child: Slider(
                                   value: _fontSize,

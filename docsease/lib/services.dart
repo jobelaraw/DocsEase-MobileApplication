@@ -17,20 +17,26 @@ class ServiceData {
   });
 }
 
-List<ServiceItem> buildServiceItems(List<ServiceData> dataList) {
-    return dataList.map((data) {
-      return ServiceItem(
-        data: data,
-        label: data.label,
-        iconData: data.icon,
-        iconBgColor: data.bgColor,
-        iconColor: data.iconColor,
-      );
-    }).toList();
-  }
+List<ServiceItem> buildServiceItems(
+  List<ServiceData> dataList,
+  Function(String) onTitleChange,
+) {
+  return dataList.map((data) {
+    return ServiceItem(
+      data: data,
+      label: data.label,
+      iconData: data.icon,
+      iconBgColor: data.bgColor,
+      iconColor: data.iconColor,
+      onTitleChange: onTitleChange,
+    );
+  }).toList();
+}
 
 class Services extends StatefulWidget {
-  const Services({super.key});
+  final Function(String) onTitleChange;
+
+  const Services({super.key, required this.onTitleChange});
 
   @override
   State<Services> createState() => _ServicesContent();
@@ -42,12 +48,12 @@ class _ServicesContent extends State<Services> {
   String searchQuery = '';
 
   List<ServiceItem> filterItems(List<ServiceItem> items) {
-  if (searchQuery.isEmpty) return items;
+    if (searchQuery.isEmpty) return items;
 
-  return items.where((item) {
-    return item.label.toLowerCase().contains(searchQuery);
-  }).toList();
-}
+    return items.where((item) {
+      return item.label.toLowerCase().contains(searchQuery);
+    }).toList();
+  }
 
   @override
   void dispose() {
@@ -63,276 +69,295 @@ class _ServicesContent extends State<Services> {
     });
   }
 
-      Widget buildFilteredCategory({
-      required String title,
-      required List<ServiceData> dataList,
-    }) {
-      final items = buildServiceItems(dataList);
+  Widget buildFilteredCategory({
+    required String title,
+    required List<ServiceData> dataList,
+  }) {
+    final items = buildServiceItems(dataList, widget.onTitleChange);
 
-      final filtered = items.where((item) {
-        return item.label.toLowerCase().contains(searchQuery);
-      }).toList();
+    final filtered = items.where((item) {
+      return item.label.toLowerCase().contains(searchQuery);
+    }).toList();
 
-      final matchesTitle = title.toLowerCase().contains(searchQuery);
+    final matchesTitle = title.toLowerCase().contains(searchQuery);
 
-      if (searchQuery.isNotEmpty && filtered.isEmpty && !matchesTitle) {
-        return const SizedBox.shrink(); // hide category
-      }
-
-      return Column(
-        children: [
-          ServiceCategory(
-            title: title,
-            items: filtered.isNotEmpty ? filtered : items,
-          ),
-          const SizedBox(height: 30),
-        ],
-      );
+    if (searchQuery.isNotEmpty && filtered.isEmpty && !matchesTitle) {
+      return const SizedBox.shrink(); // hide category
     }
+
+    return Column(
+      children: [
+        ServiceCategory(
+          title: title,
+          items: filtered.isNotEmpty ? filtered : items,
+          onTitleChange: widget.onTitleChange,
+        ),
+        const SizedBox(height: 30),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-    onTap: () {
-      FocusScope.of(context).unfocus(); 
-    },
-    child: Scaffold(
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 80),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child: Scaffold(
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        body: Stack(
+          children: [
+            ListView(
+              padding: const EdgeInsets.all(20),
               children: [
                 // Search Bar
-                  Container(
-                    height: 55,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color.fromARGB(255, 158, 158, 158).withOpacity(0.2)),
+                Container(
+                  height: 55,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color.fromARGB(
+                        255,
+                        158,
+                        158,
+                        158,
+                      ).withOpacity(0.2),
                     ),
-                    child: Row(
-                      children: [
-                        const SizedBox(width: 18),
-                        GestureDetector(
-                          onTap: () {
-                            // TODO: Search action
-                          },
-                          child: Icon(Icons.search, color: const Color.fromARGB(255, 0, 0, 0), size: 20),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 18),
+                      GestureDetector(
+                        onTap: () {
+                          // TODO: Search action
+                        },
+                        child: Icon(
+                          Icons.search,
+                          color: const Color.fromARGB(255, 0, 0, 0),
+                          size: 20,
                         ),
-                        const SizedBox(width: 20),
+                      ),
+                      const SizedBox(width: 20),
 
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController, 
-                            focusNode: _searchFocusNode,
-                            autofocus: false,
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          focusNode: _searchFocusNode,
+                          autofocus: false,
 
-                            onChanged: (value) { 
-                              setState(() {
-                                searchQuery = value.toLowerCase();
-                              });
-                            },
+                          onChanged: (value) {
+                            setState(() {
+                              searchQuery = value.toLowerCase();
+                            });
+                          },
 
-                            style: GoogleFonts.inter(
+                          style: GoogleFonts.inter(
+                            fontSize: 18,
+                            color: Colors.black,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Search transaction.......',
+                            hintStyle: GoogleFonts.inter(
                               fontSize: 18,
-                              color: Colors.black,
+                              color: const Color.fromARGB(255, 143, 140, 140),
                             ),
-                            decoration: InputDecoration(
-                              hintText: 'Search transaction.......',
-                              hintStyle: GoogleFonts.inter(
-                                fontSize: 18,
-                                color: const Color.fromARGB(255, 143, 140, 140),
-                              ),
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 35),
+                ),
+                const SizedBox(height: 35),
 
                 buildFilteredCategory(
-                    title: 'Business Permit and Licensing',
-                    dataList: ServiceLists.officeBusinessLicensing,
-                  ),
+                  title: 'Business Permit and Licensing',
+                  dataList: ServiceLists.officeBusinessLicensing,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the Building Official',
-                    dataList: ServiceLists.officeBuildingOfficial,
-                  ),
+                buildFilteredCategory(
+                  title: 'Office of the Building Official',
+                  dataList: ServiceLists.officeBuildingOfficial,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Engineer',
-                    dataList: ServiceLists.officeCityEngineer,
-                  ),
+                buildFilteredCategory(
+                  title: 'Office of the City Engineer',
+                  dataList: ServiceLists.officeCityEngineer,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Assessor',
-                    dataList: ServiceLists.officeCityAssessor,
-                  ),
+                buildFilteredCategory(
+                  title: 'Office of the City Assessor',
+                  dataList: ServiceLists.officeCityAssessor,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Civil Registrar',
-                    dataList: ServiceLists.officeCivilRegistry,
-                  ),
+                buildFilteredCategory(
+                  title: 'Office of the City Civil Registrar',
+                  dataList: ServiceLists.officeCivilRegistry,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Treasurer',
-                    dataList: ServiceLists.officeCityTreasurer,
-                  ),
+                buildFilteredCategory(
+                  title: 'Office of the City Treasurer',
+                  dataList: ServiceLists.officeCityTreasurer,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Mayor',
-                    dataList: ServiceLists.officeCityMayor,
-                  ),
+                buildFilteredCategory(
+                  title: 'Office of the City Mayor',
+                  dataList: ServiceLists.officeCityMayor,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Vice Mayor/ SP & Secretary to the Sanggunian',
-                    dataList: ServiceLists.officeCityVmSpSecretarySangunian,
-                  ),
+                buildFilteredCategory(
+                  title:
+                      'Office of the City Vice Mayor/ SP & Secretary to the Sanggunian',
+                  dataList: ServiceLists.officeCityVmSpSecretarySangunian,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Information and Communications Technology Office',
-                    dataList: ServiceLists.officeICT,
-                  ),
+                buildFilteredCategory(
+                  title: 'Information and Communications Technology Office',
+                  dataList: ServiceLists.officeICT,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'City Human Resources and Development Office',
-                    dataList: ServiceLists.officeCityHRDevelopment,
-                  ),
+                buildFilteredCategory(
+                  title: 'City Human Resources and Development Office',
+                  dataList: ServiceLists.officeCityHRDevelopment,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Public Employment Services Office',
-                    dataList: ServiceLists.officePublicEmploymentServices,
-                  ),
+                buildFilteredCategory(
+                  title: 'Public Employment Services Office',
+                  dataList: ServiceLists.officePublicEmploymentServices,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Environmental and Natural Resources Officer',
-                    dataList: ServiceLists.officeCENR,
-                  ),
+                buildFilteredCategory(
+                  title:
+                      'Office of the City Environmental and Natural Resources Officer',
+                  dataList: ServiceLists.officeCENR,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Population Officer',
-                    dataList: ServiceLists.officeCityPopulationOfficer,
-                  ),
+                buildFilteredCategory(
+                  title: 'Office of the City Population Officer',
+                  dataList: ServiceLists.officeCityPopulationOfficer,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Cooperatives Officer',
-                    dataList: ServiceLists.officeCityCooperativesOfficer,
-                  ),
+                buildFilteredCategory(
+                  title: 'Office of the City Cooperatives Officer',
+                  dataList: ServiceLists.officeCityCooperativesOfficer,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Information Officer',
-                    dataList: ServiceLists.officeCityInformationOfficer,
-                  ),
+                buildFilteredCategory(
+                  title: 'Office of the City Information Officer',
+                  dataList: ServiceLists.officeCityInformationOfficer,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Social Welfare and Development Officer',
-                    dataList: ServiceLists.officeCSWD,
-                  ),
+                buildFilteredCategory(
+                  title:
+                      'Office of the City Social Welfare and Development Officer',
+                  dataList: ServiceLists.officeCSWD,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Accountant',
-                    dataList: ServiceLists.officeCityAccount,
-                  ),
+                buildFilteredCategory(
+                  title: 'Office of the City Accountant',
+                  dataList: ServiceLists.officeCityAccount,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Legal Officer',
-                    dataList: ServiceLists.officeCityLegalOfficer,
-                  ),
+                buildFilteredCategory(
+                  title: 'Office of the City Legal Officer',
+                  dataList: ServiceLists.officeCityLegalOfficer,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Agriculturist',
-                    dataList: ServiceLists.officeCityAgriculturist,
-                  ),
+                buildFilteredCategory(
+                  title: 'Office of the City Agriculturist',
+                  dataList: ServiceLists.officeCityAgriculturist,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Planning and Development Coordinator',
-                    dataList: ServiceLists.officeCityPlanningDevCoor,
-                  ),
+                buildFilteredCategory(
+                  title:
+                      'Office of the City Planning and Development Coordinator',
+                  dataList: ServiceLists.officeCityPlanningDevCoor,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'City Human Settlements and Livelihood Office',
-                    dataList: ServiceLists.officecCityHumanSettlementsLivelihood,
-                  ),
+                buildFilteredCategory(
+                  title: 'City Human Settlements and Livelihood Office',
+                  dataList: ServiceLists.officecCityHumanSettlementsLivelihood,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Budget Officer',
-                    dataList: ServiceLists.officeCityBudgetOfficer,
-                  ),
+                buildFilteredCategory(
+                  title: 'Office of the City Budget Officer',
+                  dataList: ServiceLists.officeCityBudgetOfficer,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City General Services Officer',
-                    dataList: ServiceLists.officeCityGeneralServicesOfficer,
-                  ),
+                buildFilteredCategory(
+                  title: 'Office of the City General Services Officer',
+                  dataList: ServiceLists.officeCityGeneralServicesOfficer,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Office of the City Health Officer',
-                    dataList: ServiceLists.officeCityHealthOfficer,
-                  ),
+                buildFilteredCategory(
+                  title: 'Office of the City Health Officer',
+                  dataList: ServiceLists.officeCityHealthOfficer,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'City Health Office II',
-                    dataList: ServiceLists.officeCityHealthOfficerII,
-                  ),
+                buildFilteredCategory(
+                  title: 'City Health Office II',
+                  dataList: ServiceLists.officeCityHealthOfficerII,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'City Health Office II- Biñan Birthing Home',
-                    dataList: ServiceLists.officeCityHealthOfficerIIBirthingHome,
-                  ),
+                buildFilteredCategory(
+                  title: 'City Health Office II- Biñan Birthing Home',
+                  dataList: ServiceLists.officeCityHealthOfficerIIBirthingHome,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'City Disaster Risk Reduction and Management Office',
-                    dataList: ServiceLists.officeCDRRM,
-                  ),
+                buildFilteredCategory(
+                  title: 'City Disaster Risk Reduction and Management Office',
+                  dataList: ServiceLists.officeCDRRM,
+                ),
 
-                  buildFilteredCategory(
-                    title: 'Public Order and Safety Office',
-                    dataList: ServiceLists.officePublicOrderAndSafety,
-                  ),
+                buildFilteredCategory(
+                  title: 'Public Order and Safety Office',
+                  dataList: ServiceLists.officePublicOrderAndSafety,
+                ),
               ],
-          ),
-          ),
-
-          // Floating Chatbot Button
-          Positioned(
-            bottom: 40,
-            right: 16,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-              onTap: () {
-                // TODO: Open chatbot
-              },
-             borderRadius: BorderRadius.circular(40), 
-              child: Padding(
-                padding: const EdgeInsets.all(2.0),
-              child: Image.asset('assets/chatbot_icon.png', width: 70, height: 70,),
             ),
+
+            // Floating Chatbot Button
+            Positioned(
+              bottom: 40,
+              right: 16,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    // TODO: Open chatbot
+                  },
+                  borderRadius: BorderRadius.circular(40),
+                  child: Padding(
+                    padding: const EdgeInsets.all(2.0),
+                    child: Image.asset(
+                      'assets/chatbot_icon.png',
+                      width: 70,
+                      height: 70,
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
     );
   }
-  }
+}
 
 class ServiceCategory extends StatelessWidget {
   final String title;
   final List<ServiceItem> items;
+  final Function(String) onTitleChange;
 
   const ServiceCategory({
     super.key,
     required this.title,
     required this.items,
+    required this.onTitleChange,
   });
 
   @override
@@ -353,7 +378,7 @@ class ServiceCategory extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
-                softWrap: true, 
+                softWrap: true,
               ),
             ),
 
@@ -362,15 +387,16 @@ class ServiceCategory extends StatelessWidget {
             // See all Button
             TextButton(
               onPressed: () {
+                onTitleChange(title);
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => SeeAllScreen(
-                      title: title,
-                      items: items,
-                    ),
+                    builder: (context) =>
+                        SeeAllScreen(title: title, items: items),
                   ),
-                );
+                ).then((_) {
+                  onTitleChange('Services');
+                });
               },
               style: TextButton.styleFrom(
                 padding: EdgeInsets.zero,
@@ -403,7 +429,8 @@ class ServiceCategory extends StatelessWidget {
               return Column(
                 children: [
                   displayedItems[index],
-                  if (index != displayedItems.length - 1) const SizedBox(height: 12),
+                  if (index != displayedItems.length - 1)
+                    const SizedBox(height: 12),
                 ],
               );
             }),
@@ -420,6 +447,7 @@ class ServiceItem extends StatelessWidget {
   final Color iconBgColor;
   final Color iconColor;
   final ServiceData data;
+  final Function(String) onTitleChange;
 
   const ServiceItem({
     super.key,
@@ -428,6 +456,7 @@ class ServiceItem extends StatelessWidget {
     required this.iconData,
     required this.iconBgColor,
     required this.iconColor,
+    required this.onTitleChange,
   });
 
   @override
@@ -439,16 +468,17 @@ class ServiceItem extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => InformationScreen(
-              title: label,
+          onTitleChange('Information');
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => InformationScreen(title: label),
             ),
-          ),
-        );
-      },
-      
+          ).then((_) {
+            onTitleChange('Services');
+          });
+        },
+
         child: Container(
           height: 90,
           padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -478,7 +508,11 @@ class ServiceItem extends StatelessWidget {
                   ),
                 ),
               ),
-              Icon(Icons.chevron_right, size: 35, color: const Color.fromARGB(255, 0, 0, 0)),
+              Icon(
+                Icons.chevron_right,
+                size: 35,
+                color: const Color.fromARGB(255, 0, 0, 0),
+              ),
             ],
           ),
         ),
@@ -487,15 +521,12 @@ class ServiceItem extends StatelessWidget {
   }
 }
 
-class SeeAllScreen extends StatelessWidget { //Appbar here
+class SeeAllScreen extends StatelessWidget {
+  //Appbar here
   final String title;
   final List<ServiceItem> items;
 
-  const SeeAllScreen({
-    super.key,
-    required this.title,
-    required this.items,
-  });
+  const SeeAllScreen({super.key, required this.title, required this.items});
 
   @override
   Widget build(BuildContext context) {
@@ -503,49 +534,45 @@ class SeeAllScreen extends StatelessWidget { //Appbar here
       backgroundColor: const Color.fromARGB(255, 255, 255, 255),
 
       floatingActionButton: Padding(
-          padding: const EdgeInsets.only(left: 20, bottom: 20),
-          child: Material(
-            color: Colors.white,
+        padding: const EdgeInsets.only(left: 20, bottom: 20),
+        child: Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          elevation: 4,
+          shadowColor: Colors.black.withOpacity(1),
+          child: InkWell(
+            onTap: () => Navigator.pop(context),
             borderRadius: BorderRadius.circular(14),
-            elevation: 4,
-            shadowColor: Colors.black.withOpacity(1),
-            child: InkWell(
-              onTap: () => Navigator.pop(context),
-              borderRadius: BorderRadius.circular(14),
-              child: const SizedBox(
-                width: 60,
-                height: 60,
-                child: Icon(
-                  Icons.arrow_back,
-                  size: 30,
-                  color: Colors.black,
-                ),
-              ),
+            child: const SizedBox(
+              width: 60,
+              height: 60,
+              child: Icon(Icons.arrow_back, size: 30, color: Colors.black),
             ),
           ),
         ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color.fromRGBO(185, 217, 235, 1.0),
-                borderRadius: BorderRadius.circular(22),
-              ),
-              child: Column(
-                children: List.generate(items.length, (index) {
-                  return Column(
-                    children: [
-                      items[index],
-                      if (index != items.length - 1) const SizedBox(height: 20),
-                    ],
-                  );
-                }),
-              ),
-            ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color.fromRGBO(185, 217, 235, 1.0),
+            borderRadius: BorderRadius.circular(22),
           ),
-        );
-      }
-    }
+          child: Column(
+            children: List.generate(items.length, (index) {
+              return Column(
+                children: [
+                  items[index],
+                  if (index != items.length - 1) const SizedBox(height: 20),
+                ],
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+}
