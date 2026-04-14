@@ -14,7 +14,7 @@ class _MyWidgetState extends State<SideBar> {
   int selectedIndex = 0;
 
   // List of screens that's gonna be used
-  final List<Widget> screens = [Services(), Services(), Services(), Settings()];
+  final List<Widget> screens = [Services(), SettingsScreen(), SettingsScreen(), SettingsScreen()];
 
   // List of titles along with the screens
   late final List<String> titles = ['Services', 'Profile', 'About', 'Settings'];
@@ -122,52 +122,81 @@ class _MyWidgetState extends State<SideBar> {
                 child: Column(
                   children: [
                     SideBarOption(
-                      imagePath: 'assets/home_icon.png',
+                      selectedImage: 'assets/home_icon.png',
+                      unselectedImage: 'assets/home_outlined_icon.png',
                       optionName: 'Home',
                       isSelected: selectedIndex == 0,
                       onTapAction: () {
-                        setState(() {
-                          selectedIndex = 0;
-                        });
                         Navigator.pop(context);
+                        Future.delayed(
+                          const Duration(milliseconds: 50),
+                          () {
+                            if (mounted) {
+                              setState(() {
+                                selectedIndex = 0;
+                              });
+                            }
+                          },
+                        );
                       },
                     ),
                     SizedBox(height: 13),
                     SideBarOption(
-                      imagePath: 'assets/profile_icon.png',
+                      selectedImage: 'assets/profile_icon.png',
+                      unselectedImage: 'assets/profile_outlined_icon.png',
                       optionName: 'Profile',
                       isSelected: selectedIndex == 1,
                       onTapAction: () {
-                        setState(() {
-                          selectedIndex = 0; // Change this to 1 later on
-                        });
                         Navigator.pop(context);
+                        Future.delayed(
+                          const Duration(milliseconds: 50),
+                          () {
+                            if (mounted) {
+                              setState(() {
+                                selectedIndex = 1;
+                              });
+                            }
+                          },
+                        );
                       },
                     ),
                     SizedBox(height: 13),
                     SideBarOption(
-                      imagePath: 'assets/about_icon.png',
+                      selectedImage: 'assets/about_icon.png',
+                      unselectedImage: 'assets/about_outlined_icon.png',
                       optionName: 'About',
                       isSelected: selectedIndex == 2,
                       onTapAction: () {
-                        setState(() {
-                          selectedIndex = 0; // Change this to 2 later on
-                        });
                         Navigator.pop(context);
+                        Future.delayed(
+                          const Duration(milliseconds: 50),
+                          () {
+                            if (mounted) {
+                              setState(() {
+                                selectedIndex = 2;
+                              });
+                            }
+                          },
+                        );
                       },
                     ),
                     SizedBox(height: 13),
                     SideBarOption(
-                      imagePath: 'assets/settings_icon.png',
+                      selectedImage: 'assets/settings_icon.png',
+                      unselectedImage: 'assets/settings_outlined_icon.png',
                       optionName: 'Settings',
                       isSelected: selectedIndex == 3,
                       onTapAction: () {
-                        setState(() {
-                          selectedIndex = 0; // Change this to 3 later on
-                        });
                         Navigator.pop(context);
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen(),
-                          ),
+                        Future.delayed(
+                          const Duration(milliseconds: 50),
+                          () {
+                            if (mounted) {
+                              setState(() {
+                                selectedIndex = 3;
+                              });
+                            }
+                          },
                         );
                       },
                     ),
