@@ -1,4 +1,10 @@
+import 'package:docsease/app_start.dart';
 import 'package:flutter/material.dart';
+<<<<<<< Updated upstream
+=======
+import 'package:docsease/side_bar.dart';
+import 'app_start.dart';
+>>>>>>> Stashed changes
 
 void main() {
   runApp(const MyApp());
@@ -10,6 +16,7 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+<<<<<<< Updated upstream
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
@@ -118,5 +125,10 @@ class _MyHomePageState extends State<MyHomePage> {
         child: const Icon(Icons.add),
       ),
     );
+=======
+    return MaterialApp(title: 'DocsEase',
+    debugShowCheckedModeBanner: false,
+    home: AppStart());
+>>>>>>> Stashed changes
   }
 }
