@@ -1,6 +1,7 @@
 import 'package:docsease/services.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:docsease/profile.dart';
 
 class SideBar extends StatefulWidget {
   const SideBar({super.key});
@@ -13,15 +14,17 @@ class _MyWidgetState extends State<SideBar> {
   int selectedIndex = 0;
 
   // List of screens that's gonna be used
-  final List<Widget> screens = [Services()];
+  final List<Widget> screens = [Services(), Profile()];
 
   // List of titles along with the screens
-  final List<String> titles = ['Services'];
+  final List<String> titles = ['Services', 'Profile'];
 
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        appBar: AppBar(
+        appBar: selectedIndex == 1 // Assuming 1 is the Profile index
+            ? null                 // If Profile is selected, show NO AppBar
+            : AppBar(
           centerTitle: true,
           leading: Builder(
             builder: (BuildContext context) {
@@ -138,7 +141,7 @@ class _MyWidgetState extends State<SideBar> {
                       isSelected: selectedIndex == 1,
                       onTapAction: () {
                         setState(() {
-                          selectedIndex = 0; // Change this to 1 later on
+                          selectedIndex = 1; // Change this to 1 later on
                         });
                         Navigator.pop(context);
                       },
