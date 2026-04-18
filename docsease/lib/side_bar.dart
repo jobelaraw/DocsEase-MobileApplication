@@ -3,6 +3,7 @@ import 'package:docsease/services.dart';
 import 'package:docsease/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:docsease/profile.dart';
 
 class SideBar extends StatefulWidget {
   const SideBar({super.key});
