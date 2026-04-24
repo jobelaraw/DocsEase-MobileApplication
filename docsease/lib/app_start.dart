@@ -1,8 +1,8 @@
+import 'package:docsease/authentication.dart';
+import 'package:docsease/side_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'services.dart';
-
 
 class AppStart extends StatelessWidget {
   const AppStart({super.key});
@@ -13,18 +13,14 @@ class AppStart extends StatelessWidget {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32.0),
+          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 20),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Spacer(flex: 2),
 
               // ── App Logo ──
-              Image.asset(
-                'assets/appstart_logo.png', 
-                width: 200,
-                height: 200,
-              ),
+              Image.asset('assets/docsease_logo.png', width: 200, height: 200),
 
               const SizedBox(height: 32),
 
@@ -42,7 +38,7 @@ class AppStart extends StatelessWidget {
 
               const SizedBox(height: 14),
 
-              //Subtitle 
+              //Subtitle
               Text(
                 'Your smart assistant for government\ndocuments. Navigate complex forms with ease',
                 textAlign: TextAlign.center,
@@ -61,7 +57,12 @@ class AppStart extends StatelessWidget {
                 height: 54,
                 child: ElevatedButton(
                   onPressed: () {
-                    // TODO: Navigate to Sign In / Sign Up
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const Authentication(),
+                      ),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3B73E0),
@@ -89,16 +90,16 @@ class AppStart extends StatelessWidget {
                 height: 54,
                 child: OutlinedButton(
                   onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const Services()),
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SideBar()),
+                      (Route<dynamic> route) => false,
                     );
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF3B73E0),
                     elevation: 6,
-                    side: BorderSide(
-                      color: Colors.grey.shade300,
-                      width: 1.5,
-                    ),
+                    side: BorderSide(color: Colors.grey.shade300, width: 1.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(25),
                     ),
@@ -107,7 +108,7 @@ class AppStart extends StatelessWidget {
                     'Continue as Guest',
                     style: GoogleFonts.inter(
                       fontSize: 20,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.bold,
                       color: const Color(0xFF3B73E0),
                     ),
                   ),

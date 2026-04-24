@@ -1,7 +1,8 @@
 import 'package:docsease/app_start.dart';
 import 'package:flutter/material.dart';
 
-void main() {
+Future<void> main() async {
+  await dotenv.load(fileName: ".env");
   runApp(const MyApp());
 }
 
