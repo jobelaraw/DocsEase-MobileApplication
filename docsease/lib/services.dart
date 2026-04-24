@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:docsease/chatbot.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'service_list.dart';
 import 'information.dart';
@@ -122,7 +123,7 @@ class _ServicesContent extends State<Services> {
                         158,
                         158,
                         158,
-                      ).withOpacity(0.2),
+                      ).withValues(alpha: 0.2),
                     ),
                   ),
                   child: Row(
@@ -327,7 +328,11 @@ class _ServicesContent extends State<Services> {
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
-                    // TODO: Open chatbot
+                    Navigator.of(context, rootNavigator: true).push(
+                      MaterialPageRoute(
+                        builder: (context) => const ChatBotScreen(),
+                      ),
+                    );
                   },
                   borderRadius: BorderRadius.circular(40),
                   child: Padding(
@@ -484,7 +489,7 @@ class ServiceItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
           ),
           child: Row(
             children: [
@@ -539,7 +544,7 @@ class SeeAllScreen extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           elevation: 4,
-          shadowColor: Colors.black.withOpacity(1),
+          shadowColor: Colors.black.withValues(alpha: 1),
           child: InkWell(
             onTap: () => Navigator.pop(context),
             borderRadius: BorderRadius.circular(14),
