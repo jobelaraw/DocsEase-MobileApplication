@@ -11,7 +11,7 @@ class ChatBotScreen extends StatefulWidget {
   const ChatBotScreen({super.key});
 
   @override
-  State<ChatBotScreen>  createState() => _ChatBotScreenState();
+  State<ChatBotScreen> createState() => _ChatBotScreenState();
 }
 
 class _ChatMessage {
@@ -28,7 +28,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   int? _speakingIndex;
   final List<_ChatMessage> _messages = [
     _ChatMessage(
-      text: "Hi! Ako si DocEase Bot at Nandito ako para tulungan ka sa mga dokumento, permit, at anumang prosesong kailangan mo. Ano ang gusto mong gawin ngayon?",
+      text:
+          "Hi! Ako si DocsEase Bot at Nandito ako para tulungan ka sa mga dokumento, permit, at anumang prosesong kailangan mo. Ano ang gusto mong gawin ngayon?",
       isUser: false,
       time: _formatTime(DateTime.now()),
     ),
@@ -56,9 +57,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     } else {
       await _tts.stop();
       setState(() => _speakingIndex = index);
-      await _tts.speak(_stripMarkdown(text), onDone: () {
-        if (mounted) setState(() => _speakingIndex = null);
-      });
+      await _tts.speak(
+        _stripMarkdown(text),
+        onDone: () {
+          if (mounted) setState(() => _speakingIndex = null);
+        },
+      );
     }
   }
 
@@ -73,7 +77,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty || _isLoading) return;
 
-    final userMsg = _ChatMessage(text: text, isUser: true, time: _formatTime(DateTime.now()));
+    final userMsg = _ChatMessage(
+      text: text,
+      isUser: true,
+      time: _formatTime(DateTime.now()),
+    );
     setState(() {
       _messages.add(userMsg);
       _isLoading = true;
@@ -93,7 +101,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         model: 'gemini-2.5-flash-lite',
         apiKey: apiKey,
         systemInstruction: Content.system(
-          'Ikaw si DocEase Bot. Gumamit ng ibinigay na PDF dokumento bilang iyong pangunahing pinagkukunan ng impormasyon tungkol sa mga proseso ng dokumento at permit ng gobyerno sa Pilipinas. '
+          'Ikaw si DocsEase Bot. Gumamit ng ibinigay na PDF dokumento bilang iyong pangunahing pinagkukunan ng impormasyon tungkol sa mga proseso ng dokumento at permit ng gobyerno sa Pilipinas. '
           'Sumagot nang malinaw at maayos. Gamitin ang mga bullet points para sa mga listahan, at i-bold ang mahahalagang salita o hakbang gamit ang **bold**. '
           'Hatiin ang sagot sa maikling talata para madaling basahin. Huwag gumamit ng mahahabang pangungusap. '
           'Sumagot sa Filipino o English depende sa tanong ng user. Kung wala sa PDF ang sagot, sabihin na wala kang impormasyon tungkol doon.',
@@ -107,18 +115,25 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           .toList();
 
       final chat = model.startChat(history: history);
-      final response = await chat.sendMessage(
-        Content('user', [TextPart(text)]),
-      ).timeout(const Duration(seconds: 60));
+      final response = await chat
+          .sendMessage(Content('user', [TextPart(text)]))
+          .timeout(const Duration(seconds: 60));
       final reply = response.text ?? 'No response.';
       if (mounted) {
         setState(() {
-          _messages.add(_ChatMessage(text: reply.trim(), isUser: false, time: _formatTime(DateTime.now())));
+          _messages.add(
+            _ChatMessage(
+              text: reply.trim(),
+              isUser: false,
+              time: _formatTime(DateTime.now()),
+            ),
+          );
         });
       }
     } catch (e) {
       debugPrint('Chatbot error: $e');
-      if (mounted) _addError('Failed to connect. Please check your internet connection.');
+      if (mounted)
+        _addError('Failed to connect. Please check your internet connection.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
       _scrollToBottom();
@@ -127,7 +142,13 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   void _addError(String msg) {
     setState(() {
-      _messages.add(_ChatMessage(text: msg, isUser: false, time: _formatTime(DateTime.now())));
+      _messages.add(
+        _ChatMessage(
+          text: msg,
+          isUser: false,
+          time: _formatTime(DateTime.now()),
+        ),
+      );
     });
   }
 
@@ -158,54 +179,78 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       body: Column(
         children: [
           // --- FIXED HEADER ---
-          Container(
-            height: 110,
-            width: double.infinity,
-            decoration: const BoxDecoration(color: Color(0xFF1E65E2)),
-            padding: const EdgeInsets.only(top: 40, left: 10, right: 20),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundColor: Colors.white.withOpacity(0.0),
-                      child: ClipOval(
-                        child: Image.asset('assets/chatbot.png', width: 300, height: 300, fit: BoxFit.contain),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 7,
-                      right: 6,
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF39D236),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFF1E65E2), width: 2),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("DocEase Bot",
-                        style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text("Online Assistant", style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          // Container(
+          //   height: 110,
+          //   width: double.infinity,
+          //   decoration: const BoxDecoration(color: Color(0xFF1E65E2)),
+          //   padding: const EdgeInsets.only(top: 40, left: 10, right: 20),
+          //   child: Row(
+          //     children: [
+          //       IconButton(
+          //         icon: const Icon(
+          //           Icons.arrow_back_ios,
+          //           color: Colors.white,
+          //           size: 20,
+          //         ),
+          //         onPressed: () => Navigator.pop(context),
+          //       ),
+          //       Stack(
+          //         children: [
+          //           CircleAvatar(
+          //             radius: 30,
+          //             backgroundColor: Colors.white.withOpacity(0.0),
+          //             child: ClipOval(
+          //               child: Image.asset(
+          //                 'assets/chatbot.png',
+          //                 width: 300,
+          //                 height: 300,
+          //                 fit: BoxFit.contain,
+          //               ),
+          //             ),
+          //           ),
+          //           Positioned(
+          //             bottom: 7,
+          //             right: 6,
+          //             child: Container(
+          //               width: 12,
+          //               height: 12,
+          //               decoration: BoxDecoration(
+          //                 color: const Color(0xFF39D236),
+          //                 shape: BoxShape.circle,
+          //                 border: Border.all(
+          //                   color: const Color(0xFF1E65E2),
+          //                   width: 2,
+          //                 ),
+          //               ),
+          //             ),
+          //           ),
+          //         ],
+          //       ),
+          //       const SizedBox(width: 12),
+          //       Column(
+          //         mainAxisAlignment: MainAxisAlignment.center,
+          //         crossAxisAlignment: CrossAxisAlignment.start,
+          //         children: [
+          //           Text(
+          //             "DocsEase Bot",
+          //             style: GoogleFonts.inter(
+          //               color: Colors.white,
+          //               fontSize: 18,
+          //               fontWeight: FontWeight.bold,
+          //             ),
+          //           ),
+          //           Text(
+          //             "Online Assistant",
+          //             style: GoogleFonts.inter(
+          //               color: Colors.white70,
+          //               fontSize: 12,
+          //             ),
+          //           ),
+          //         ],
+          //       ),
+          //     ],
+          //   ),
+          // ),
 
           // --- SCROLLABLE CHAT AREA ---
           Expanded(
@@ -229,7 +274,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             padding: const EdgeInsets.fromLTRB(10, 10, 10, 30),
             decoration: const BoxDecoration(
               color: Colors.white,
-              border: Border(top: BorderSide(color: Colors.black12, width: 0.5)),
+              border: Border(
+                top: BorderSide(color: Colors.black12, width: 0.5),
+              ),
             ),
             child: Row(
               children: [
@@ -246,9 +293,15 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                       onSubmitted: (_) => _sendMessage(),
                       decoration: InputDecoration(
                         hintText: "Ask about your transaction...",
-                        hintStyle: GoogleFonts.inter(color: Colors.black38, fontSize: 14),
+                        hintStyle: GoogleFonts.inter(
+                          color: Colors.black38,
+                          fontSize: 14,
+                        ),
                         border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
                       ),
                     ),
                   ),
@@ -259,8 +312,15 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                   child: Container(
                     width: 50,
                     height: 50,
-                    decoration: const BoxDecoration(color: Color(0xFF3B73E0), shape: BoxShape.circle),
-                    child: const Icon(Icons.send_outlined, color: Colors.white, size: 24),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF3B73E0),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.send_outlined,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
                 ),
               ],
@@ -280,7 +340,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             radius: 20,
             backgroundColor: const Color(0xFF1E65E2),
             child: ClipOval(
-              child: Image.asset('assets/chatbot.png', width: 200, height: 200, fit: BoxFit.contain),
+              child: Image.asset(
+                'assets/chatbot.png',
+                width: 200,
+                height: 200,
+                fit: BoxFit.contain,
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -313,7 +378,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 radius: 20,
                 backgroundColor: const Color(0xFF1E65E2),
                 child: ClipOval(
-                  child: Image.asset('assets/chatbot.png', width: 200, height: 200, fit: BoxFit.contain),
+                  child: Image.asset(
+                    'assets/chatbot.png',
+                    width: 200,
+                    height: 200,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
               Positioned(
@@ -325,7 +395,10 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFF39D236),
                     shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFE6F6FF), width: 2),
+                    border: Border.all(
+                      color: const Color(0xFFE6F6FF),
+                      width: 2,
+                    ),
                   ),
                 ),
               ),
@@ -336,8 +409,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("DocEase Bot",
-                    style: TextStyle(fontSize: 13, color: Colors.black38, fontWeight: FontWeight.w500)),
+                const Text(
+                  "DocsEase Bot",
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.black38,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -359,13 +438,30 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                             MarkdownBody(
                               data: text,
                               styleSheet: MarkdownStyleSheet(
-                                p: GoogleFonts.inter(fontSize: 14, height: 1.4, color: Colors.black87),
-                                strong: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
-                                listBullet: GoogleFonts.inter(fontSize: 14, color: Colors.black87),
+                                p: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  height: 1.4,
+                                  color: Colors.black87,
+                                ),
+                                strong: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                                listBullet: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  color: Colors.black87,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Text(time, style: const TextStyle(fontSize: 10, color: Colors.black26)),
+                            Text(
+                              time,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.black26,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -382,7 +478,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
-                          _speakingIndex == index ? Icons.stop : Icons.volume_up_outlined,
+                          _speakingIndex == index
+                              ? Icons.stop
+                              : Icons.volume_up_outlined,
                           size: 20,
                           color: const Color(0xFF1E65E2),
                         ),
@@ -417,9 +515,19 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(text, style: GoogleFonts.inter(color: Colors.white, fontSize: 14, height: 1.3)),
+                Text(
+                  text,
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 14,
+                    height: 1.3,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(time, style: const TextStyle(fontSize: 10, color: Colors.white60)),
+                Text(
+                  time,
+                  style: const TextStyle(fontSize: 10, color: Colors.white60),
+                ),
               ],
             ),
           ),
@@ -436,20 +544,29 @@ class _TypingDots extends StatefulWidget {
   State<_TypingDots> createState() => _TypingDotsState();
 }
 
-class _TypingDotsState extends State<_TypingDots> with TickerProviderStateMixin {
+class _TypingDotsState extends State<_TypingDots>
+    with TickerProviderStateMixin {
   late final List<AnimationController> _controllers;
   late final List<Animation<double>> _animations;
 
   @override
   void initState() {
     super.initState();
-    _controllers = List.generate(3, (i) => AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    ));
-    _animations = _controllers.map((c) => Tween(begin: 0.0, end: -6.0).animate(
-      CurvedAnimation(parent: c, curve: Curves.easeInOut),
-    )).toList();
+    _controllers = List.generate(
+      3,
+      (i) => AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 400),
+      ),
+    );
+    _animations = _controllers
+        .map(
+          (c) => Tween(
+            begin: 0.0,
+            end: -6.0,
+          ).animate(CurvedAnimation(parent: c, curve: Curves.easeInOut)),
+        )
+        .toList();
 
     for (int i = 0; i < 3; i++) {
       Future.delayed(Duration(milliseconds: i * 150), () {

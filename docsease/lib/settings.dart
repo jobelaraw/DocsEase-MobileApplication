@@ -89,27 +89,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: const Color.fromRGBO(235, 243, 255, 1.0),
 
-      // ── Floating back button ──
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(left: 10, bottom: 10),
-        child: Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          elevation: 4,
-          shadowColor: Colors.black.withOpacity(1),
-          child: InkWell(
-            onTap: () => Navigator.pop(context),
-            borderRadius: BorderRadius.circular(14),
-            child: const SizedBox(
-              width: 60,
-              height: 60,
-              child: Icon(Icons.arrow_back, size: 30, color: Colors.black),
-            ),
-          ),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
-
       body: Column(
         children: [
           // ── Body ──
