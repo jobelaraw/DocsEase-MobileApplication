@@ -11,7 +11,7 @@ class ChatBotScreen extends StatefulWidget {
   const ChatBotScreen({super.key});
 
   @override
-  State<ChatBotScreen> createState() => _ChatBotScreenState();
+  State<ChatBotScreen>  createState() => _ChatBotScreenState();
 }
 
 class _ChatMessage {
@@ -28,7 +28,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   int? _speakingIndex;
   final List<_ChatMessage> _messages = [
     _ChatMessage(
-      text: "Hi! 👋 Ako si DocEase Bot. Nandito ako para tulungan ka sa mga dokumento, permit, at anumang prosesong kailangan mo. Ano ang gusto mong gawin ngayon?",
+      text: "Hi! 👋 Ako si DocEase Bot at Nandito ako para tulungan ka sa mga dokumento, permit, at anumang prosesong kailangan mo. Ano ang gusto mong gawin ngayon?",
       isUser: false,
       time: _formatTime(DateTime.now()),
     ),
