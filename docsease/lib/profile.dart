@@ -3,8 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:docsease/edit_profile.dart';
 
 class Profile extends StatefulWidget {
-  final VoidCallback? onBack;
-  const Profile({super.key, this.onBack});
+  final Function(String) onTitleChange;
+
+  const Profile({super.key, required this.onTitleChange});
 
   @override
   State<Profile> createState() => _ProfileState();
@@ -34,15 +35,6 @@ class _ProfileState extends State<Profile> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 const SizedBox(height: 30),
-                // const Text(
-                //   "Profile",
-                //   style: TextStyle(
-                //     color: Colors.white,
-                //     fontSize: 24,
-                //     fontWeight: FontWeight.bold,
-                //   ),
-                // ),
-                // const SizedBox(height: 20),
                 Stack(
                   children: [
                     CircleAvatar(
@@ -61,17 +53,16 @@ class _ProfileState extends State<Profile> {
                       child: GestureDetector(
                         // <--- 1. Add this to detect the tap
                         onTap: () {
+                          widget.onTitleChange('Edit Profile');
                           // 2. This pushes the EditProfile screen onto the stack
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => EditProfile(
-                                onBack: () => Navigator.pop(
-                                  context,
-                                ), // This makes the back button work
-                              ),
+                              builder: (context) => const EditProfile(),
                             ),
-                          );
+                          ).then((_) {
+                            widget.onTitleChange('Profile');
+                          });
                         },
                         child: Container(
                           padding: const EdgeInsets.all(6),
@@ -102,13 +93,15 @@ class _ProfileState extends State<Profile> {
                 GestureDetector(
                   // <--- Add this to detect the tap
                   onTap: () {
+                    widget.onTitleChange('Edit Profile');
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            EditProfile(onBack: () => Navigator.pop(context)),
+                        builder: (context) => const EditProfile(),
                       ),
-                    );
+                    ).then((_) {
+                      widget.onTitleChange('Profile');
+                    });
                   },
                   child: Text(
                     'John John',
@@ -197,7 +190,9 @@ class _ProfileState extends State<Profile> {
                               showProgress: false,
                               iconBg: const Color(0xFFFCE4EC),
                               onTap: () {
-                                print("Navigating to Marriage Certificate Panel");
+                                print(
+                                  "Navigating to Marriage Certificate Panel",
+                                );
                               },
                             ),
                             const Divider(height: 40, thickness: 0.8),
@@ -219,18 +214,6 @@ class _ProfileState extends State<Profile> {
                   ),
                 ],
               ),
-            ),
-          ),
-
-          // Back Button
-          Positioned(
-            bottom: 30,
-            left: 20,
-            child: FloatingActionButton(
-              backgroundColor: Colors.white,
-              elevation: 4,
-              onPressed: () => widget.onBack?.call(),
-              child: const Icon(Icons.arrow_back, color: Colors.black),
             ),
           ),
         ],

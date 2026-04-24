@@ -328,11 +328,15 @@ class _ServicesContent extends State<Services> {
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
-                    Navigator.of(context, rootNavigator: true).push(
+                    widget.onTitleChange('Chatbot');
+                    Navigator.push(
+                      context,
                       MaterialPageRoute(
                         builder: (context) => const ChatBotScreen(),
                       ),
-                    );
+                    ).then((_) {
+                      widget.onTitleChange('Services');
+                    });
                   },
                   borderRadius: BorderRadius.circular(40),
                   child: Padding(
@@ -396,8 +400,11 @@ class ServiceCategory extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        SeeAllScreen(title: title, items: items),
+                    builder: (context) => SeeAllScreen(
+                      title: title,
+                      items: items,
+                      onTitleChange: onTitleChange,
+                    ),
                   ),
                 ).then((_) {
                   onTitleChange('Services');
@@ -453,6 +460,7 @@ class ServiceItem extends StatelessWidget {
   final Color iconColor;
   final ServiceData data;
   final Function(String) onTitleChange;
+  final String returnTitle;
 
   const ServiceItem({
     super.key,
@@ -462,6 +470,7 @@ class ServiceItem extends StatelessWidget {
     required this.iconBgColor,
     required this.iconColor,
     required this.onTitleChange,
+    this.returnTitle = 'Services',
   });
 
   @override
@@ -480,7 +489,7 @@ class ServiceItem extends StatelessWidget {
               builder: (context) => InformationScreen(title: label),
             ),
           ).then((_) {
-            onTitleChange('Services');
+            onTitleChange(returnTitle);
           });
         },
 
@@ -530,48 +539,47 @@ class SeeAllScreen extends StatelessWidget {
   //Appbar here
   final String title;
   final List<ServiceItem> items;
+  final Function(String) onTitleChange;
 
-  const SeeAllScreen({super.key, required this.title, required this.items});
+  const SeeAllScreen({
+    super.key,
+    required this.title,
+    required this.items,
+    required this.onTitleChange,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final dynamicItems = items.map((oldItem) {
+      return ServiceItem(
+        data: oldItem.data,
+        label: oldItem.label,
+        iconData: oldItem.iconData,
+        iconBgColor: oldItem.iconBgColor,
+        iconColor: oldItem.iconColor,
+        onTitleChange: onTitleChange,
+        returnTitle: title,
+      );
+    }).toList();
+
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 255, 255, 255),
-
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(left: 20, bottom: 20),
-        child: Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          elevation: 4,
-          shadowColor: Colors.black.withValues(alpha: 1),
-          child: InkWell(
-            onTap: () => Navigator.pop(context),
-            borderRadius: BorderRadius.circular(14),
-            child: const SizedBox(
-              width: 60,
-              height: 60,
-              child: Icon(Icons.arrow_back, size: 30, color: Colors.black),
-            ),
-          ),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
+        padding: const EdgeInsets.all(20),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           decoration: BoxDecoration(
             color: const Color.fromRGBO(185, 217, 235, 1.0),
             borderRadius: BorderRadius.circular(22),
           ),
           child: Column(
-            children: List.generate(items.length, (index) {
+            children: List.generate(dynamicItems.length, (index) {
               return Column(
                 children: [
-                  items[index],
-                  if (index != items.length - 1) const SizedBox(height: 20),
+                  dynamicItems[index],
+                  if (index != dynamicItems.length - 1)
+                    const SizedBox(height: 10),
                 ],
               );
             }),

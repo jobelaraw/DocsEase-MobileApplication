@@ -1,10 +1,10 @@
+import 'package:docsease/about_us.dart';
 import 'package:docsease/authentication.dart';
+import 'package:docsease/profile.dart';
 import 'package:docsease/services.dart';
 import 'package:docsease/settings.dart';
-import 'package:docsease/about_us.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:docsease/profile.dart';
 
 class SideBar extends StatefulWidget {
   const SideBar({super.key});
@@ -17,6 +17,7 @@ class _SideBarState extends State<SideBar> {
   int selectedIndex = 0;
   String currentTitle = 'Services';
   final GlobalKey<NavigatorState> _servicesNavKey = GlobalKey<NavigatorState>();
+  final GlobalKey<NavigatorState> _profileNavKey = GlobalKey<NavigatorState>();
 
   late final List<Widget> screens;
 
@@ -32,7 +33,14 @@ class _SideBarState extends State<SideBar> {
           });
         },
       ),
-      Profile(onBack: () => setState(() => selectedIndex = 0)),
+      ProfileNavigator(
+        navigatorKey: _profileNavKey,
+        onTitleChange: (newTitle) {
+          setState(() {
+            currentTitle = newTitle;
+          });
+        },
+      ),
       const AboutUsScreen(),
       const SettingsScreen(),
     ];
@@ -45,41 +53,126 @@ class _SideBarState extends State<SideBar> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true,
-        leadingWidth: 70,
-        leading: Builder(
-          builder: (BuildContext context) {
-            return Padding(
-              padding: const EdgeInsets.all(15),
-              child: IconButton(
-                splashRadius: 10.0,
-                onPressed: () {
-                  Scaffold.of(context).openDrawer();
-                },
-                icon: ImageIcon(
-                  AssetImage('assets/hamburger_icon.png'),
-                  size: 20,
+        leadingWidth: 60,
+        leading:
+            ((selectedIndex == 0 && currentTitle != 'Services') ||
+                (selectedIndex == 1 && currentTitle != 'Profile'))
+            ? Padding(
+                padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () {
+                    if (selectedIndex == 0) {
+                      _servicesNavKey.currentState?.pop();
+                    } else if (selectedIndex == 1) {
+                      _profileNavKey.currentState?.pop();
+                    }
+                  },
+                ),
+              )
+            : null,
+        centerTitle: (selectedIndex == 0 && currentTitle == 'Chatbot')
+            ? false
+            : true,
+        titleSpacing: 0,
+        title: selectedIndex == 0 && currentTitle == 'Chatbot'
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 22,
+                        backgroundColor: Colors.white.withOpacity(0.0),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/chatbot.png',
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 5,
+                        right: 4,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF39D236),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color.fromRGBO(32, 87, 206, 1.0),
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "DocEase Bot",
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        "Online Assistant",
+                        style: GoogleFonts.inter(
+                          color: Colors.white60,
+                          fontSize: 11,
+                          fontWeight: FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              )
+            : Text(
+                (selectedIndex == 0 || selectedIndex == 1)
+                    ? currentTitle
+                    : titles[selectedIndex],
+                style: GoogleFonts.inter(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
-            );
-          },
-        ),
-        title: Text(
-          selectedIndex == 0 ? currentTitle : titles[selectedIndex],
-          style: GoogleFonts.inter(
-            fontSize: 17,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+        actions: [
+          Builder(
+            builder: (BuildContext context) {
+              return Padding(
+                padding: const EdgeInsets.all(15),
+                child: IconButton(
+                  splashRadius: 10.0,
+                  onPressed: () {
+                    Scaffold.of(context).openEndDrawer();
+                  },
+                  icon: ImageIcon(
+                    AssetImage('assets/hamburger_icon.png'),
+                    size: 20,
+                    color: Colors.white,
+                  ),
+                ),
+              );
+            },
           ),
-        ),
+        ],
         backgroundColor: Color.fromRGBO(32, 87, 206, 1.0),
         surfaceTintColor: Colors.transparent,
         elevation: 1.0,
         shadowColor: Colors.black.withOpacity(0.3),
         toolbarHeight: 70,
       ),
-      drawer: Drawer(
+      endDrawer: Drawer(
         width: MediaQuery.of(context).size.width > 400
             ? 300
             : MediaQuery.of(context).size.width * 0.75,
@@ -113,7 +206,7 @@ class _SideBarState extends State<SideBar> {
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         Align(
-                          alignment: Alignment.topRight,
+                          alignment: Alignment.topLeft,
                           child: GestureDetector(
                             child: const ImageIcon(
                               AssetImage('assets/close_icon.png'),
@@ -178,6 +271,7 @@ class _SideBarState extends State<SideBar> {
                                     });
                                   } else {
                                     setState(() {
+                                      currentTitle = 'Services';
                                       selectedIndex = 0;
                                     });
                                   }
@@ -198,9 +292,19 @@ class _SideBarState extends State<SideBar> {
                               const Duration(milliseconds: 50),
                               () {
                                 if (mounted) {
-                                  setState(() {
-                                    selectedIndex = 1;
-                                  });
+                                  if (selectedIndex == 1) {
+                                    _profileNavKey.currentState?.popUntil(
+                                      (route) => route.isFirst,
+                                    );
+                                    setState(() {
+                                      currentTitle = 'Profile';
+                                    });
+                                  } else {
+                                    setState(() {
+                                      currentTitle = 'Profile';
+                                      selectedIndex = 1;
+                                    });
+                                  }
                                 }
                               },
                             );
@@ -380,6 +484,29 @@ class ServicesNavigator extends StatelessWidget {
       onGenerateRoute: (settings) {
         return MaterialPageRoute(
           builder: (context) => Services(onTitleChange: onTitleChange),
+        );
+      },
+    );
+  }
+}
+
+class ProfileNavigator extends StatelessWidget {
+  final Function(String) onTitleChange;
+  final GlobalKey<NavigatorState> navigatorKey;
+
+  const ProfileNavigator({
+    super.key,
+    required this.onTitleChange,
+    required this.navigatorKey,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Navigator(
+      key: navigatorKey,
+      onGenerateRoute: (settings) {
+        return MaterialPageRoute(
+          builder: (context) => Profile(onTitleChange: onTitleChange),
         );
       },
     );

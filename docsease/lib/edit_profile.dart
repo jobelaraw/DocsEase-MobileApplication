@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class EditProfile extends StatefulWidget {
-  final VoidCallback onBack;
-
-  const EditProfile({super.key, required this.onBack});
+  const EditProfile({super.key});
 
   @override
   State<EditProfile> createState() => _EditProfileState();
@@ -29,15 +27,6 @@ class _EditProfileState extends State<EditProfile> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 const SizedBox(height: 50),
-                Text(
-                  "Edit Profile",
-                  style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 20),
                 Stack(
                   children: [
                     CircleAvatar(
@@ -159,18 +148,6 @@ class _EditProfileState extends State<EditProfile> {
                   ),
                 ],
               ),
-            ),
-          ),
-
-          // Back Button
-          Positioned(
-            bottom: 30,
-            left: 20,
-            child: FloatingActionButton(
-              backgroundColor: Colors.white,
-              elevation: 4,
-              onPressed: widget.onBack,
-              child: const Icon(Icons.arrow_back, color: Colors.black),
             ),
           ),
         ],
