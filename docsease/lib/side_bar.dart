@@ -1,6 +1,7 @@
 import 'package:docsease/authentication.dart';
 import 'package:docsease/services.dart';
 import 'package:docsease/settings.dart';
+import 'package:docsease/about_us.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:docsease/profile.dart';
@@ -31,8 +32,8 @@ class _SideBarState extends State<SideBar> {
           });
         },
       ),
-      const SettingsScreen(),
-      const SettingsScreen(),
+      Profile(onBack: () => setState(() => selectedIndex = 0)),
+      const AboutUsScreen(),
       const SettingsScreen(),
     ];
   }

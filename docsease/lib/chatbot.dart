@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -99,8 +100,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         ),
       );
 
-      final pdfPart = await RagService.getPdfPart();
-
       final history = _messages
           .skip(1)
           .where((m) => m != _messages.last)
@@ -109,16 +108,19 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
       final chat = model.startChat(history: history);
       final response = await chat.sendMessage(
-        Content('user', [pdfPart, TextPart(text)]),
-      );
+        Content('user', [TextPart(text)]),
+      ).timeout(const Duration(seconds: 60));
       final reply = response.text ?? 'No response.';
-      setState(() {
-        _messages.add(_ChatMessage(text: reply.trim(), isUser: false, time: _formatTime(DateTime.now())));
-      });
+      if (mounted) {
+        setState(() {
+          _messages.add(_ChatMessage(text: reply.trim(), isUser: false, time: _formatTime(DateTime.now())));
+        });
+      }
     } catch (e) {
-      _addError('Failed to connect. Please check your internet connection.');
+      debugPrint('Chatbot error: $e');
+      if (mounted) _addError('Failed to connect. Please check your internet connection.');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       _scrollToBottom();
     }
   }
@@ -231,7 +233,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.mic_none_outlined, size: 35, color: Colors.black87),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Container(
@@ -272,7 +273,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   Widget _buildTypingIndicator() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
           CircleAvatar(
@@ -293,10 +294,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 bottomRight: Radius.circular(20),
               ),
             ),
-            child: const SizedBox(
-              width: 40,
-              child: LinearProgressIndicator(color: Color(0xFF1E65E2), backgroundColor: Color(0xFFD1E9F6)),
-            ),
+            child: const _TypingDots(),
           ),
         ],
       ),
@@ -305,7 +303,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   Widget _buildBotMessage(String text, String time, int index) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.only(bottom: 35),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -402,7 +400,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   Widget _buildUserMessage(String text, String time) {
     return Padding(
-      padding: const EdgeInsets.only(left: 50, bottom: 20),
+      padding: const EdgeInsets.only(left: 50, bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -427,6 +425,68 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TypingDots extends StatefulWidget {
+  const _TypingDots();
+
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots> with TickerProviderStateMixin {
+  late final List<AnimationController> _controllers;
+  late final List<Animation<double>> _animations;
+
+  @override
+  void initState() {
+    super.initState();
+    _controllers = List.generate(3, (i) => AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    ));
+    _animations = _controllers.map((c) => Tween(begin: 0.0, end: -6.0).animate(
+      CurvedAnimation(parent: c, curve: Curves.easeInOut),
+    )).toList();
+
+    for (int i = 0; i < 3; i++) {
+      Future.delayed(Duration(milliseconds: i * 150), () {
+        if (mounted) {
+          _controllers[i].repeat(reverse: true);
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers) c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (i) {
+        return AnimatedBuilder(
+          animation: _animations[i],
+          builder: (_, __) => Transform.translate(
+            offset: Offset(0, _animations[i].value),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E65E2),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        );
+      }),
     );
   }
 }
