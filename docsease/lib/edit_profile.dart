@@ -22,7 +22,7 @@ class _EditProfileState extends State<EditProfile> {
         children: [
           // Blue Header Section
           Container(
-            height: MediaQuery.of(context).size.height * 0.37,
+            height: MediaQuery.of(context).size.height * 0.5,
             width: double.infinity,
             color: const Color.fromRGBO(32, 87, 206, 1.0),
             child: Column(
@@ -45,7 +45,9 @@ class _EditProfileState extends State<EditProfile> {
                       backgroundColor: Colors.white.withOpacity(0.3),
                       child: const CircleAvatar(
                         radius: 45,
-                        backgroundImage: AssetImage('assets/default_profile.png'),
+                        backgroundImage: AssetImage(
+                          'assets/default_profile.png',
+                        ),
                       ),
                     ),
                     Positioned(
@@ -82,7 +84,7 @@ class _EditProfileState extends State<EditProfile> {
 
           // Edit Form Card
           Align(
-            alignment: const Alignment(0, 0.2),
+            alignment: const Alignment(0, 0.5),
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 25),
               width: double.infinity,
@@ -110,7 +112,9 @@ class _EditProfileState extends State<EditProfile> {
                     hintText: "••••••••••••••",
                     isPassword: true,
                     obscureText: _obscureNewPassword,
-                    onToggle: () => setState(() => _obscureNewPassword = !_obscureNewPassword),
+                    onToggle: () => setState(
+                      () => _obscureNewPassword = !_obscureNewPassword,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   _buildLabel("CONFIRM PASSWORD"),
@@ -118,7 +122,9 @@ class _EditProfileState extends State<EditProfile> {
                     hintText: "••••••••••••••",
                     isPassword: true,
                     obscureText: _obscureConfirmPassword,
-                    onToggle: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                    onToggle: () => setState(
+                      () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                    ),
                   ),
                   const SizedBox(height: 30),
 
@@ -129,7 +135,12 @@ class _EditProfileState extends State<EditProfile> {
                     child: ElevatedButton(
                       onPressed: () {},
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromRGBO(59, 115, 224, 1.0),
+                        backgroundColor: const Color.fromRGBO(
+                          59,
+                          115,
+                          224,
+                          1.0,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(15),
                         ),
@@ -161,7 +172,7 @@ class _EditProfileState extends State<EditProfile> {
               onPressed: widget.onBack,
               child: const Icon(Icons.arrow_back, color: Colors.black),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -194,7 +205,10 @@ class _EditProfileState extends State<EditProfile> {
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: const TextStyle(color: Colors.black26),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 18,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
           borderSide: const BorderSide(color: Colors.black12),
@@ -205,13 +219,15 @@ class _EditProfileState extends State<EditProfile> {
         ),
         suffixIcon: isPassword
             ? IconButton(
-          icon: Icon(
-            obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-            color: Colors.black54,
-            size: 20,
-          ),
-          onPressed: onToggle,
-        )
+                icon: Icon(
+                  obscureText
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  color: Colors.black54,
+                  size: 20,
+                ),
+                onPressed: onToggle,
+              )
             : null,
       ),
     );
