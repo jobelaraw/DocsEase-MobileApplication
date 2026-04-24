@@ -1,18 +1,36 @@
+// info_model.dart
+
 class ServiceStep {
   final String title;
   final String office;
   final String instruction;
+  final String fee;
+  final String processingTime;
+  final List<String> personsInCharge;
 
   ServiceStep({
     required this.title,
     required this.office,
     required this.instruction,
+    this.fee = 'None',
+    this.processingTime = '',
+    this.personsInCharge = const [],
+  });
+}
+
+class RequirementItem {
+  final String title;
+  final String secureAt;
+
+  RequirementItem({
+    required this.title,
+    required this.secureAt,
   });
 }
 
 class ServiceTab {
-  final String name; // e.g. "Walk-in", "Online", "Hybrid"
-  final List<String> requirements;
+  final String name;
+  final List<RequirementItem> requirements;
   final List<ServiceStep> steps;
 
   ServiceTab({
@@ -25,19 +43,21 @@ class ServiceTab {
 class ServiceDetail {
   final String title;
   final String description;
-  final List<ServiceTab> tabs; 
+  final List<ServiceTab> tabs;
   final String location;
   final String duration;
-  final String personnel;
+  final String contactPhone;
+  final String contactEmail;
   final String cost;
 
   ServiceDetail({
     required this.title,
     required this.description,
-    required this.tabs, 
+    required this.tabs,
     required this.location,
     required this.duration,
-    required this.personnel,
+    required this.contactPhone,
+    required this.contactEmail,
     required this.cost,
   });
 }
