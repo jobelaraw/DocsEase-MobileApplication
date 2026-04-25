@@ -1,10 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'rag_service.dart';
 import 'tts_service.dart';
 
 class ChatBotScreen extends StatefulWidget {
@@ -90,50 +90,57 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     _scrollToBottom();
 
     try {
-      final apiKey = dotenv.env['GEMINI_API'];
+      final apiKey = dotenv.env['GROQ_API'];
       if (apiKey == null || apiKey.isEmpty) {
         _addError('API key not loaded.');
         setState(() => _isLoading = false);
         return;
       }
 
-      final model = GenerativeModel(
-        model: 'gemini-2.5-flash-lite',
-        apiKey: apiKey,
-        systemInstruction: Content.system(
-          'Ikaw si DocsEase Bot. Gumamit ng ibinigay na PDF dokumento bilang iyong pangunahing pinagkukunan ng impormasyon tungkol sa mga proseso ng dokumento at permit ng gobyerno sa Pilipinas. '
-          'Sumagot nang malinaw at maayos. Gamitin ang mga bullet points para sa mga listahan, at i-bold ang mahahalagang salita o hakbang gamit ang **bold**. '
-          'Hatiin ang sagot sa maikling talata para madaling basahin. Huwag gumamit ng mahahabang pangungusap. '
-          'Sumagot sa Filipino o English depende sa tanong ng user. Kung wala sa PDF ang sagot, sabihin na wala kang impormasyon tungkol doon.',
-        ),
-      );
+      final messages = [
+        {
+          'role': 'system',
+          'content':
+              'Ikaw si DocsEase Bot. Sumagot nang malinaw at maayos tungkol sa mga proseso ng dokumento at permit ng gobyerno sa Pilipinas. '
+              'Gamitin ang mga bullet points para sa mga listahan, at i-bold ang mahahalagang salita gamit ang **bold**. '
+              'Hatiin ang sagot sa maikling talata. Sumagot sa Filipino o English depende sa tanong ng user.',
+        },
+        ..._messages
+            .skip(1)
+            .map((m) => {'role': m.isUser ? 'user' : 'assistant', 'content': m.text}),
+      ];
 
-      final history = _messages
-          .skip(1)
-          .where((m) => m != _messages.last)
-          .map((m) => Content(m.isUser ? 'user' : 'model', [TextPart(m.text)]))
-          .toList();
+      final response = await http.post(
+        Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $apiKey',
+        },
+        body: jsonEncode({
+          'model': 'llama-3.1-8b-instant',
+          'messages': messages,
+        }),
+      ).timeout(const Duration(seconds: 30));
 
-      final chat = model.startChat(history: history);
-      final response = await chat
-          .sendMessage(Content('user', [TextPart(text)]))
-          .timeout(const Duration(seconds: 60));
-      final reply = response.text ?? 'No response.';
-      if (mounted) {
-        setState(() {
-          _messages.add(
-            _ChatMessage(
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final reply = data['choices'][0]['message']['content'] as String;
+        if (mounted) {
+          setState(() {
+            _messages.add(_ChatMessage(
               text: reply.trim(),
               isUser: false,
               time: _formatTime(DateTime.now()),
-            ),
-          );
-        });
+            ));
+          });
+        }
+      } else {
+        debugPrint('Groq error: ${response.statusCode} ${response.body}');
+        if (mounted) _addError('Error ${response.statusCode}: ${response.reasonPhrase}');
       }
     } catch (e) {
       debugPrint('Chatbot error: $e');
-      if (mounted)
-        _addError('Failed to connect. Please check your internet connection.');
+      if (mounted) _addError('Failed to connect. Please check your internet connection.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
       _scrollToBottom();
