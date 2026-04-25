@@ -126,7 +126,7 @@ class _ProfileState extends State<Profile> {
 
           // Transaction Card
           Align(
-            alignment: const Alignment(0, 0.1),
+            alignment: const Alignment(0, 0.4),
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 25),
               constraints: BoxConstraints(

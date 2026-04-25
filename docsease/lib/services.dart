@@ -158,9 +158,9 @@ class _ServicesContent extends State<Services> {
                             color: Colors.black,
                           ),
                           decoration: InputDecoration(
-                            hintText: 'Search transaction.......',
+                            hintText: 'Search transaction...',
                             hintStyle: GoogleFonts.inter(
-                              fontSize: 18,
+                              fontSize: 15,
                               color: const Color.fromARGB(255, 143, 140, 140),
                             ),
                             border: InputBorder.none,

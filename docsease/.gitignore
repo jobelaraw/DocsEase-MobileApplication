@@ -14,6 +14,8 @@ migrate_working_dir/
 
 # Environment variables
 .env
+**/.env
+docsease/.env
 
 # IntelliJ related
 *.iml

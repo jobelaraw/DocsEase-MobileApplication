@@ -20,7 +20,7 @@ class _EditProfileState extends State<EditProfile> {
         children: [
           // Blue Header Section
           Container(
-            height: MediaQuery.of(context).size.height * 0.5,
+            height: MediaQuery.of(context).size.height * 0.4,
             width: double.infinity,
             color: const Color.fromRGBO(32, 87, 206, 1.0),
             child: Column(
@@ -73,7 +73,7 @@ class _EditProfileState extends State<EditProfile> {
 
           // Edit Form Card
           Align(
-            alignment: const Alignment(0, 0.5),
+            alignment: const Alignment(0, 0.7),
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 25),
               width: double.infinity,
