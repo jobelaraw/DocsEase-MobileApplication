@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "553281725931",
+    "project_id": "docsease-efacc",
+    "storage_bucket": "docsease-efacc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:553281725931:android:37cffc15c36bd7182aa5ae",
+        "android_client_info": {
+          "package_name": "com.example.docsease"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8yimuT1Lesbt2C-haceE4eKl6-V4hlPI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
