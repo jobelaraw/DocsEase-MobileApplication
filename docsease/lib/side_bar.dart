@@ -5,6 +5,8 @@ import 'package:docsease/services.dart';
 import 'package:docsease/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:async';
 
 class SideBar extends StatefulWidget {
   const SideBar({super.key});
@@ -18,12 +20,28 @@ class _SideBarState extends State<SideBar> {
   String currentTitle = 'Services';
   final GlobalKey<NavigatorState> _servicesNavKey = GlobalKey<NavigatorState>();
   final GlobalKey<NavigatorState> _profileNavKey = GlobalKey<NavigatorState>();
-
   late final List<Widget> screens;
+
+  bool isOnline = true;
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
+
+    _checkInitialConnection();
+
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) {
+      if (mounted) {
+        setState(() {
+          // If the result contains 'none', the user has no internet!
+          isOnline = !results.contains(ConnectivityResult.none);
+        });
+      }
+    });
+
     screens = [
       ServicesNavigator(
         navigatorKey: _servicesNavKey,
@@ -46,8 +64,23 @@ class _SideBarState extends State<SideBar> {
     ];
   }
 
+  Future<void> _checkInitialConnection() async {
+    final results = await Connectivity().checkConnectivity();
+    if (mounted) {
+      setState(() {
+        isOnline = !results.contains(ConnectivityResult.none);
+      });
+    }
+  }
+
   // List of titles along with the screens
   late final List<String> titles = ['Services', 'Profile', 'About', 'Settings'];
+
+  @override
+  void dispose() {
+    _connectivitySubscription.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,33 +113,150 @@ class _SideBarState extends State<SideBar> {
                 mainAxisAlignment: MainAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  SizedBox(width: 9),
                   Stack(
                     children: [
                       CircleAvatar(
-                        radius: 22,
+                        radius: 20,
                         backgroundColor: Colors.white.withOpacity(0.0),
                         child: ClipOval(
                           child: Image.asset(
-                            'assets/chatbot.png',
+                            'assets/chatbot_icon.png',
                             fit: BoxFit.contain,
                           ),
                         ),
                       ),
                       Positioned(
-                        bottom: 5,
-                        right: 4,
-                        child: Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF39D236),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color.fromRGBO(32, 87, 206, 1.0),
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
+                        bottom: 0,
+                        right: 0,
+                        child: isOnline
+                            // ? Stack(
+                            //     children: [
+                            //       Container(
+                            //         width: 12,
+                            //         height: 12,
+                            //         decoration: BoxDecoration(
+                            //           color: Colors.grey,
+                            //           shape: BoxShape.circle,
+                            //           border: Border.all(
+                            //             color: const Color.fromRGBO(
+                            //               32,
+                            //               87,
+                            //               206,
+                            //               1.0,
+                            //             ),
+                            //             width: 1.5,
+                            //           ),
+                            //         ),
+                            //       ),
+                            //       Positioned(
+                            //         top: 4,
+                            //         left: 4,
+                            //         child: Container(
+                            //           width: 4,
+                            //           height: 4,
+                            //           decoration: BoxDecoration(
+                            //             color: const Color.fromRGBO(
+                            //               32,
+                            //               87,
+                            //               206,
+                            //               1.0,
+                            //             ),
+                            //             shape: BoxShape.circle,
+                            //           ),
+                            //         ),
+                            //       ),
+                            //     ],
+                            //   )
+                            // // Container(
+                            // //   width: 12,
+                            // //   height: 12,
+                            // //   decoration: BoxDecoration(
+                            // //     color: const Color.fromARGB(255, 210, 54, 54),
+                            // //     shape: BoxShape.circle,
+                            // //     border: Border.all(
+                            // //       color: const Color.fromRGBO(
+                            // //         32,
+                            // //         87,
+                            // //         206,
+                            // //         1.0,
+                            // //       ),
+                            // //       width: 1.5,
+                            // //     ),
+                            // //   ),
+                            // // )
+                            // : Container(
+                            //     width: 12,
+                            //     height: 12,
+                            //     decoration: BoxDecoration(
+                            //       color: const Color(0xFF39D236),
+                            //       shape: BoxShape.circle,
+                            //       border: Border.all(
+                            //         color: const Color.fromRGBO(
+                            //           32,
+                            //           87,
+                            //           206,
+                            //           1.0,
+                            //         ),
+                            //         width: 1.5,
+                            //       ),
+                            //     ),
+                            //   ),
+                            ? Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF39D236),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color.fromRGBO(
+                                      32,
+                                      87,
+                                      206,
+                                      1.0,
+                                    ),
+                                    width: 1.5,
+                                  ),
+                                ),
+                              )
+                            : Stack(
+                                children: [
+                                  Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: const Color.fromRGBO(
+                                          32,
+                                          87,
+                                          206,
+                                          1.0,
+                                        ),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 4,
+                                    left: 4,
+                                    child: Container(
+                                      width: 4,
+                                      height: 4,
+                                      decoration: BoxDecoration(
+                                        color: const Color.fromRGBO(
+                                          32,
+                                          87,
+                                          206,
+                                          1.0,
+                                        ),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                       ),
                     ],
                   ),
@@ -116,7 +266,7 @@ class _SideBarState extends State<SideBar> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        "DocEase Bot",
+                        "DocsEase Bot",
                         style: GoogleFonts.inter(
                           color: Colors.white,
                           fontSize: 16,
@@ -125,7 +275,9 @@ class _SideBarState extends State<SideBar> {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        "Online Assistant",
+                        isOnline
+                            ? "Online Assistant"
+                            : "Offline - Waiting for network...",
                         style: GoogleFonts.inter(
                           color: Colors.white60,
                           fontSize: 11,
@@ -176,7 +328,7 @@ class _SideBarState extends State<SideBar> {
         width: MediaQuery.of(context).size.width > 400
             ? 300
             : MediaQuery.of(context).size.width * 0.75,
-        backgroundColor: Color.fromRGBO(230, 246, 255, 1.0),
+        backgroundColor: const Color.fromARGB(255, 208, 236, 252),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.only(
             topRight: Radius.circular(0.0),
@@ -218,7 +370,9 @@ class _SideBarState extends State<SideBar> {
                             },
                           ),
                         ),
-                        ClipOval(
+                        CircleAvatar(
+                          radius: 40,
+                          backgroundColor: Colors.white30,
                           child: Image.asset(
                             'assets/default_profile.png',
                             width: 70,

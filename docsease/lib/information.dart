@@ -71,7 +71,7 @@ class _InformationScreenState extends State<InformationScreen>
     if (detail.tabs.length <= 1) return const SizedBox.shrink();
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       constraints: const BoxConstraints(minHeight: 60),
       decoration: BoxDecoration(
         color: lightBlueBg,
@@ -144,17 +144,17 @@ class _ContentList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       children: [
         Text(
           detail.title,
-          style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold),
+          style: GoogleFonts.inter(fontSize: 25, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
 
         Text(
           detail.description,
-          style: GoogleFonts.inter(fontSize: 11, color: Colors.black54),
+          style: GoogleFonts.inter(fontSize: 12, color: Colors.black54),
         ),
         const SizedBox(height: 25),
 
@@ -163,13 +163,13 @@ class _ContentList extends StatelessWidget {
           requirements: tab.requirements,
           iconColor: accentColor,
         ),
-        const SizedBox(height: 25),
+        const SizedBox(height: 30),
 
         Text(
-          "Step-by-Step Guide",
-          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
+          "Step-by-Step Guide (1-${tab.steps.length})",
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        const SizedBox(height: 17),
+        const SizedBox(height: 20),
 
         // Steps
         ...tab.steps.asMap().entries.map(
@@ -180,12 +180,10 @@ class _ContentList extends StatelessWidget {
             accentColor: accentColor,
           ),
         ),
-
-        const SizedBox(height: 5),
+        const SizedBox(height: 10),
         _InfoGrid(detail: detail, accentColor: accentColor),
-        const SizedBox(height: 40),
+        const SizedBox(height: 30),
         _ScheduleTile(),
-        const SizedBox(height: 40),
       ],
     );
   }
@@ -228,7 +226,7 @@ class _RequirementsCardState extends State<_RequirementsCard> {
               "Requirements Checklist",
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.bold,
-                fontSize: 15,
+                fontSize: 18,
               ),
             ),
           ],
@@ -236,7 +234,7 @@ class _RequirementsCardState extends State<_RequirementsCard> {
         const SizedBox(height: 20),
 
         Text(
-          "Requirements for ${_titleLabel}",
+          "For ${_titleLabel}",
           style: GoogleFonts.inter(
             fontSize: 15,
             fontWeight: FontWeight.w700,
@@ -377,7 +375,7 @@ class _StepItem extends StatelessWidget {
                     step.title,
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                      fontSize: 15,
                       color: Colors.black87,
                     ),
                   ),
@@ -412,27 +410,29 @@ class _StepItem extends StatelessWidget {
             ],
           ),
 
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
             children: [
-              Expanded(
-                child: _InfoBox(label: "Fee:", value: step.fee),
-              ),
-              const SizedBox(width: 8),
-
-              Expanded(
-                child: _InfoBox(
-                  label: "Processing Time:",
-                  value: step.processingTime,
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _InfoBox(label: "Fee:", value: step.fee),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _InfoBox(
+                        label: "Processing Time:",
+                        value: step.processingTime,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 8),
-
-              Expanded(
-                child: _InfoBox(
-                  label: "Person In-charge:",
-                  value: step.personsInCharge.join('\n'),
-                ),
+              SizedBox(height: 8),
+              _InfoBox(
+                label: "Person In-charge:",
+                value: step.personsInCharge.join('\n'),
               ),
             ],
           ),
@@ -483,7 +483,7 @@ class _StepItem extends StatelessWidget {
             ],
           ),
         ],
-        const SizedBox(height: 30),
+        const SizedBox(height: 20),
       ],
     );
   }
@@ -555,106 +555,110 @@ class _InfoGrid extends StatelessWidget {
   }
 
   Widget _buildCard(IconData icon, String label, String value) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.10),
-            blurRadius: 20,
-            offset: const Offset(5, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(shape: BoxShape.circle),
-            child: Icon(icon, color: const Color(0xFF3B73E0), size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: Colors.black45,
-              fontWeight: FontWeight.w600,
+    return Material(
+      borderRadius: BorderRadius.circular(25),
+      elevation: 4,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  decoration: const BoxDecoration(shape: BoxShape.circle),
+                  child: Icon(icon, color: const Color(0xFF3B73E0), size: 18),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: Colors.black45,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-              height: 1.3,
+            const SizedBox(height: 15),
+            Text(
+              value,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+                height: 1.3,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildContactCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.10),
-            blurRadius: 20,
-            offset: const Offset(5, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(shape: BoxShape.circle),
-            child: const Icon(Icons.phone, color: Color(0xFF3B73E0), size: 28),
-          ),
-          const SizedBox(height: 8),
+    return Material(
+      borderRadius: BorderRadius.circular(25),
+      elevation: 4,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  decoration: const BoxDecoration(shape: BoxShape.circle),
+                  child: const Icon(
+                    Icons.phone,
+                    color: Color(0xFF3B73E0),
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
 
-          Text(
-            "CONTACT",
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: Colors.black45,
-              fontWeight: FontWeight.w600,
+                Text(
+                  "CONTACT",
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: Colors.black45,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 6),
+            const SizedBox(height: 15),
 
-          Text(
-            detail.contactPhone,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+            Text(
+              detail.contactPhone,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
+            const SizedBox(height: 4),
 
-          Text(
-            detail.contactEmail,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+            Text(
+              detail.contactEmail,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -663,77 +667,74 @@ class _InfoGrid extends StatelessWidget {
 class _ScheduleTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFB9D9EB),
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.10),
-            blurRadius: 10,
-            offset: const Offset(5, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "OFFICE SCHEDULE",
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black54,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF52EC44),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: const Text(
-                  "OPEN NOW",
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
+    return Material(
+      borderRadius: BorderRadius.circular(25),
+      elevation: 4,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        decoration: BoxDecoration(
+          color: const Color.fromRGBO(185, 217, 235, 0.45),
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "OFFICE SCHEDULE",
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black54,
+                    letterSpacing: 0.5,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Monday - Friday",
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.black,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF52EC44),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: const Text(
+                    "OPEN NOW",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 ),
-              ),
-              Text(
-                "8:00 AM - 5:00 PM",
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.black,
+              ],
+            ),
+            const SizedBox(height: 15),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Monday - Friday",
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                Text(
+                  "8:00 AM - 5:00 PM",
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
