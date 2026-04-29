@@ -1,6 +1,8 @@
 import 'package:docsease/side_bar.dart';
+import 'package:docsease/users_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lottie/lottie.dart';
 
 class Authentication extends StatefulWidget {
   const Authentication({super.key});
@@ -203,11 +205,13 @@ class SignIn extends StatefulWidget {
 }
 
 class _SignInState extends State<SignIn> {
+  bool _isLoading = false;
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        SizedBox(height: 20),
+        const SizedBox(height: 20),
         CustomTextField(
           inputLabel: 'EMAIL ADDRESS',
           inputHint: 'Enter your email',
@@ -216,7 +220,7 @@ class _SignInState extends State<SignIn> {
           isLoginPass: false,
           controller: widget.emailController,
         ),
-        SizedBox(height: 30),
+        const SizedBox(height: 30),
         CustomTextField(
           inputLabel: 'PASSWORD',
           inputHint: 'Enter your password',
@@ -229,31 +233,43 @@ class _SignInState extends State<SignIn> {
         CustomButton(
           buttonText: 'Sign In',
           isGoogle: false,
-          onTapAction: () {
-            String inputEmail = widget.emailController.text
-                .trim()
-                .toLowerCase();
-            String inputPassword = widget.passwordController.text;
-
-            if (inputEmail == 'binancitizen@gmail.com' &&
-                inputPassword == 'bzen4024') {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => SideBar()),
-                (Route<dynamic> route) => false,
-              );
+          isLoading: _isLoading,
+          onTapAction: () async {
+            try {
+              setState(() => _isLoading = true);
+              final authService = AuthService();
+              String inputEmail = widget.emailController.text
+                  .trim()
+                  .toLowerCase();
+              String inputPassword = widget.passwordController.text;
+              
+              await authService.signIn(inputEmail, inputPassword);
+              if (mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SideBar()),
+                  (Route<dynamic> route) => false,
+                );
+              }
+            } catch (e) {
+              if (mounted) {
+                setState(() => _isLoading = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Login Failed: ${e.toString()}")),
+                );
+              }
             }
           },
         ),
-        SizedBox(height: 20),
-        CustomDivider(),
-        SizedBox(height: 20),
+        const SizedBox(height: 20),
+        const CustomDivider(),
+        const SizedBox(height: 20),
         CustomButton(
           buttonText: 'Sign in with Google',
           isGoogle: true,
           onTapAction: () {},
         ),
-        SizedBox(height: 30),
+        const SizedBox(height: 30),
         Text(
           'Don\'t want to create an account?',
           style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.normal),
@@ -295,6 +311,8 @@ class SignUp extends StatefulWidget {
 }
 
 class _SignUpState extends State<SignUp> {
+  final AuthService _authService = AuthService();
+  
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -339,17 +357,36 @@ class _SignUpState extends State<SignUp> {
         CustomButton(
           buttonText: 'Sign Up',
           isGoogle: false,
-          onTapAction: () {}, // Change later on
+          onTapAction: () async {
+            if (passwordController.text == confirmController.text) {
+              await _authService.signUp(
+                emailController.text.trim(),
+                passwordController.text.trim(),
+                usernameController.text.trim(),
+              );
+              if (mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SideBar()),
+                      (Route<dynamic> route) => false,
+                );
+              }
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Passwords do not match!")),
+              );
+            }
+          },
         ),
-        SizedBox(height: 20),
-        CustomDivider(),
-        SizedBox(height: 20),
+        const SizedBox(height: 20),
+        const CustomDivider(),
+        const SizedBox(height: 20),
         CustomButton(
           buttonText: 'Sign up with Google',
           isGoogle: true,
-          onTapAction: () {}, // Change later on
+          onTapAction: () {},
         ),
-        SizedBox(height: 30),
+        const SizedBox(height: 30),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -443,7 +480,20 @@ class _CustomTextFieldState extends State<CustomTextField> {
                   ),
                 ),
               ),
-        SizedBox(height: 5),
+            ),
+          ],
+        )
+            : Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            widget.inputLabel,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(height: 5),
         SizedBox(
           height: 50,
           child: TextField(
@@ -508,6 +558,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
 class CustomButton extends StatelessWidget {
   final String buttonText;
   final bool isGoogle;
+  final bool isLoading;
   final VoidCallback onTapAction;
 
   const CustomButton({
@@ -515,6 +566,7 @@ class CustomButton extends StatelessWidget {
     required this.buttonText,
     required this.isGoogle,
     required this.onTapAction,
+    this.isLoading = false,
   });
 
   @override
@@ -565,6 +617,17 @@ class CustomButton extends StatelessWidget {
                 ),
               ),
             ),
+            if (isLoading) ...[
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 30, //28
+                  height: 30,
+                  child: Lottie.asset('assets/Loading.json', fit: BoxFit.contain),
+                ),
+              ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -580,7 +643,7 @@ class CustomDivider extends StatelessWidget {
           child: Divider(color: Colors.black.withOpacity(0.2), thickness: 1),
         ),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Text(
             'OR',
             style: GoogleFonts.inter(
@@ -630,8 +693,8 @@ class _CustomTextButtonState extends State<CustomTextButton> {
           border: Border(
             bottom: BorderSide(
               color: isHovered
-                  ? Color.fromRGBO(24, 74, 182, 1)
-                  : Color.fromRGBO(59, 115, 224, 1.0),
+                  ? const Color.fromRGBO(24, 74, 182, 1)
+                  : const Color.fromRGBO(59, 115, 224, 1.0),
               width: 1,
             ),
           ),
@@ -642,8 +705,8 @@ class _CustomTextButtonState extends State<CustomTextButton> {
             fontSize: 12,
             fontWeight: FontWeight.bold,
             color: isHovered
-                ? Color.fromRGBO(24, 74, 182, 1)
-                : Color.fromRGBO(59, 115, 224, 1.0),
+                ? const Color.fromRGBO(24, 74, 182, 1)
+                : const Color.fromRGBO(59, 115, 224, 1.0),
           ),
         ),
       ),

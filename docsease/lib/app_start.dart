@@ -99,7 +99,7 @@ class AppStart extends StatelessWidget {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(builder: (context) => const SideBar()),
-                      (Route<dynamic> route) => false,
+                          (Route<dynamic> route) => false,
                     );
                   },
                   style: OutlinedButton.styleFrom(
