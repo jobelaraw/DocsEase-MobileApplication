@@ -4,7 +4,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized(); // This is required for Firebase and other plugins to work properly
 
@@ -22,7 +21,26 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(title: 'DocsEase',
-        debugShowCheckedModeBanner: false, home: const AppStart());
+    return MaterialApp(
+      title: 'DocsEase',
+      debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        final mediaQueryData = MediaQuery.of(context);
+
+        double scaleFactor = 1.0;
+
+        if (mediaQueryData.size.width < 400) {
+          scaleFactor = mediaQueryData.size.width / 400;
+        }
+
+        return MediaQuery(
+          data: mediaQueryData.copyWith(
+            textScaler: TextScaler.linear(scaleFactor),
+          ),
+          child: child!,
+        );
+      },
+      home: const AppStart(),
+    );
   }
 }

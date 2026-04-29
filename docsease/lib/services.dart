@@ -57,17 +57,18 @@ class _ServicesContent extends State<Services> {
   }
 
   @override
-  void dispose() {
-    _searchFocusNode.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    // Tells the app to rebuild the UI whenever the focus changes (clicked or unclicked)
+    _searchFocusNode.addListener(() {
+      setState(() {});
+    });
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    Future.delayed(Duration.zero, () {
-      _searchFocusNode.unfocus();
-    });
+  void dispose() {
+    _searchFocusNode.dispose();
+    super.dispose();
   }
 
   Widget buildFilteredCategory({
@@ -102,7 +103,7 @@ class _ServicesContent extends State<Services> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        FocusScope.of(context).unfocus();
+        FocusManager.instance.primaryFocus?.unfocus();
       },
       child: Scaffold(
         backgroundColor: const Color.fromARGB(255, 255, 255, 255),
@@ -112,64 +113,62 @@ class _ServicesContent extends State<Services> {
               padding: const EdgeInsets.all(20),
               children: [
                 // Search Bar
-                Container(
-                  height: 55,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color.fromARGB(
-                        255,
-                        158,
-                        158,
-                        158,
-                      ).withValues(alpha: 0.2),
+                GestureDetector(
+                  onTap: () {
+                    _searchFocusNode.requestFocus();
+                  },
+                  child: Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _searchFocusNode.hasFocus
+                            ? const Color.fromRGBO(32, 87, 206, 1.0)
+                            : Colors.black.withOpacity(0.3),
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 18),
-                      GestureDetector(
-                        onTap: () {
-                          // TODO: Search action
-                        },
-                        child: Icon(
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 18),
+                        Icon(
                           Icons.search,
                           color: const Color.fromARGB(255, 0, 0, 0),
-                          size: 20,
+                          size: 25,
                         ),
-                      ),
-                      const SizedBox(width: 20),
+                        const SizedBox(width: 20),
 
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          focusNode: _searchFocusNode,
-                          autofocus: false,
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            focusNode: _searchFocusNode,
 
-                          onChanged: (value) {
-                            setState(() {
-                              searchQuery = value.toLowerCase();
-                            });
-                          },
+                            autofocus: false,
+                            onChanged: (value) {
+                              setState(() {
+                                searchQuery = value.toLowerCase();
+                              });
+                            },
 
-                          style: GoogleFonts.inter(
-                            fontSize: 18,
-                            color: Colors.black,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: 'Search transaction...',
-                            hintStyle: GoogleFonts.inter(
+                            style: GoogleFonts.inter(
                               fontSize: 15,
-                              color: const Color.fromARGB(255, 143, 140, 140),
+                              color: Colors.black,
                             ),
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.zero,
+                            decoration: InputDecoration(
+                              hintText: 'Search transaction...',
+                              hintStyle: GoogleFonts.inter(
+                                fontSize: 15,
+                                color: Colors.grey,
+                              ),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        SizedBox(width: 18),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 35),
@@ -322,8 +321,8 @@ class _ServicesContent extends State<Services> {
 
             // Floating Chatbot Button
             Positioned(
-              bottom: 40,
-              right: 16,
+              bottom: 20,
+              right: 20,
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
@@ -383,7 +382,7 @@ class ServiceCategory extends StatelessWidget {
               child: Text(
                 title,
                 style: GoogleFonts.inter(
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
@@ -418,7 +417,7 @@ class ServiceCategory extends StatelessWidget {
               child: Text(
                 'See All',
                 style: GoogleFonts.inter(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w800,
                   color: const Color.fromRGBO(32, 87, 206, 1.0),
                 ),
@@ -433,7 +432,7 @@ class ServiceCategory extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           decoration: BoxDecoration(
-            color: const Color.fromRGBO(185, 217, 235, 1.0),
+            color: const Color.fromRGBO(208, 236, 252, 1),
             borderRadius: BorderRadius.circular(22),
           ),
           child: Column(
@@ -482,6 +481,8 @@ class ServiceItem extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: () {
+          FocusManager.instance.primaryFocus?.unfocus();
+
           onTitleChange('Information');
           Navigator.push(
             context,
@@ -494,8 +495,7 @@ class ServiceItem extends StatelessWidget {
         },
 
         child: Container(
-          height: 90,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
@@ -503,8 +503,8 @@ class ServiceItem extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: 35,
+                height: 35,
                 decoration: BoxDecoration(
                   color: iconBgColor,
                   borderRadius: BorderRadius.circular(8),
@@ -516,15 +516,15 @@ class ServiceItem extends StatelessWidget {
                 child: Text(
                   label,
                   style: GoogleFonts.inter(
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: Colors.black,
                   ),
                 ),
               ),
-              Icon(
-                Icons.chevron_right,
-                size: 35,
+              ImageIcon(
+                AssetImage('assets/forward_icon.png'),
+                size: 18,
                 color: const Color.fromARGB(255, 0, 0, 0),
               ),
             ],
@@ -570,7 +570,7 @@ class SeeAllScreen extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           decoration: BoxDecoration(
-            color: const Color.fromRGBO(185, 217, 235, 1.0),
+            color: const Color.fromRGBO(208, 236, 252, 1),
             borderRadius: BorderRadius.circular(22),
           ),
           child: Column(

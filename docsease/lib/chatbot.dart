@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'tts_service.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class ChatBotScreen extends StatefulWidget {
   const ChatBotScreen({super.key});
@@ -36,9 +37,34 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   ];
   bool _isLoading = false;
 
+  bool isOnline = true;
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
+
   @override
   void initState() {
     super.initState();
+
+    _checkInitialConnection();
+
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) {
+      if (mounted) {
+        setState(() {
+          // If the result contains 'none', the user has no internet!
+          isOnline = !results.contains(ConnectivityResult.none);
+        });
+      }
+    });
+  }
+
+  Future<void> _checkInitialConnection() async {
+    final results = await Connectivity().checkConnectivity();
+    if (mounted) {
+      setState(() {
+        isOnline = !results.contains(ConnectivityResult.none);
+      });
+    }
   }
 
   String _stripMarkdown(String text) {
@@ -74,6 +100,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   }
 
   Future<void> _sendMessage() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+
     final text = _controller.text.trim();
     if (text.isEmpty || _isLoading) return;
 
@@ -107,40 +135,51 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         },
         ..._messages
             .skip(1)
-            .map((m) => {'role': m.isUser ? 'user' : 'assistant', 'content': m.text}),
+            .map(
+              (m) => {
+                'role': m.isUser ? 'user' : 'assistant',
+                'content': m.text,
+              },
+            ),
       ];
 
-      final response = await http.post(
-        Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey',
-        },
-        body: jsonEncode({
-          'model': 'llama-3.1-8b-instant',
-          'messages': messages,
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $apiKey',
+            },
+            body: jsonEncode({
+              'model': 'llama-3.1-8b-instant',
+              'messages': messages,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final reply = data['choices'][0]['message']['content'] as String;
         if (mounted) {
           setState(() {
-            _messages.add(_ChatMessage(
-              text: reply.trim(),
-              isUser: false,
-              time: _formatTime(DateTime.now()),
-            ));
+            _messages.add(
+              _ChatMessage(
+                text: reply.trim(),
+                isUser: false,
+                time: _formatTime(DateTime.now()),
+              ),
+            );
           });
         }
       } else {
         debugPrint('Groq error: ${response.statusCode} ${response.body}');
-        if (mounted) _addError('Error ${response.statusCode}: ${response.reasonPhrase}');
+        if (mounted)
+          _addError('Error ${response.statusCode}: ${response.reasonPhrase}');
       }
     } catch (e) {
       debugPrint('Chatbot error: $e');
-      if (mounted) _addError('Failed to connect. Please check your internet connection.');
+      if (mounted)
+        _addError('Failed to connect. Please check your internet connection.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
       _scrollToBottom();
@@ -162,17 +201,20 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+        Future.delayed(const Duration(milliseconds: 300), () {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        });
       }
     });
   }
 
   @override
   void dispose() {
+    _connectivitySubscription.cancel();
     _tts.dispose();
     _controller.dispose();
     _scrollController.dispose();
@@ -182,89 +224,15 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE6F6FF),
+      backgroundColor: const Color.fromRGBO(208, 236, 252, 1),
       body: Column(
         children: [
-          // --- FIXED HEADER ---
-          // Container(
-          //   height: 110,
-          //   width: double.infinity,
-          //   decoration: const BoxDecoration(color: Color(0xFF1E65E2)),
-          //   padding: const EdgeInsets.only(top: 40, left: 10, right: 20),
-          //   child: Row(
-          //     children: [
-          //       IconButton(
-          //         icon: const Icon(
-          //           Icons.arrow_back_ios,
-          //           color: Colors.white,
-          //           size: 20,
-          //         ),
-          //         onPressed: () => Navigator.pop(context),
-          //       ),
-          //       Stack(
-          //         children: [
-          //           CircleAvatar(
-          //             radius: 30,
-          //             backgroundColor: Colors.white.withOpacity(0.0),
-          //             child: ClipOval(
-          //               child: Image.asset(
-          //                 'assets/chatbot.png',
-          //                 width: 300,
-          //                 height: 300,
-          //                 fit: BoxFit.contain,
-          //               ),
-          //             ),
-          //           ),
-          //           Positioned(
-          //             bottom: 7,
-          //             right: 6,
-          //             child: Container(
-          //               width: 12,
-          //               height: 12,
-          //               decoration: BoxDecoration(
-          //                 color: const Color(0xFF39D236),
-          //                 shape: BoxShape.circle,
-          //                 border: Border.all(
-          //                   color: const Color(0xFF1E65E2),
-          //                   width: 2,
-          //                 ),
-          //               ),
-          //             ),
-          //           ),
-          //         ],
-          //       ),
-          //       const SizedBox(width: 12),
-          //       Column(
-          //         mainAxisAlignment: MainAxisAlignment.center,
-          //         crossAxisAlignment: CrossAxisAlignment.start,
-          //         children: [
-          //           Text(
-          //             "DocsEase Bot",
-          //             style: GoogleFonts.inter(
-          //               color: Colors.white,
-          //               fontSize: 18,
-          //               fontWeight: FontWeight.bold,
-          //             ),
-          //           ),
-          //           Text(
-          //             "Online Assistant",
-          //             style: GoogleFonts.inter(
-          //               color: Colors.white70,
-          //               fontSize: 12,
-          //             ),
-          //           ),
-          //         ],
-          //       ),
-          //     ],
-          //   ),
-          // ),
-
           // --- SCROLLABLE CHAT AREA ---
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
               itemCount: _messages.length + (_isLoading ? 1 : 0),
               itemBuilder: (context, index) {
                 if (index == _messages.length) return _buildTypingIndicator();
@@ -278,7 +246,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
           // --- FIXED BOTTOM INPUT BAR ---
           Container(
-            padding: const EdgeInsets.fromLTRB(10, 10, 10, 30),
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
             decoration: const BoxDecoration(
               color: Colors.white,
               border: Border(
@@ -287,7 +255,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             ),
             child: Row(
               children: [
-                const SizedBox(width: 10),
                 Expanded(
                   child: Container(
                     height: 50,
@@ -348,7 +315,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             backgroundColor: const Color(0xFF1E65E2),
             child: ClipOval(
               child: Image.asset(
-                'assets/chatbot.png',
+                'assets/chatbot_icon.png',
                 width: 200,
                 height: 200,
                 fit: BoxFit.contain,
@@ -375,18 +342,18 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   Widget _buildBotMessage(String text, String time, int index) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 35),
+      padding: const EdgeInsets.only(bottom: 18, right: 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Stack(
             children: [
               CircleAvatar(
-                radius: 20,
+                radius: 18,
                 backgroundColor: const Color(0xFF1E65E2),
                 child: ClipOval(
                   child: Image.asset(
-                    'assets/chatbot.png',
+                    'assets/chatbot_icon.png',
                     width: 200,
                     height: 200,
                     fit: BoxFit.contain,
@@ -396,18 +363,99 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               Positioned(
                 bottom: 0,
                 right: 0,
-                child: Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF39D236),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFFE6F6FF),
-                      width: 2,
-                    ),
-                  ),
-                ),
+                child: isOnline
+                    // ? Stack(
+                    //     children: [
+                    //       Container(
+                    //         width: 11,
+                    //         height: 11,
+                    //         decoration: BoxDecoration(
+                    //           color: Colors.grey,
+                    //           shape: BoxShape.circle,
+                    //           border: Border.all(
+                    //             color: const Color.fromRGBO(208, 236, 252, 1),
+                    //             width: 1.5,
+                    //           ),
+                    //         ),
+                    //       ),
+                    //       Positioned(
+                    //         top: 4,
+                    //         left: 4,
+                    //         child: Container(
+                    //           width: 3,
+                    //           height: 3,
+                    //           decoration: BoxDecoration(
+                    //             color: const Color.fromRGBO(208, 236, 252, 1),
+                    //             shape: BoxShape.circle,
+                    //           ),
+                    //         ),
+                    //       ),
+                    //     ],
+                    //   )
+                    // // Container(
+                    // //   width: 11,
+                    // //   height: 11,
+                    // //   decoration: BoxDecoration(
+                    // //     color: const Color.fromARGB(255, 210, 54, 54),
+                    // //     shape: BoxShape.circle,
+                    // //     border: Border.all(
+                    // //       color: const Color.fromRGBO(208, 236, 252, 1),
+                    // //       width: 1.5,
+                    // //     ),
+                    // //   ),
+                    // // )
+                    // : Container(
+                    //     width: 11,
+                    //     height: 11,
+                    //     decoration: BoxDecoration(
+                    //       color: const Color(0xFF39D236),
+                    //       shape: BoxShape.circle,
+                    //       border: Border.all(
+                    //         color: const Color.fromRGBO(208, 236, 252, 1),
+                    //         width: 1.5,
+                    //       ),
+                    //     ),
+                    //   ),
+                    ? Container(
+                        width: 11,
+                        height: 11,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF39D236),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color.fromRGBO(208, 236, 252, 1),
+                            width: 1.5,
+                          ),
+                        ),
+                      )
+                    : Stack(
+                        children: [
+                          Container(
+                            width: 11,
+                            height: 11,
+                            decoration: BoxDecoration(
+                              color: Colors.grey,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color.fromRGBO(208, 236, 252, 1),
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 4,
+                            left: 4,
+                            child: Container(
+                              width: 3,
+                              height: 3,
+                              decoration: BoxDecoration(
+                                color: const Color.fromRGBO(208, 236, 252, 1),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
               ),
             ],
           ),
@@ -430,7 +478,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                   children: [
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.fromLTRB(15, 15, 15, 7),
                         decoration: const BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.only(
@@ -481,7 +529,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                         decoration: BoxDecoration(
                           color: _speakingIndex == index
                               ? const Color(0xFF1E65E2).withOpacity(0.15)
-                              : const Color(0xFFD0E8FF).withOpacity(0.6),
+                              : const Color.fromRGBO(190, 225, 252, 1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
@@ -505,12 +553,15 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   Widget _buildUserMessage(String text, String time) {
     return Padding(
-      padding: const EdgeInsets.only(left: 50, bottom: 16),
+      padding: EdgeInsets.only(
+        bottom: 18,
+        left: MediaQuery.of(context).size.width * 0.25,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(15, 15, 15, 7),
             decoration: const BoxDecoration(
               color: Color(0xFF3B73E0),
               borderRadius: BorderRadius.only(

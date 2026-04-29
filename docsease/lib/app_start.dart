@@ -20,7 +20,11 @@ class AppStart extends StatelessWidget {
               const Spacer(flex: 2),
 
               // ── App Logo ──
-              Image.asset('assets/docsease_logo.png', width: 200, height: 200),
+              Image.asset(
+                'assets/docsease_logo.png',
+                width: MediaQuery.of(context).size.width < 400 ? 180 : 200,
+                height: MediaQuery.of(context).size.width < 400 ? 180 : 200,
+              ),
 
               const SizedBox(height: 32),
 
@@ -49,15 +53,15 @@ class AppStart extends StatelessWidget {
                 ),
               ),
 
-              const Spacer(flex: 2),
+              const Spacer(flex: 3),
+              // SizedBox(height: 40),
 
               //Get Started Button
               SizedBox(
                 width: double.infinity,
-                height: 54,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pushReplacement(
+                    Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const Authentication(),
@@ -72,11 +76,14 @@ class AppStart extends StatelessWidget {
                       borderRadius: BorderRadius.circular(25),
                     ),
                   ),
-                  child: Text(
-                    'Get Started!',
-                    style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Text(
+                      'Get Started!',
+                      style: GoogleFonts.inter(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -87,7 +94,6 @@ class AppStart extends StatelessWidget {
               //Continue as Guest Button
               SizedBox(
                 width: double.infinity,
-                height: 54,
                 child: OutlinedButton(
                   onPressed: () {
                     Navigator.pushAndRemoveUntil(
@@ -104,12 +110,15 @@ class AppStart extends StatelessWidget {
                       borderRadius: BorderRadius.circular(25),
                     ),
                   ),
-                  child: Text(
-                    'Continue as Guest',
-                    style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF3B73E0),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Text(
+                      'Continue as Guest',
+                      style: GoogleFonts.inter(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF3B73E0),
+                      ),
                     ),
                   ),
                 ),
@@ -140,7 +149,7 @@ class AppStart extends StatelessWidget {
                           // TODO: Open Terms of Services
                         },
                     ),
-                    const TextSpan(text: ' and\n'),
+                    const TextSpan(text: ' and '),
                     TextSpan(
                       text: 'Privacy Policy',
                       style: GoogleFonts.inter(
