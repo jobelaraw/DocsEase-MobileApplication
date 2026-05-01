@@ -242,7 +242,7 @@ class _SignInState extends State<SignIn> {
                   .trim()
                   .toLowerCase();
               String inputPassword = widget.passwordController.text;
-              
+
               await authService.signIn(inputEmail, inputPassword);
               if (mounted) {
                 Navigator.pushAndRemoveUntil(
@@ -312,7 +312,7 @@ class SignUp extends StatefulWidget {
 
 class _SignUpState extends State<SignUp> {
   final AuthService _authService = AuthService();
-  
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -358,17 +358,18 @@ class _SignUpState extends State<SignUp> {
           buttonText: 'Sign Up',
           isGoogle: false,
           onTapAction: () async {
-            if (passwordController.text == confirmController.text) {
+            if (widget.passwordController.text ==
+                widget.confirmController.text) {
               await _authService.signUp(
-                emailController.text.trim(),
-                passwordController.text.trim(),
-                usernameController.text.trim(),
+                widget.emailController.text.trim(),
+                widget.passwordController.text.trim(),
+                widget.usernameController.text.trim(),
               );
               if (mounted) {
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => const SideBar()),
-                      (Route<dynamic> route) => false,
+                  (Route<dynamic> route) => false,
                 );
               }
             } else {
@@ -480,20 +481,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                   ),
                 ),
               ),
-            ),
-          ],
-        )
-            : Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            widget.inputLabel,
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        const SizedBox(height: 5),
+        SizedBox(height: 5),
         SizedBox(
           height: 50,
           child: TextField(
@@ -599,7 +587,7 @@ class CustomButton extends StatelessWidget {
               ),
             )
           : ElevatedButton(
-              onPressed: onTapAction,
+              onPressed: isLoading ? null : onTapAction,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color.fromRGBO(59, 115, 224, 1.0),
                 foregroundColor: Colors.white,
@@ -609,25 +597,30 @@ class CustomButton extends StatelessWidget {
                   borderRadius: BorderRadius.circular(25),
                 ),
               ),
-              child: Text(
-                buttonText,
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    buttonText,
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (isLoading) ...[
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 30, //28
+                      height: 30,
+                      child: Lottie.asset(
+                        'assets/Loading.json',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            if (isLoading) ...[
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 30, //28
-                  height: 30,
-                  child: Lottie.asset('assets/Loading.json', fit: BoxFit.contain),
-                ),
-              ],
-          ],
-        ),
-      ),
     );
   }
 }
