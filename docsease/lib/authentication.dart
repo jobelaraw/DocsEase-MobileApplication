@@ -3,6 +3,7 @@ import 'package:docsease/users_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
+import 'forgotpass_email.dart';
 
 class Authentication extends StatefulWidget {
   const Authentication({super.key});
@@ -457,7 +458,14 @@ class _CustomTextFieldState extends State<CustomTextField> {
                         isHovered = hovering;
                       });
                     },
-                    onTap: () {}, // Change later on
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ForgotPasswordEmailScreen(),
+                        ),
+                      );
+                    }, // Change later on
                     child: Text(
                       'Forgot Password?',
                       style: GoogleFonts.inter(
