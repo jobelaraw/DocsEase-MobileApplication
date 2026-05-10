@@ -12,7 +12,20 @@
           "package_name": "com.example.docsease"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "553281725931-cskq5q5ut3epnblc4k8d5gppfuh7kjkk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.docsease",
+            "certificate_hash": "d77e8fbb3a40970bc27f293a6d7b53a1aaf61978"
+          }
+        },
+        {
+          "client_id": "553281725931-3p4uq7t1a7utd207rs5a6irfh4fj8n65.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyC8yimuT1Lesbt2C-haceE4eKl6-V4hlPI"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "553281725931-3p4uq7t1a7utd207rs5a6irfh4fj8n65.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "553281725931-d9u4frs8h5o21p3savlurhcburoa8nhd.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.docsease"
+              }
+            }
+          ]
         }
       }
     }

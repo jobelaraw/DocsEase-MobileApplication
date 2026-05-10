@@ -11,8 +11,7 @@ class InformationScreen extends StatefulWidget {
   State<InformationScreen> createState() => _InformationScreenState();
 }
 
-class _InformationScreenState extends State<InformationScreen>
-    with SingleTickerProviderStateMixin {
+class _InformationScreenState extends State<InformationScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late ServiceDetail detail;
 
@@ -48,19 +47,11 @@ class _InformationScreenState extends State<InformationScreen>
                     controller: _tabController,
                     children: detail.tabs
                         .map(
-                          (tab) => _ContentList(
-                            tab: tab,
-                            detail: detail,
-                            accentColor: accentBlue,
-                          ),
+                          (tab) => _ContentList(tab: tab, detail: detail, accentColor: accentBlue),
                         )
                         .toList(),
                   )
-                : _ContentList(
-                    tab: detail.tabs.first,
-                    detail: detail,
-                    accentColor: accentBlue,
-                  ),
+                : _ContentList(tab: detail.tabs.first, detail: detail, accentColor: accentBlue),
           ),
         ],
       ),
@@ -71,12 +62,9 @@ class _InformationScreenState extends State<InformationScreen>
     if (detail.tabs.length <= 1) return const SizedBox.shrink();
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       constraints: const BoxConstraints(minHeight: 60),
-      decoration: BoxDecoration(
-        color: lightBlueBg,
-        borderRadius: BorderRadius.circular(15),
-      ),
+      decoration: BoxDecoration(color: lightBlueBg, borderRadius: BorderRadius.circular(15)),
       child: TabBar(
         controller: _tabController,
         dividerColor: Colors.transparent,
@@ -98,11 +86,7 @@ class _InformationScreenState extends State<InformationScreen>
         ),
         labelColor: primaryBlue,
         unselectedLabelColor: Colors.grey,
-        labelStyle: GoogleFonts.inter(
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
-          height: 1.0,
-        ),
+        labelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, height: 1.0),
 
         unselectedLabelStyle: GoogleFonts.inter(
           fontWeight: FontWeight.bold,
@@ -135,34 +119,21 @@ class _ContentList extends StatelessWidget {
   final ServiceTab tab;
   final Color accentColor;
 
-  const _ContentList({
-    required this.detail,
-    required this.tab,
-    required this.accentColor,
-  });
+  const _ContentList({required this.detail, required this.tab, required this.accentColor});
 
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      padding: const EdgeInsets.all(30),
       children: [
-        Text(
-          detail.title,
-          style: GoogleFonts.inter(fontSize: 25, fontWeight: FontWeight.bold),
-        ),
+        Text(detail.title, style: GoogleFonts.inter(fontSize: 25, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
 
-        Text(
-          detail.description,
-          style: GoogleFonts.inter(fontSize: 12, color: Colors.black54),
-        ),
+        Text(detail.description, style: GoogleFonts.inter(fontSize: 12, color: Colors.black54)),
         const SizedBox(height: 25),
 
         // Requirements Checklist Card
-        _RequirementsCard(
-          requirements: tab.requirements,
-          iconColor: accentColor,
-        ),
+        _RequirementsCard(requirements: tab.requirements, iconColor: accentColor),
         const SizedBox(height: 30),
 
         Text(
@@ -193,10 +164,7 @@ class _RequirementsCard extends StatefulWidget {
   final List<RequirementItem> requirements;
   final Color iconColor;
 
-  const _RequirementsCard({
-    required this.requirements,
-    required this.iconColor,
-  });
+  const _RequirementsCard({required this.requirements, required this.iconColor});
 
   @override
   State<_RequirementsCard> createState() => _RequirementsCardState();
@@ -224,10 +192,7 @@ class _RequirementsCardState extends State<_RequirementsCard> {
 
             Text(
               "Requirements Checklist",
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ],
         ),
@@ -268,11 +233,8 @@ class _RequirementsCardState extends State<_RequirementsCard> {
                   // Checkbox
                   Checkbox(
                     value: checked,
-                    onChanged: (v) =>
-                        setState(() => _checkedItems[item.title] = v ?? false),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5),
-                    ),
+                    onChanged: (v) => setState(() => _checkedItems[item.title] = v ?? false),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                     activeColor: widget.iconColor,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     visualDensity: VisualDensity.compact,
@@ -285,19 +247,13 @@ class _RequirementsCardState extends State<_RequirementsCard> {
                       children: [
                         Text(
                           item.title,
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(height: 2),
                         RichText(
                           text: TextSpan(
                             text: "Secure at:  ",
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              color: Colors.black54,
-                            ),
+                            style: GoogleFonts.inter(fontSize: 11, color: Colors.black54),
                             children: [
                               TextSpan(
                                 text: item.secureAt,
@@ -382,11 +338,7 @@ class _StepItem extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     step.instruction,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: Colors.black54,
-                      height: 1.4,
-                    ),
+                    style: GoogleFonts.inter(fontSize: 12, color: Colors.black54, height: 1.4),
                   ),
                 ],
               ),
@@ -421,19 +373,13 @@ class _StepItem extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _InfoBox(
-                        label: "Processing Time:",
-                        value: step.processingTime,
-                      ),
+                      child: _InfoBox(label: "Processing Time:", value: step.processingTime),
                     ),
                   ],
                 ),
               ),
               SizedBox(height: 8),
-              _InfoBox(
-                label: "Person In-charge:",
-                value: step.personsInCharge.join('\n'),
-              ),
+              _InfoBox(label: "Person In-charge:", value: step.personsInCharge.join('\n')),
             ],
           ),
         ),
@@ -469,15 +415,10 @@ class _StepItem extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.black,
                     side: const BorderSide(color: Colors.black87, width: 1.2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                   ),
-                  child: const Text(
-                    "Mark As Done",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  child: const Text("Mark As Done", style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -544,9 +485,7 @@ class _InfoGrid extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: _buildCard(Icons.location_on, "LOCATION", detail.location),
-          ),
+          Expanded(child: _buildCard(Icons.location_on, "LOCATION", detail.location)),
           const SizedBox(width: 15),
           Expanded(child: _buildContactCard()),
         ],
@@ -619,11 +558,7 @@ class _InfoGrid extends StatelessWidget {
               children: [
                 Container(
                   decoration: const BoxDecoration(shape: BoxShape.circle),
-                  child: const Icon(
-                    Icons.phone,
-                    color: Color(0xFF3B73E0),
-                    size: 18,
-                  ),
+                  child: const Icon(Icons.phone, color: Color(0xFF3B73E0), size: 18),
                 ),
                 const SizedBox(width: 8),
 
@@ -692,10 +627,7 @@ class _ScheduleTile extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFF52EC44),
                     borderRadius: BorderRadius.circular(30),

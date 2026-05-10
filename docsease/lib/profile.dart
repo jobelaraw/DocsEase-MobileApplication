@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:docsease/edit_profile.dart';
@@ -33,95 +35,121 @@ class _ProfileState extends State<Profile> {
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 30),
                 width: double.infinity,
                 color: const Color.fromRGBO(32, 87, 206, 1.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Stack(
+                child: StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseAuth.instance.currentUser != null
+                      ? FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(FirebaseAuth.instance.currentUser!.uid)
+                            .snapshots()
+                      : null,
+                  builder: (context, snapshot) {
+                    String currentUsername = '...';
+                    String currentProfile = 'assets/default_profile.png';
+
+                    if (snapshot.hasData && snapshot.data!.exists) {
+                      final data = snapshot.data!.data() as Map<String, dynamic>;
+                      currentUsername = data['username'] ?? 'Guest Account';
+                      currentProfile = data['profile_img'] ?? 'assets/default_profile.png';
+                    }
+
+                    bool hasDefaultProfile = currentProfile == 'assets/default_profile.png';
+
+                    return Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          radius: 50,
-                          backgroundColor: Colors.white.withOpacity(0.3),
-                          child: Image.asset(
-                            'assets/default_profile.png',
-                            width: 90,
-                            height: 90,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: GestureDetector(
-                            // <--- 1. Add this to detect the tap
-                            onTap: () {
-                              widget.onTitleChange('Edit Profile');
-                              // 2. This pushes the EditProfile screen onto the stack
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const EditProfile(),
-                                ),
-                              ).then((_) {
-                                widget.onTitleChange('Profile');
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                // Optional: Add a small shadow so it's easier to see the button
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black12,
-                                    blurRadius: 4,
-                                    offset: Offset(0, 2),
+                        Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 50,
+                              backgroundColor: Colors.white,
+                              child: ClipOval(
+                                child: hasDefaultProfile
+                                    ? Image.asset(
+                                        currentProfile,
+                                        width: 95,
+                                        height: 95,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Image.network(
+                                        currentProfile,
+                                        width: 95,
+                                        height: 95,
+                                        fit: BoxFit.cover,
+                                      ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: GestureDetector(
+                                // <--- 1. Add this to detect the tap
+                                onTap: () {
+                                  widget.onTitleChange('Edit Profile');
+                                  // 2. This pushes the EditProfile screen onto the stack
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const EditProfile()),
+                                  ).then((_) {
+                                    widget.onTitleChange('Profile');
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    // Optional: Add a small shadow so it's easier to see the button
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black12,
+                                        blurRadius: 4,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                  child: Image.asset(
+                                    'assets/edit_icon.png',
+                                    width: 20,
+                                    height: 20,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
                               ),
-                              child: Image.asset(
-                                'assets/edit_icon.png',
-                                width: 18,
-                                height: 18,
-                                fit: BoxFit.contain,
-                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        GestureDetector(
+                          // <--- Add this to detect the tap
+                          onTap: () {
+                            widget.onTitleChange('Edit Profile');
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const EditProfile()),
+                            ).then((_) {
+                              widget.onTitleChange('Profile');
+                            });
+                          },
+                          child: Text(
+                            currentUsername,
+                            style: GoogleFonts.inter(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    GestureDetector(
-                      // <--- Add this to detect the tap
-                      onTap: () {
-                        widget.onTitleChange('Edit Profile');
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const EditProfile(),
+                        Text(
+                          'Citizen User',
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white70,
                           ),
-                        ).then((_) {
-                          widget.onTitleChange('Profile');
-                        });
-                      },
-                      child: Text(
-                        'John John',
-                        style: GoogleFonts.inter(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
                         ),
-                      ),
-                    ),
-                    Text(
-                      'Citizen User',
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
@@ -137,11 +165,7 @@ class _ProfileState extends State<Profile> {
                   color: const Color.fromRGBO(32, 87, 206, 1.0),
                 ),
                 Container(
-                  margin: const EdgeInsets.only(
-                    left: 20,
-                    right: 20,
-                    bottom: 20,
-                  ),
+                  margin: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -188,9 +212,7 @@ class _ProfileState extends State<Profile> {
                                   progress: 0.4,
                                   iconBg: const Color(0xFFE0F2F1),
                                   onTap: () {
-                                    print(
-                                      "Navigating to Birth Certificate Panel",
-                                    );
+                                    print("Navigating to Birth Certificate Panel");
                                   },
                                 ),
                                 const Divider(height: 40, thickness: 0.8),
@@ -202,9 +224,7 @@ class _ProfileState extends State<Profile> {
                                   showProgress: false,
                                   iconBg: const Color(0xFFFCE4EC),
                                   onTap: () {
-                                    print(
-                                      "Navigating to Marriage Certificate Panel",
-                                    );
+                                    print("Navigating to Marriage Certificate Panel");
                                   },
                                 ),
                                 const Divider(height: 40, thickness: 0.8),
@@ -257,16 +277,8 @@ class _ProfileState extends State<Profile> {
                 // Colored Icon Box
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: iconBg,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Image.asset(
-                    iconPath,
-                    width: 24,
-                    height: 24,
-                    fit: BoxFit.contain,
-                  ),
+                  decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(12)),
+                  child: Image.asset(iconPath, width: 24, height: 24, fit: BoxFit.contain),
                 ),
                 const SizedBox(width: 15),
                 // Title and Status
@@ -297,11 +309,7 @@ class _ProfileState extends State<Profile> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Icon(
-                      Icons.chevron_right,
-                      color: Colors.black87,
-                      size: 28,
-                    ),
+                    const Icon(Icons.chevron_right, color: Colors.black87, size: 28),
                     if (showProgress)
                       Text(
                         "${(progress * 100).toInt()}%",
@@ -324,9 +332,7 @@ class _ProfileState extends State<Profile> {
                   value: progress,
                   minHeight: 5,
                   backgroundColor: Colors.grey.shade300,
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    Color(0xFF2196F3),
-                  ),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2196F3)),
                 ),
               ),
             ],
