@@ -1,42 +1,63 @@
+import 'dart:convert';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:docsease/custom_button.dart';
+import 'package:docsease/firebase_services.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'forgotpass_recoverycode.dart';
+import 'package:docsease/forgotpass_recoverycode.dart';
+import 'package:docsease/custom_textfield.dart';
+import 'dart:async';
+import 'dart:math';
+import 'package:http/http.dart' as http;
 
 class ForgotPasswordEmailScreen extends StatefulWidget {
   const ForgotPasswordEmailScreen({super.key});
 
   @override
-  State<ForgotPasswordEmailScreen> createState() =>
-      _ForgotPasswordEmailScreenState();
+  State<ForgotPasswordEmailScreen> createState() => _ForgotPasswordEmailScreenState();
 }
 
 class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
   final TextEditingController _emailController = TextEditingController();
-  final FocusNode _emailFocusNode = FocusNode();
-  bool _isEmailFocused = false;
-  bool _isButtonEnabled = false;
+  final FirebaseServices _authService = FirebaseServices();
 
-  @override
-  void initState() {
-    super.initState();
-    _emailFocusNode.addListener(() {
-      setState(() {
-        _isEmailFocused = _emailFocusNode.hasFocus;
-      });
-    });
+  bool invalidInput = false;
+  bool isLoading = false;
 
-    _emailController.addListener(() {
-      setState(() {
-        _isButtonEnabled = _emailController.text.isNotEmpty;
-      });
-    });
+  Timer? _debounce;
+  bool _emailNotFound = false;
+
+  String _generateRecoveryCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    Random rnd = Random();
+    return String.fromCharCodes(
+      Iterable.generate(6, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))),
+    );
   }
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _emailFocusNode.dispose();
-    super.dispose();
+  Future<bool> _sendEmailJSRecovery(String targetEmail, String recoveryCode) async {
+    final url = Uri.parse('https://api.emailjs.com/api/v1.0/email/send');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'service_id': 'service_e6xjj5b',
+          'template_id': 'template_1u1on8f',
+          'user_id': 'MhxD0XeexOnz61prP',
+          'accessToken': 'ZwFXbNZRrkVkNGK4YFHWm',
+          'template_params': {'to_email': targetEmail, 'recovery_code': recoveryCode},
+        }),
+      );
+      print('EmailJS Status Code: ${response.statusCode}');
+      print('EmailJS Response: ${response.body}');
+      return response.statusCode == 200;
+    } catch (e) {
+      print("EmailJS Error: $e");
+      return false;
+    }
   }
 
   @override
@@ -44,260 +65,297 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF2B6FD4),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // --- Fixed Header Section ---
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 30),
+            Positioned.fill(
               child: Column(
                 children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: const Icon(Icons.chevron_left, color: Colors.white, size: 30),
+                  // --- Fixed Header Section ---
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        Container(
+                          height: 150,
+                          width: 150,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Color.fromRGBO(10, 49, 104, 1), width: 1.0),
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Image.asset(
+                              "assets/docsease_logo.png",
+                              height: 105,
+                              width: 105,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.description_outlined,
+                                size: 40,
+                                color: Color(0xFF2B6FD4),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          'DocsEase',
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Smart Assisstant for\ngovernment procedures.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            color: Colors.white.withOpacity(0.88),
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Container(
-                    width: 150,
-                    height: 150,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Image.asset(
-                        'assets/docsease_logo.png',
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.description_outlined,
-                          size: 50,
-                          color: Color(0xFF2B6FD4),
+
+                  // --- Bottom Panel ---
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF7EEF0),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(32),
+                          topRight: Radius.circular(32),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'DocsEase',
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Smart Assisstant for\ngovernment procedures.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      color: Colors.white.withOpacity(0.88),
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w500,
-                      height: 1.3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // --- Bottom Panel ---
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF7EEF0),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(32),
-                    topRight: Radius.circular(32),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      child: Center(
-                        child: Column(
-                          children: [
-                            Text(
-                              'Forgot Password',
-                              style: GoogleFonts.inter(
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF2B6FD4),
-                              ),
-                            ),
-                            const SizedBox(height: 11),
-                            Container(
-                              height: 1.5,
-                              width: 250,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2B6FD4),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(26, 0, 26, 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 22),
-                            Center(
-                              child: Text(
-                                'Enter your registered email address below.',
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 50),
-                            Text(
-                              'EMAIL ADDRESS',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-
-                            Container(
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(24.0),
-                                border: Border.all(
-                                  color: _isEmailFocused
-                                      ? const Color(0xFF2B6FD4)
-                                      : Colors.black.withOpacity(0.3),
-                                  width: 1.0,
-                                ),
-                              ),
-                              child: TextField(
-                                controller: _emailController,
-                                focusNode: _emailFocusNode,
-                                keyboardType: TextInputType.emailAddress,
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  color: Colors.black87,
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: 'Enter your email',
-                                  hintStyle: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.grey.shade500,
-                                  ),
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 25),
-
-                            // --- BUTTON WITH SHADOW EFFECT ---
-                            Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(30),
-                                boxShadow: _isButtonEnabled ? [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.35),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4), // Shadow position
-                                  ),
-                                ] : [], // No shadow when disabled
-                              ),
-                              child: ElevatedButton(
-                                onPressed: _isButtonEnabled
-                                    ? () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const ForgotPasswordRecoveryScreen(),
-                                    ),
-                                  );
-                                }
-                                    : null,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: _isButtonEnabled
-                                      ? const Color(0xFF2B6FD4)
-                                      : const Color(0xFFCCCCCC),
-                                  foregroundColor: Colors.white,
-                                  disabledBackgroundColor: const Color(0xFFCCCCCC),
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                  elevation: 0, // Set to 0 because we are using BoxDecoration for custom shadow
-                                ),
-                                child: Text(
-                                  'Proceed',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: _isButtonEnabled ? Colors.white : Colors.black38,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 80),
-
-                            Center(
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            child: Center(
                               child: Column(
-                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    "Don't remember your email?",
+                                    'Forgot Password',
                                     style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      color: Colors.black54,
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF2B6FD4),
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  RichText(
-                                    textAlign: TextAlign.center,
-                                    text: TextSpan(
-                                      style: GoogleFonts.inter(
-                                        fontSize: 11,
-                                        color: Colors.black54,
-                                      ),
-                                      children: [
-                                        const TextSpan(text: "Contact us at "),
-                                        TextSpan(
-                                          text: 'docsease.com',
-                                          style: GoogleFonts.inter(
-                                            fontWeight: FontWeight.bold,
-                                            color: const Color(0xFF2B6FD4),
-                                          ),
-                                        ),
-                                      ],
+                                  const SizedBox(height: 11),
+                                  Container(
+                                    height: 1.5,
+                                    width: 250,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF2B6FD4),
+                                      borderRadius: BorderRadius.circular(2),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 20),
-                          ],
-                        ),
+                          ),
+
+                          Expanded(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(26, 0, 26, 20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 22),
+                                  Center(
+                                    child: Text(
+                                      'Enter your registered email address below.',
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 50),
+                                  CustomTextField(
+                                    inputLabel: 'EMAIL ADDRESS',
+                                    inputHint: 'Enter your email',
+                                    inputType: TextInputType.emailAddress,
+                                    liveSuccessValidation: true,
+                                    controller: _emailController,
+                                    validator: (value) {
+                                      final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$');
+                                      if (value.isEmpty || !emailRegex.hasMatch(value.trim())) {
+                                        return value.isEmpty
+                                            ? 'Please fill the required field.'
+                                            : 'Please enter a valid email (e.g., name@example.com).';
+                                      }
+                                      if (_emailNotFound) {
+                                        return 'This email does not exist.';
+                                      }
+                                      return null;
+                                    },
+                                    onChanged: (value) {
+                                      setState(() => invalidInput = false);
+
+                                      if (_debounce?.isActive ?? false) _debounce!.cancel();
+                                      _debounce = Timer(
+                                        const Duration(milliseconds: 300),
+                                        () async {
+                                          final emailRegex = RegExp(
+                                            r'^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$',
+                                          );
+                                          if (emailRegex.hasMatch(value.trim())) {
+                                            bool exists = await _authService.isEmailTaken(
+                                              value.trim(),
+                                            );
+                                            setState(() => _emailNotFound = !exists);
+                                          }
+                                        },
+                                      );
+                                    },
+                                    forceValidate: invalidInput || _emailNotFound,
+                                  ),
+                                  const SizedBox(height: 25),
+                                  CustomButton(
+                                    buttonText: 'Proceed',
+                                    isLoading: isLoading,
+                                    isButtonEnabled: _emailController.text.isNotEmpty,
+                                    onTapAction: () async {
+                                      final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$');
+                                      bool isEmailValid = emailRegex.hasMatch(
+                                        _emailController.text.trim(),
+                                      );
+
+                                      if (!isEmailValid) {
+                                        setState(() => invalidInput = true);
+                                        return;
+                                      }
+
+                                      try {
+                                        setState(() => isLoading = true);
+                                        String targetEmail = _emailController.text.trim();
+
+                                        bool exists = await _authService.isEmailTaken(
+                                          _emailController.text.trim(),
+                                        );
+
+                                        if (!exists) {
+                                          if (mounted) {
+                                            setState(() {
+                                              _emailNotFound = true;
+                                              invalidInput = true;
+                                              isLoading = false;
+                                            });
+                                          }
+                                          return;
+                                        }
+
+                                        String recoveryCode = _generateRecoveryCode();
+                                        await FirebaseFirestore.instance
+                                            .collection('recovery_codes')
+                                            .doc(targetEmail) // Use email as the document ID
+                                            .set({
+                                              'code': recoveryCode,
+                                              'createdAt': FieldValue.serverTimestamp(),
+                                            });
+
+                                        bool emailSent = await _sendEmailJSRecovery(
+                                          targetEmail,
+                                          recoveryCode,
+                                        );
+
+                                        if (mounted) {
+                                          setState(() => isLoading = false);
+
+                                          if (emailSent) {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => ForgotPasswordRecoveryScreen(
+                                                  targetEmail: targetEmail,
+                                                ),
+                                              ),
+                                            );
+                                          } else {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  "Failed to send email. Please check your internet and try again.",
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      } catch (e) {
+                                        if (mounted) {
+                                          setState(() {
+                                            invalidInput = true;
+                                            isLoading = false;
+                                          });
+                                        }
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(height: 80),
+
+                                  Center(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          "Don't remember your email?",
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12,
+                                            color: Colors.black54,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        RichText(
+                                          textAlign: TextAlign.center,
+                                          text: TextSpan(
+                                            style: GoogleFonts.inter(
+                                              fontSize: 11,
+                                              color: Colors.black54,
+                                            ),
+                                            children: [
+                                              const TextSpan(text: "Contact us at "),
+                                              TextSpan(
+                                                text: 'docsease.com',
+                                                style: GoogleFonts.inter(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: const Color(0xFF2B6FD4),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              top: 8,
+              left: 8,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
               ),
             ),
           ],

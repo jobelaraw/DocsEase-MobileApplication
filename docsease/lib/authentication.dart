@@ -1,9 +1,10 @@
+import 'package:docsease/custom_button.dart';
 import 'package:docsease/side_bar.dart';
-import 'package:docsease/users_service.dart';
+import 'package:docsease/firebase_services.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lottie/lottie.dart';
-import 'forgotpass_email.dart';
+import 'package:docsease/custom_textfield.dart';
+import 'dart:async';
 
 class Authentication extends StatefulWidget {
   const Authentication({super.key});
@@ -12,19 +13,13 @@ class Authentication extends StatefulWidget {
   State<Authentication> createState() => _AuthenticationState();
 }
 
-class _AuthenticationState extends State<Authentication>
-    with SingleTickerProviderStateMixin {
+class _AuthenticationState extends State<Authentication> with SingleTickerProviderStateMixin {
   final TextEditingController _signInEmailController = TextEditingController();
-  final TextEditingController _signInPasswordController =
-      TextEditingController();
-
-  final TextEditingController _signUpUsernameController =
-      TextEditingController();
+  final TextEditingController _signInPasswordController = TextEditingController();
+  final TextEditingController _signUpUsernameController = TextEditingController();
   final TextEditingController _signUpEmailController = TextEditingController();
-  final TextEditingController _signUpPasswordController =
-      TextEditingController();
-  final TextEditingController _signUpConfirmController =
-      TextEditingController();
+  final TextEditingController _signUpPasswordController = TextEditingController();
+  final TextEditingController _signUpConfirmController = TextEditingController();
 
   late TabController _tabController;
   int _previousIndex = 0;
@@ -61,127 +56,132 @@ class _AuthenticationState extends State<Authentication>
     return Scaffold(
       backgroundColor: Color.fromRGBO(32, 87, 206, 1.0),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            Padding(
-              padding: EdgeInsets.all(20),
-              child: Align(
-                alignment: Alignment.center,
-                child: Column(
-                  children: [
-                    Container(
-                      height: 100,
-                      width: 100,
+            Positioned.fill(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        Container(
+                          height: 100,
+                          width: 100,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Color.fromRGBO(10, 49, 104, 1), width: 1.0),
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Image.asset(
+                              "assets/docsease_logo.png",
+                              height: 70,
+                              width: 70,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 7),
+                        Text(
+                          'DocsEase',
+                          style: GoogleFonts.inter(
+                            fontSize: 25,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 7),
+                        Text(
+                          'Smart Assistant for\ngovernment procedures.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white.withOpacity(0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
                       decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Color.fromRGBO(10, 49, 104, 1),
-                          width: 1.0,
-                        ),
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Image.asset(
-                          "assets/docsease_logo.png",
-                          height: 60,
-                          width: 60,
-                          fit: BoxFit.contain,
+                        color: Color.fromRGBO(251, 243, 243, 1),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(25.0),
+                          topRight: Radius.circular(25.0),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      'DocsEase',
-                      style: GoogleFonts.inter(
-                        fontSize: 25,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.symmetric(vertical: 5, horizontal: 20),
+                            child: TabBar(
+                              controller: _tabController,
+                              labelStyle: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overlayColor: MaterialStateProperty.all(Colors.transparent),
+                              labelColor: Color.fromRGBO(59, 115, 224, 1.0),
+                              unselectedLabelColor: Colors.grey,
+                              indicatorSize: TabBarIndicatorSize.tab,
+                              indicator: UnderlineTabIndicator(
+                                borderSide: BorderSide(
+                                  color: Color.fromRGBO(32, 87, 206, 1.0),
+                                  width: 1.5,
+                                ),
+                              ),
+                              tabs: const [
+                                Tab(text: 'Sign In'),
+                                Tab(text: 'Sign Up'),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: TabBarView(
+                              controller: _tabController,
+                              children: [
+                                SingleChildScrollView(
+                                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                                  child: SignIn(
+                                    emailController: _signInEmailController,
+                                    passwordController: _signInPasswordController,
+                                  ),
+                                ),
+                                // This is the first tab, which is the Sign Up
+                                SingleChildScrollView(
+                                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                                  child: SignUp(
+                                    usernameController: _signUpUsernameController,
+                                    emailController: _signUpEmailController,
+                                    passwordController: _signUpPasswordController,
+                                    confirmController: _signUpConfirmController,
+                                    onTapAction: () {
+                                      _tabController.animateTo(0);
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 7),
-                    Text(
-                      'Smart Assistant for\ngovernment procedures.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white.withOpacity(0.7),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Color.fromRGBO(251, 243, 243, 1),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(25.0),
-                    topRight: Radius.circular(25.0),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: 5,
-                        horizontal: 20,
-                      ),
-                      child: TabBar(
-                        controller: _tabController,
-                        labelStyle: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overlayColor: MaterialStateProperty.all(
-                          Colors.transparent,
-                        ),
-                        labelColor: Color.fromRGBO(59, 115, 224, 1.0),
-                        unselectedLabelColor: Colors.grey,
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        indicator: UnderlineTabIndicator(
-                          borderSide: BorderSide(
-                            color: Color.fromRGBO(32, 87, 206, 1.0),
-                            width: 1.5,
-                          ),
-                        ),
-                        tabs: const [
-                          Tab(text: 'Sign In'),
-                          Tab(text: 'Sign Up'),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-                            child: SignIn(
-                              emailController: _signInEmailController,
-                              passwordController: _signInPasswordController,
-                            ),
-                          ),
-                          // This is the first tab, which is the Sign Up
-                          SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-                            child: SignUp(
-                              usernameController: _signUpUsernameController,
-                              emailController: _signUpEmailController,
-                              passwordController: _signUpPasswordController,
-                              confirmController: _signUpConfirmController,
-                              onTapAction: () {
-                                _tabController.animateTo(0);
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+            Positioned(
+              top: 8,
+              left: 8,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
               ),
             ),
           ],
@@ -195,18 +195,16 @@ class SignIn extends StatefulWidget {
   final TextEditingController emailController;
   final TextEditingController passwordController;
 
-  const SignIn({
-    super.key,
-    required this.emailController,
-    required this.passwordController,
-  });
+  const SignIn({super.key, required this.emailController, required this.passwordController});
 
   @override
   State<SignIn> createState() => _SignInState();
 }
 
 class _SignInState extends State<SignIn> {
-  bool _isLoading = false;
+  bool _isEmailLoading = false;
+  bool _isGoogleLoading = false;
+  bool invalidInput = false;
 
   @override
   Widget build(BuildContext context) {
@@ -217,9 +215,20 @@ class _SignInState extends State<SignIn> {
           inputLabel: 'EMAIL ADDRESS',
           inputHint: 'Enter your email',
           inputType: TextInputType.emailAddress,
-          isPassword: false,
-          isLoginPass: false,
           controller: widget.emailController,
+          validator: (value) {
+            if (invalidInput) {
+              return 'Email or password is invalid.';
+            }
+            return null;
+          },
+          onChanged: (value) {
+            setState(() {
+              invalidInput = false;
+            });
+          },
+          forceValidate: invalidInput,
+          showSuccessState: false,
         ),
         const SizedBox(height: 30),
         CustomTextField(
@@ -229,35 +238,56 @@ class _SignInState extends State<SignIn> {
           isPassword: true,
           isLoginPass: true,
           controller: widget.passwordController,
+          validator: (value) {
+            if (invalidInput == true) {
+              return 'Email or password is invalid.';
+            }
+            return null;
+          },
+          onChanged: (value) {
+            setState(() {
+              invalidInput = false;
+            });
+          },
+          forceValidate: invalidInput,
+          showSuccessState: false,
         ),
         SizedBox(height: 40),
         CustomButton(
           buttonText: 'Sign In',
-          isGoogle: false,
-          isLoading: _isLoading,
+          isLoading: _isEmailLoading,
+          isButtonEnabled:
+              widget.emailController.text.isNotEmpty && widget.passwordController.text.isNotEmpty,
           onTapAction: () async {
+            bool isEmailValid = widget.emailController.text.isNotEmpty;
+            bool isPasswordValid = widget.passwordController.text.isNotEmpty;
+
+            if (!isEmailValid || !isPasswordValid) {
+              setState(() {
+                invalidInput = true;
+              });
+              return;
+            }
+
             try {
-              setState(() => _isLoading = true);
-              final authService = AuthService();
-              String inputEmail = widget.emailController.text
-                  .trim()
-                  .toLowerCase();
+              setState(() => _isEmailLoading = true);
+              final authService = FirebaseServices();
+              String inputEmail = widget.emailController.text.trim().toLowerCase();
               String inputPassword = widget.passwordController.text;
 
               await authService.signIn(inputEmail, inputPassword);
               if (mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SideBar()),
-                  (Route<dynamic> route) => false,
-                );
+                Navigator.of(context).popUntil((route) => route.isFirst);
               }
             } catch (e) {
               if (mounted) {
-                setState(() => _isLoading = false);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Login Failed: ${e.toString()}")),
-                );
+                setState(() {
+                  invalidInput = true;
+                  _isEmailLoading = false;
+                });
+                // ScaffoldMessenger.of(
+                //   context,
+                // ).showSnackBar(SnackBar(content: Text("Sign In Failed: ${e.toString()}")));
               }
             }
           },
@@ -266,9 +296,32 @@ class _SignInState extends State<SignIn> {
         const CustomDivider(),
         const SizedBox(height: 20),
         CustomButton(
-          buttonText: 'Sign in with Google',
+          buttonText: 'Continue with Google',
           isGoogle: true,
-          onTapAction: () {},
+          isLoading: _isGoogleLoading,
+          onTapAction: () async {
+            try {
+              setState(() => _isGoogleLoading = true);
+              final authService = FirebaseServices();
+
+              final result = await authService.signInWithGoogle();
+
+              if (mounted) {
+                setState(() => _isGoogleLoading = false);
+
+                if (result != null) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
+              }
+            } catch (e) {
+              if (mounted) {
+                setState(() => _isGoogleLoading = false);
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text("Google Sign-In Failed.")));
+              }
+            }
+          },
         ),
         const SizedBox(height: 30),
         Text(
@@ -312,7 +365,17 @@ class SignUp extends StatefulWidget {
 }
 
 class _SignUpState extends State<SignUp> {
-  final AuthService _authService = AuthService();
+  final FirebaseServices _authService = FirebaseServices();
+
+  String passwordText = '';
+  bool invalidInput = false;
+  bool hasStrongPassword = false;
+  bool _isEmailLoading = false;
+  bool _isGoogleLoading = false;
+
+  Timer? _debounce;
+  bool _isUsernameTaken = false;
+  bool _isEmailTaken = false;
 
   @override
   Widget build(BuildContext context) {
@@ -323,18 +386,61 @@ class _SignUpState extends State<SignUp> {
           inputLabel: 'USERNAME',
           inputHint: 'Enter your username',
           inputType: TextInputType.text,
-          isPassword: false,
-          isLoginPass: false,
           controller: widget.usernameController,
+          validator: (value) {
+            if (value.isEmpty || value.trim().length < 8) {
+              return value.isEmpty
+                  ? 'Please fill the required field.'
+                  : 'Username must be at least 8 characters.';
+            }
+            if (_isUsernameTaken) {
+              return 'This username is already taken.';
+            }
+            return null;
+          },
+          onChanged: (value) {
+            setState(() => invalidInput = false);
+
+            if (_debounce?.isActive ?? false) _debounce!.cancel();
+            _debounce = Timer(const Duration(milliseconds: 300), () async {
+              if (value.trim().length >= 8) {
+                bool taken = await _authService.isUsernameTaken(value.trim());
+                setState(() => _isUsernameTaken = taken);
+              }
+            });
+          },
+          forceValidate: invalidInput || _isUsernameTaken,
         ),
         SizedBox(height: 20),
         CustomTextField(
           inputLabel: 'EMAIL ADDRESS',
           inputHint: 'Enter your email',
           inputType: TextInputType.emailAddress,
-          isPassword: false,
-          isLoginPass: false,
           controller: widget.emailController,
+          validator: (value) {
+            final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+            if (value.isEmpty || !emailRegex.hasMatch(value.trim())) {
+              return value.isEmpty
+                  ? 'Please fill the required field.'
+                  : 'Please enter a valid email (e.g., name@example.com).';
+            }
+            if (_isEmailTaken) {
+              return 'This email already exists.';
+            }
+            return null;
+          },
+          onChanged: (value) {
+            setState(() => invalidInput = false);
+
+            if (_debounce?.isActive ?? false) _debounce!.cancel();
+            _debounce = Timer(const Duration(milliseconds: 300), () async {
+              if (value.trim().length >= 8) {
+                bool taken = await _authService.isEmailTaken(value.trim());
+                setState(() => _isEmailTaken = taken);
+              }
+            });
+          },
+          forceValidate: invalidInput || _isEmailTaken,
         ),
         SizedBox(height: 20),
         CustomTextField(
@@ -344,6 +450,35 @@ class _SignUpState extends State<SignUp> {
           isPassword: true,
           isLoginPass: false,
           controller: widget.passwordController,
+          validator: (value) {
+            if (value.isEmpty) {
+              return 'Please fill the required field.';
+            }
+            bool hasLength = value.length >= 8;
+            bool hasSymbol = RegExp(r'[^a-zA-Z0-9\s]').hasMatch(value);
+            bool hasUppercase = RegExp(r'[A-Z]').hasMatch(value);
+            bool hasNumber = RegExp(r'[0-9]').hasMatch(value);
+
+            int score =
+                (hasLength ? 1 : 0) +
+                (hasSymbol ? 1 : 0) +
+                (hasUppercase ? 1 : 0) +
+                (hasNumber ? 1 : 0);
+
+            if (score < 4) {
+              return 'Please meet all the password requirements.';
+            }
+            hasStrongPassword = true;
+            return null;
+          },
+          onChanged: (value) {
+            setState(() {
+              passwordText = value;
+              invalidInput = false;
+            });
+          },
+          forceValidate: invalidInput,
+          receivedPassword: passwordText,
         ),
         SizedBox(height: 20),
         CustomTextField(
@@ -353,30 +488,66 @@ class _SignUpState extends State<SignUp> {
           isPassword: true,
           isLoginPass: false,
           controller: widget.confirmController,
+          validator: (value) {
+            if (value.isEmpty || value != widget.passwordController.text) {
+              return value.isEmpty
+                  ? 'Please fill the required field.'
+                  : 'Passwords do not match. Please try again.';
+            }
+            return null;
+          },
+          onChanged: (value) {
+            setState(() {
+              invalidInput = false;
+            });
+          },
+          forceValidate: invalidInput,
         ),
         SizedBox(height: 40),
         CustomButton(
           buttonText: 'Sign Up',
-          isGoogle: false,
+          isLoading: _isEmailLoading,
+          isButtonEnabled:
+              widget.usernameController.text.isNotEmpty &&
+              widget.emailController.text.isNotEmpty &&
+              widget.passwordController.text.isNotEmpty &&
+              widget.confirmController.text.isNotEmpty,
           onTapAction: () async {
-            if (widget.passwordController.text ==
-                widget.confirmController.text) {
+            final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+            bool isUsernameValid = widget.usernameController.text.trim().length >= 8;
+            bool isEmailValid = emailRegex.hasMatch(widget.emailController.text.trim());
+            bool isPasswordValid = widget.passwordController.text.isNotEmpty && hasStrongPassword;
+            bool isConfirmValid =
+                widget.confirmController.text.isNotEmpty &&
+                widget.confirmController.text == widget.passwordController.text;
+
+            if (!isUsernameValid || !isEmailValid || !isPasswordValid || !isConfirmValid) {
+              setState(() {
+                invalidInput = true;
+              });
+              return;
+            }
+
+            try {
+              setState(() => _isEmailLoading = true);
               await _authService.signUp(
                 widget.emailController.text.trim(),
                 widget.passwordController.text.trim(),
                 widget.usernameController.text.trim(),
               );
               if (mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SideBar()),
-                  (Route<dynamic> route) => false,
-                );
+                Navigator.of(context).popUntil((route) => route.isFirst);
               }
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Passwords do not match!")),
-              );
+            } catch (e) {
+              if (mounted) {
+                setState(() {
+                  invalidInput = true;
+                  _isEmailLoading = false;
+                });
+                // ScaffoldMessenger.of(
+                //   context,
+                // ).showSnackBar(SnackBar(content: Text("Sign Up Failed: ${e.toString()}")));
+              }
             }
           },
         ),
@@ -384,9 +555,33 @@ class _SignUpState extends State<SignUp> {
         const CustomDivider(),
         const SizedBox(height: 20),
         CustomButton(
-          buttonText: 'Sign up with Google',
+          buttonText: 'Continue with Google',
           isGoogle: true,
-          onTapAction: () {},
+          isLoading: _isGoogleLoading,
+          onTapAction: () async {
+            try {
+              setState(() => _isGoogleLoading = true);
+              final authService = FirebaseServices();
+
+              final result = await authService
+                  .signInWithGoogle(); // Handles the Sign Up logic automatically!
+
+              if (mounted) {
+                setState(() => _isGoogleLoading = false);
+
+                if (result != null) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
+              }
+            } catch (e) {
+              if (mounted) {
+                setState(() => _isGoogleLoading = false);
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text("Google Sign-Up Failed.")));
+              }
+            }
+          },
         ),
         const SizedBox(height: 30),
         Row(
@@ -394,241 +589,13 @@ class _SignUpState extends State<SignUp> {
           children: [
             Text(
               'Already have an account?',
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.normal,
-              ),
+              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.normal),
             ),
             SizedBox(width: 5),
-            CustomTextButton(
-              inkwellText: 'Sign In',
-              onTapAction: widget.onTapAction,
-            ),
+            CustomTextButton(inkwellText: 'Sign In', onTapAction: widget.onTapAction),
           ],
         ),
       ],
-    );
-  }
-}
-
-class CustomTextField extends StatefulWidget {
-  final String inputLabel;
-  final String inputHint;
-  final TextInputType inputType;
-  final bool isPassword;
-  final bool isLoginPass;
-  final TextEditingController controller;
-
-  const CustomTextField({
-    super.key,
-    required this.inputLabel,
-    required this.inputHint,
-    required this.inputType,
-    required this.isPassword,
-    required this.isLoginPass,
-    required this.controller,
-  });
-
-  @override
-  State<CustomTextField> createState() => _CustomTextFieldState();
-}
-
-class _CustomTextFieldState extends State<CustomTextField> {
-  bool hidePassword = true;
-  bool isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        widget.isLoginPass
-            ? Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    widget.inputLabel,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  InkWell(
-                    onHover: (hovering) {
-                      setState(() {
-                        isHovered = hovering;
-                      });
-                    },
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ForgotPasswordEmailScreen(),
-                        ),
-                      );
-                    }, // Change later on
-                    child: Text(
-                      'Forgot Password?',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: isHovered
-                            ? Color.fromRGBO(24, 74, 182, 1)
-                            : Color.fromRGBO(59, 115, 224, 1.0),
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            : Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  widget.inputLabel,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-        SizedBox(height: 5),
-        SizedBox(
-          height: 50,
-          child: TextField(
-            controller: widget.controller,
-            obscureText: widget.isPassword ? hidePassword : false,
-            keyboardType: widget.inputType,
-            style: GoogleFonts.inter(
-              fontSize: 15,
-              fontWeight: FontWeight.normal,
-            ),
-            decoration: InputDecoration(
-              hintText: widget.inputHint,
-              hintStyle: GoogleFonts.inter(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey,
-              ),
-              filled: true,
-              fillColor: Colors.white,
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24.0),
-                borderSide: BorderSide(color: Colors.black.withOpacity(0.3)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24.0),
-                borderSide: BorderSide(
-                  color: Color.fromRGBO(59, 115, 224, 1.0),
-                ),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 15,
-                vertical: 10,
-              ),
-              suffixIcon: widget.isPassword
-                  ? Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 3, vertical: 5),
-                      child: IconButton(
-                        onPressed: () {
-                          setState(() {
-                            hidePassword = !hidePassword;
-                          });
-                        },
-                        icon: Icon(
-                          hidePassword
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                        ),
-                        color: Colors.black.withOpacity(0.3),
-                        iconSize: 20,
-                        padding: EdgeInsets.zero,
-                      ),
-                    )
-                  : null,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class CustomButton extends StatelessWidget {
-  final String buttonText;
-  final bool isGoogle;
-  final bool isLoading;
-  final VoidCallback onTapAction;
-
-  const CustomButton({
-    super.key,
-    required this.buttonText,
-    required this.isGoogle,
-    required this.onTapAction,
-    this.isLoading = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: isGoogle
-          ? OutlinedButton.icon(
-              onPressed: onTapAction,
-              icon: Image.asset(
-                'assets/google_icon.png',
-                height: 35,
-                width: 35,
-              ),
-              style: OutlinedButton.styleFrom(
-                backgroundColor: Colors.white,
-                side: BorderSide(color: Colors.black.withOpacity(0.3)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
-                ),
-              ),
-              label: Text(
-                buttonText,
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-            )
-          : ElevatedButton(
-              onPressed: isLoading ? null : onTapAction,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromRGBO(59, 115, 224, 1.0),
-                foregroundColor: Colors.white,
-                elevation: 10,
-                shadowColor: const Color.fromRGBO(59, 115, 224, 1.0),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    buttonText,
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (isLoading) ...[
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 30, //28
-                      height: 30,
-                      child: Lottie.asset(
-                        'assets/Loading.json',
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
     );
   }
 }
@@ -640,9 +607,7 @@ class CustomDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(
-          child: Divider(color: Colors.black.withOpacity(0.2), thickness: 1),
-        ),
+        Expanded(child: Divider(color: Colors.black.withOpacity(0.2), thickness: 1)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Text(
@@ -654,9 +619,7 @@ class CustomDivider extends StatelessWidget {
             ),
           ),
         ),
-        Expanded(
-          child: Divider(color: Colors.black.withOpacity(0.2), thickness: 1),
-        ),
+        Expanded(child: Divider(color: Colors.black.withOpacity(0.2), thickness: 1)),
       ],
     );
   }
@@ -666,11 +629,7 @@ class CustomTextButton extends StatefulWidget {
   final String inkwellText;
   final VoidCallback onTapAction;
 
-  const CustomTextButton({
-    super.key,
-    required this.inkwellText,
-    required this.onTapAction,
-  });
+  const CustomTextButton({super.key, required this.inkwellText, required this.onTapAction});
 
   @override
   State<CustomTextButton> createState() => _CustomTextButtonState();

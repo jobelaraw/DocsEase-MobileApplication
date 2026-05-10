@@ -12,164 +12,163 @@ class AppStart extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 20),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Spacer(flex: 2),
-
-              // ── App Logo ──
-              Image.asset(
-                'assets/docsease_logo.png',
-                width: MediaQuery.of(context).size.width < 400 ? 180 : 200,
-                height: MediaQuery.of(context).size.width < 400 ? 180 : 200,
-              ),
-
-              const SizedBox(height: 32),
-
-              //Welcome Title
-              Text(
-                'Welcome to\nDocsEase!',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 34,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                  height: 1.25,
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              //Subtitle
-              Text(
-                'Your smart assistant for government\ndocuments. Navigate complex forms with ease',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: Colors.grey.shade500,
-                  height: 1.55,
-                ),
-              ),
-
-              const Spacer(flex: 3),
-              // SizedBox(height: 40),
-
-              //Get Started Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const Authentication(),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3B73E0),
-                    foregroundColor: Colors.white,
-                    elevation: 6,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Text(
-                      'Get Started!',
-                      style: GoogleFonts.inter(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              //Continue as Guest Button
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (context) => const SideBar()),
-                          (Route<dynamic> route) => false,
-                    );
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF3B73E0),
-                    elevation: 6,
-                    side: BorderSide(color: Colors.grey.shade300, width: 1.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Text(
-                      'Continue as Guest',
-                      style: GoogleFonts.inter(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF3B73E0),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // ── Terms & Privacy ──
-              RichText(
-                textAlign: TextAlign.center,
-                text: TextSpan(
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: Colors.grey.shade500,
-                    height: 1.6,
-                  ),
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 20),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const TextSpan(text: 'By continuing, you agree to our '),
-                    TextSpan(
-                      text: 'Terms of Services',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: const Color(0xFF3B73E0),
-                        decoration: TextDecoration.underline,
-                      ),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () {
-                          // TODO: Open Terms of Services
-                        },
+                    const Spacer(flex: 2),
+
+                    // ── App Logo ──
+                    Image.asset(
+                      'assets/docsease_logo.png',
+                      width: MediaQuery.of(context).size.width < 400 ? 180 : 200,
+                      height: MediaQuery.of(context).size.width < 400 ? 180 : 200,
                     ),
-                    const TextSpan(text: ' and '),
-                    TextSpan(
-                      text: 'Privacy Policy',
+
+                    const SizedBox(height: 32),
+
+                    //Welcome Title
+                    Text(
+                      'Welcome to\nDocsEase!',
+                      textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: const Color(0xFF3B73E0),
-                        decoration: TextDecoration.underline,
+                        fontSize: 34,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                        height: 1.25,
                       ),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () {
-                          // TODO: Open Privacy Policy
-                        },
                     ),
-                    const TextSpan(text: '.'),
+
+                    const SizedBox(height: 14),
+
+                    //Subtitle
+                    Text(
+                      'Your smart assistant for government\ndocuments. Navigate complex forms with ease',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: Colors.grey.shade500,
+                        height: 1.55,
+                      ),
+                    ),
+
+                    const Spacer(flex: 3),
+                    // SizedBox(height: 40),
+
+                    //Get Started Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const Authentication()),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3B73E0),
+                          foregroundColor: Colors.white,
+                          elevation: 6,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Text(
+                            'Get Started!',
+                            style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    //Continue as Guest Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const SideBar()),
+                            (Route<dynamic> route) => false,
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF3B73E0),
+                          elevation: 6,
+                          side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Text(
+                            'Continue as Guest',
+                            style: GoogleFonts.inter(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF3B73E0),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // ── Terms & Privacy ──
+                    RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: Colors.grey.shade500,
+                          height: 1.6,
+                        ),
+                        children: [
+                          const TextSpan(text: 'By continuing, you agree to our '),
+                          TextSpan(
+                            text: 'Terms of Services',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: const Color(0xFF3B73E0),
+                              decoration: TextDecoration.underline,
+                            ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () {
+                                // TODO: Open Terms of Services
+                              },
+                          ),
+                          const TextSpan(text: ' and '),
+                          TextSpan(
+                            text: 'Privacy Policy',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: const Color(0xFF3B73E0),
+                              decoration: TextDecoration.underline,
+                            ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () {
+                                // TODO: Open Privacy Policy
+                              },
+                          ),
+                          const TextSpan(text: '.'),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
-
-              const SizedBox(height: 20),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
