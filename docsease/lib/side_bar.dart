@@ -1,4 +1,5 @@
 import 'package:docsease/about_us.dart';
+import 'package:docsease/app_start.dart';
 import 'package:docsease/firebase_services.dart';
 import 'package:docsease/profile.dart';
 import 'package:docsease/services.dart';
@@ -8,10 +9,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:docsease/navigator_transition.dart';
 import 'dart:async';
 
 class SideBar extends StatefulWidget {
-  const SideBar({super.key});
+  final bool isGuest;
+  const SideBar({super.key, this.isGuest = false});
 
   @override
   State<SideBar> createState() => _SideBarState();
@@ -19,6 +22,7 @@ class SideBar extends StatefulWidget {
 
 class _SideBarState extends State<SideBar> {
   int selectedIndex = 0;
+  int _previousIndex = 0;
   String currentTitle = 'Services';
   final GlobalKey<NavigatorState> _servicesNavKey = GlobalKey<NavigatorState>();
   final GlobalKey<NavigatorState> _profileNavKey = GlobalKey<NavigatorState>();
@@ -415,6 +419,7 @@ class _SideBarState extends State<SideBar> {
                                           });
                                         } else {
                                           setState(() {
+                                            _previousIndex = selectedIndex;
                                             currentTitle = 'Services';
                                             selectedIndex = 0;
                                           });
@@ -442,6 +447,7 @@ class _SideBarState extends State<SideBar> {
                                           });
                                         } else {
                                           setState(() {
+                                            _previousIndex = selectedIndex;
                                             currentTitle = 'Profile';
                                             selectedIndex = 1;
                                           });
@@ -461,6 +467,7 @@ class _SideBarState extends State<SideBar> {
                                     Future.delayed(const Duration(milliseconds: 50), () {
                                       if (mounted) {
                                         setState(() {
+                                          _previousIndex = selectedIndex;
                                           selectedIndex = 2;
                                         });
                                       }
@@ -478,6 +485,7 @@ class _SideBarState extends State<SideBar> {
                                     Future.delayed(const Duration(milliseconds: 50), () {
                                       if (mounted) {
                                         setState(() {
+                                          _previousIndex = selectedIndex;
                                           selectedIndex = 3;
                                         });
                                       }
@@ -495,26 +503,33 @@ class _SideBarState extends State<SideBar> {
                       child: Padding(
                         padding: const EdgeInsets.only(left: 10, bottom: 20),
                         child: TextButton.icon(
-                          // For later when basic authentication is done
                           onPressed: () async {
                             Navigator.pop(context);
-                            await FirebaseServices().signOutUser();
+                            if (widget.isGuest) {
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                SlideRoute(page: const AppStart()),
+                                (Route<dynamic> route) => false,
+                              );
+                            } else {
+                              await FirebaseServices().signOutUser();
+                            }
                           },
                           icon: ImageIcon(
-                            AssetImage("assets/logout_icon.png"),
+                            AssetImage(widget.isGuest ? "assets/logout_icon.png" : "assets/logout_icon.png"),
                             size: 20,
-                            color: Color.fromRGBO(252, 64, 64, 1),
+                            color: const Color.fromRGBO(252, 64, 64, 1),
                           ),
                           label: Text(
-                            "Logout",
+                            widget.isGuest ? "Exit" : "Logout",
                             style: GoogleFonts.inter(
                               fontSize: 17,
                               fontWeight: FontWeight.bold,
-                              color: Color.fromRGBO(252, 64, 64, 1),
+                              color: const Color.fromRGBO(252, 64, 64, 1),
                             ),
                           ),
                           style: TextButton.styleFrom(
-                            foregroundColor: Color.fromRGBO(252, 64, 64, 1),
+                            foregroundColor: const Color.fromRGBO(252, 64, 64, 1),
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                           ),
                         ),
@@ -541,7 +556,11 @@ class _SideBarState extends State<SideBar> {
             ],
           ),
         ),
-        body: screens[selectedIndex],
+        body: TabSwitcher(
+          currentIndex: selectedIndex,
+          previousIndex: _previousIndex,
+          child: screens[selectedIndex],
+        ),
       ),
     );
   }
