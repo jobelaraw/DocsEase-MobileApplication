@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:docsease/forgotpass_recoverycode.dart';
 import 'package:docsease/custom_textfield.dart';
+import 'package:docsease/navigator_transition.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:http/http.dart' as http;
@@ -167,15 +168,33 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const SizedBox(height: 22),
-                                  Center(
-                                    child: Text(
-                                      'Enter your registered email address below.',
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.inter(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
-                                        color: Colors.black87,
+                                  const SizedBox(height: 12),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    child: Center(
+                                      child: Text(
+                                        'Enter Email Address',
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 20,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    child: Center(
+                                      child: Text(
+                                        'Input your registered email address below so we can verify your identity',
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w400,
+                                          fontSize: 13,
+                                          color: Colors.black54,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -204,7 +223,7 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                       if (_debounce?.isActive ?? false) _debounce!.cancel();
                                       _debounce = Timer(
                                         const Duration(milliseconds: 300),
-                                        () async {
+                                            () async {
                                           final emailRegex = RegExp(
                                             r'^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$',
                                           );
@@ -259,9 +278,9 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                             .collection('recovery_codes')
                                             .doc(targetEmail) // Use email as the document ID
                                             .set({
-                                              'code': recoveryCode,
-                                              'createdAt': FieldValue.serverTimestamp(),
-                                            });
+                                          'code': recoveryCode,
+                                          'createdAt': FieldValue.serverTimestamp(),
+                                        });
 
                                         bool emailSent = await _sendEmailJSRecovery(
                                           targetEmail,
@@ -274,8 +293,8 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                           if (emailSent) {
                                             Navigator.push(
                                               context,
-                                              MaterialPageRoute(
-                                                builder: (context) => ForgotPasswordRecoveryScreen(
+                                              SlideRoute(
+                                                page: ForgotPasswordRecoveryScreen(
                                                   targetEmail: targetEmail,
                                                 ),
                                               ),
@@ -336,7 +355,7 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                       ],
                                     ),
                                   ),
-                                  const SizedBox(height: 20),
+                                  const SizedBox(height: 10),
                                 ],
                               ),
                             ),

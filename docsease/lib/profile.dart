@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:docsease/edit_profile.dart';
+import 'navigator_transition.dart';
 
 class Profile extends StatefulWidget {
   final Function(String) onTitleChange;
@@ -85,10 +86,9 @@ class _ProfileState extends State<Profile> {
                                 // <--- 1. Add this to detect the tap
                                 onTap: () {
                                   widget.onTitleChange('Edit Profile');
-                                  // 2. This pushes the EditProfile screen onto the stack
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (context) => const EditProfile()),
+                                    SlideRoute(page: const EditProfile()),
                                   ).then((_) {
                                     widget.onTitleChange('Profile');
                                   });
@@ -125,7 +125,7 @@ class _ProfileState extends State<Profile> {
                             widget.onTitleChange('Edit Profile');
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const EditProfile()),
+                              SlideRoute(page: const EditProfile()),
                             ).then((_) {
                               widget.onTitleChange('Profile');
                             });
