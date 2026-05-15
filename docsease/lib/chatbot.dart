@@ -205,7 +205,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromRGBO(208, 236, 252, 1),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           // --- SCROLLABLE CHAT AREA ---
@@ -228,9 +228,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           // --- FIXED BOTTOM INPUT BAR ---
           Container(
             padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(top: BorderSide(color: Colors.black12, width: 0.5)),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              border: Border(
+                top: BorderSide(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+                  width: 0.5,
+                ),
+              ),
             ),
             child: Row(
               children: [
@@ -246,7 +251,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                       onSubmitted: (_) => _sendMessage(),
                       decoration: InputDecoration(
                         hintText: "Ask about your transaction...",
-                        hintStyle: GoogleFonts.inter(color: Colors.black38, fontSize: 14),
+                        hintStyle: GoogleFonts.inter(color: Colors.grey, fontSize: 14),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                       ),
@@ -259,11 +264,15 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                   child: Container(
                     width: 50,
                     height: 50,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF3B73E0),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.secondary,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.send_outlined, color: Colors.white, size: 24),
+                    child: Icon(
+                      Icons.send_outlined,
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      size: 24,
+                    ),
                   ),
                 ),
               ],
@@ -294,8 +303,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           const SizedBox(width: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.only(
                 topRight: Radius.circular(20),
                 bottomLeft: Radius.circular(20),
@@ -319,7 +328,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundColor: const Color(0xFF1E65E2),
                 child: ClipOval(
                   child: Image.asset(
                     'assets/chatbot_icon.png',
@@ -340,7 +348,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                           color: const Color(0xFF39D236),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: const Color.fromRGBO(208, 236, 252, 1),
+                            color: Theme.of(context).scaffoldBackgroundColor,
                             width: 1.5,
                           ),
                         ),
@@ -354,7 +362,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                               color: Colors.grey,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: const Color.fromRGBO(208, 236, 252, 1),
+                                color: Theme.of(context).scaffoldBackgroundColor,
                                 width: 1.5,
                               ),
                             ),
@@ -366,7 +374,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                               width: 3,
                               height: 3,
                               decoration: BoxDecoration(
-                                color: const Color.fromRGBO(208, 236, 252, 1),
+                                color: Theme.of(context).scaffoldBackgroundColor,
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -381,11 +389,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   "DocsEase Bot",
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.black38,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -396,8 +404,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.fromLTRB(15, 15, 15, 7),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.only(
                             topRight: Radius.circular(20),
                             bottomLeft: Radius.circular(20),
@@ -413,14 +421,23 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                                 p: GoogleFonts.inter(
                                   fontSize: 14,
                                   height: 1.4,
-                                  color: Colors.black87,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withValues(alpha: 0.8),
                                 ),
                                 strong: GoogleFonts.inter(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withValues(alpha: 0.8),
                                 ),
-                                listBullet: GoogleFonts.inter(fontSize: 14, color: Colors.black87),
+                                listBullet: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withValues(alpha: 0.8),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -429,7 +446,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                               children: [
                                 Text(
                                   time,
-                                  style: const TextStyle(fontSize: 10, color: Colors.black26),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface.withValues(alpha: 0.25),
+                                  ),
                                 ),
                               ],
                             ),
@@ -444,14 +466,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: _speakingIndex == index
-                              ? const Color(0xFF1E65E2).withOpacity(0.15)
-                              : const Color.fromRGBO(190, 225, 252, 1),
+                              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
+                              : Theme.of(context).colorScheme.secondary.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
                           _speakingIndex == index ? Icons.stop : Icons.volume_up_outlined,
                           size: 20,
-                          color: const Color(0xFF1E65E2),
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
@@ -473,8 +495,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         children: [
           Container(
             padding: const EdgeInsets.fromLTRB(15, 15, 15, 7),
-            decoration: const BoxDecoration(
-              color: Color(0xFF3B73E0),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.secondary,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(20),
                 bottomLeft: Radius.circular(20),
@@ -486,10 +508,20 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               children: [
                 Text(
                   text,
-                  style: GoogleFonts.inter(color: Colors.white, fontSize: 14, height: 1.3),
+                  style: GoogleFonts.inter(
+                    color: Theme.of(context).colorScheme.onPrimary,
+                    fontSize: 14,
+                    height: 1.3,
+                  ),
                 ),
                 const SizedBox(height: 4),
-                Text(time, style: const TextStyle(fontSize: 10, color: Colors.white60)),
+                Text(
+                  time,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.5),
+                  ),
+                ),
               ],
             ),
           ),
@@ -554,7 +586,10 @@ class _TypingDotsState extends State<_TypingDots> with TickerProviderStateMixin 
               margin: const EdgeInsets.symmetric(horizontal: 3),
               width: 8,
               height: 8,
-              decoration: const BoxDecoration(color: Color(0xFF1E65E2), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondary,
+                shape: BoxShape.circle,
+              ),
             ),
           ),
         );

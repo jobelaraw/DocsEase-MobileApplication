@@ -26,7 +26,7 @@ class _ProfileState extends State<Profile> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromRGBO(230, 246, 255, 1.0),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           Column(
@@ -35,7 +35,7 @@ class _ProfileState extends State<Profile> {
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 30),
                 width: double.infinity,
-                color: const Color.fromRGBO(32, 87, 206, 1.0),
+                color: Theme.of(context).colorScheme.primary,
                 child: StreamBuilder<DocumentSnapshot>(
                   stream: FirebaseAuth.instance.currentUser != null
                       ? FirebaseFirestore.instance
@@ -62,7 +62,7 @@ class _ProfileState extends State<Profile> {
                           children: [
                             CircleAvatar(
                               radius: 50,
-                              backgroundColor: Colors.white,
+                              backgroundColor: Theme.of(context).colorScheme.surface,
                               child: ClipOval(
                                 child: hasDefaultProfile
                                     ? Image.asset(
@@ -95,13 +95,13 @@ class _ProfileState extends State<Profile> {
                                 },
                                 child: Container(
                                   padding: const EdgeInsets.all(6),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.surface,
                                     shape: BoxShape.circle,
                                     // Optional: Add a small shadow so it's easier to see the button
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black12,
+                                        color: Colors.black.withValues(alpha: 0.1),
                                         blurRadius: 4,
                                         offset: Offset(0, 2),
                                       ),
@@ -135,7 +135,7 @@ class _ProfileState extends State<Profile> {
                             style: GoogleFonts.inter(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onPrimary,
                             ),
                           ),
                         ),
@@ -144,7 +144,7 @@ class _ProfileState extends State<Profile> {
                           style: GoogleFonts.inter(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white70,
+                            color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.6),
                           ),
                         ),
                       ],
@@ -162,18 +162,18 @@ class _ProfileState extends State<Profile> {
                 Container(
                   height: 50,
                   width: double.infinity,
-                  color: const Color.fromRGBO(32, 87, 206, 1.0),
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 Container(
                   margin: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(25),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 15,
                         offset: const Offset(0, 8),
                       ),
@@ -188,7 +188,7 @@ class _ProfileState extends State<Profile> {
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w800,
                           fontSize: 16,
-                          color: Colors.black87,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -291,7 +291,7 @@ class _ProfileState extends State<Profile> {
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
-                          color: Colors.black87,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                         ),
                       ),
                       Text(
@@ -309,14 +309,18 @@ class _ProfileState extends State<Profile> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Icon(Icons.chevron_right, color: Colors.black87, size: 28),
+                    Icon(
+                      Icons.chevron_right,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                      size: 28,
+                    ),
                     if (showProgress)
                       Text(
                         "${(progress * 100).toInt()}%",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black54,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
                       ),
                   ],

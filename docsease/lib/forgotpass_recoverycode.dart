@@ -378,6 +378,7 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                             SlideRoute(
                                               page: ForgotPassChangePassScreen(
                                                 targetEmail: widget.targetEmail,
+                                                recoveryCode: enteredCode,
                                               ),
                                             ),
                                           );

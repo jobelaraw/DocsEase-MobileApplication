@@ -120,8 +120,6 @@ class _SideBarState extends State<SideBar> {
 
   @override
   Widget build(BuildContext context) {
-    bool hasDefaultProfile = currentProfile == 'assets/default_profile.png';
-
     return WillPopScope(
       onWillPop: () async {
         // If we are on the Services tab...
@@ -165,7 +163,7 @@ class _SideBarState extends State<SideBar> {
               ? Padding(
                   padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
                   child: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onPrimary),
                     onPressed: () {
                       if (selectedIndex == 0) {
                         _servicesNavKey.currentState?.pop();
@@ -188,7 +186,6 @@ class _SideBarState extends State<SideBar> {
                       children: [
                         CircleAvatar(
                           radius: 20,
-                          backgroundColor: Colors.white.withOpacity(0.0),
                           child: ClipOval(
                             child: Image.asset('assets/chatbot_icon.png', fit: BoxFit.contain),
                           ),
@@ -204,7 +201,7 @@ class _SideBarState extends State<SideBar> {
                                     color: const Color(0xFF39D236),
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: const Color.fromRGBO(32, 87, 206, 1.0),
+                                      color: Theme.of(context).colorScheme.primary,
                                       width: 1.5,
                                     ),
                                   ),
@@ -218,7 +215,7 @@ class _SideBarState extends State<SideBar> {
                                         color: Colors.grey,
                                         shape: BoxShape.circle,
                                         border: Border.all(
-                                          color: const Color.fromRGBO(32, 87, 206, 1.0),
+                                          color: Theme.of(context).colorScheme.primary,
                                           width: 1.5,
                                         ),
                                       ),
@@ -230,7 +227,7 @@ class _SideBarState extends State<SideBar> {
                                         width: 4,
                                         height: 4,
                                         decoration: BoxDecoration(
-                                          color: const Color.fromRGBO(32, 87, 206, 1.0),
+                                          color: Theme.of(context).colorScheme.primary,
                                           shape: BoxShape.circle,
                                         ),
                                       ),
@@ -248,7 +245,7 @@ class _SideBarState extends State<SideBar> {
                         Text(
                           "DocsEase Bot",
                           style: GoogleFonts.inter(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onPrimary,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -257,7 +254,7 @@ class _SideBarState extends State<SideBar> {
                         Text(
                           isOnline ? "Online Assistant" : "Offline - Waiting for network...",
                           style: GoogleFonts.inter(
-                            color: Colors.white60,
+                            color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.6),
                             fontSize: 11,
                             fontWeight: FontWeight.normal,
                           ),
@@ -271,7 +268,7 @@ class _SideBarState extends State<SideBar> {
                   style: GoogleFonts.inter(
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onPrimary,
                   ),
                 ),
           actions: [
@@ -287,24 +284,24 @@ class _SideBarState extends State<SideBar> {
                     icon: ImageIcon(
                       AssetImage('assets/hamburger_icon.png'),
                       size: 20,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
                 );
               },
             ),
           ],
-          backgroundColor: Color.fromRGBO(32, 87, 206, 1.0),
+          backgroundColor: Theme.of(context).colorScheme.primary,
           surfaceTintColor: Colors.transparent,
           elevation: 1.0,
-          shadowColor: Colors.black.withOpacity(0.3),
+          shadowColor: Colors.black.withValues(alpha: 0.3),
           toolbarHeight: 70,
         ),
         endDrawer: Drawer(
           width: MediaQuery.of(context).size.width > 400
               ? 300
               : MediaQuery.of(context).size.width * 0.75,
-          backgroundColor: const Color.fromARGB(255, 208, 236, 252),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.only(
               topRight: Radius.circular(0.0),
@@ -329,7 +326,7 @@ class _SideBarState extends State<SideBar> {
                                     20,
                                     20,
                                   ),
-                            decoration: BoxDecoration(color: Color.fromRGBO(32, 87, 206, 1.0)),
+                            decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary),
                             child: StreamBuilder<DocumentSnapshot>(
                               stream: FirebaseAuth.instance.currentUser != null
                                   ? FirebaseFirestore.instance
@@ -357,7 +354,7 @@ class _SideBarState extends State<SideBar> {
                                   children: [
                                     CircleAvatar(
                                       radius: 40,
-                                      backgroundColor: Colors.white,
+                                      backgroundColor: Theme.of(context).colorScheme.surface,
                                       child: ClipOval(
                                         child: hasDefaultProfile
                                             ? Image.asset(
@@ -380,7 +377,7 @@ class _SideBarState extends State<SideBar> {
                                       style: GoogleFonts.inter(
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                                        color: Theme.of(context).colorScheme.onPrimary,
                                       ),
                                     ),
                                     Text(
@@ -388,7 +385,9 @@ class _SideBarState extends State<SideBar> {
                                       style: GoogleFonts.inter(
                                         fontSize: 11,
                                         fontWeight: FontWeight.normal,
-                                        color: Colors.white.withOpacity(0.7),
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onPrimary.withValues(alpha: 0.7),
                                       ),
                                     ),
                                   ],
@@ -542,10 +541,10 @@ class _SideBarState extends State<SideBar> {
                 top: MediaQuery.of(context).padding.top + 8,
                 left: 8,
                 child: IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.close,
                     size: 30,
-                    color: Colors.white70,
+                    color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7),
                     fontWeight: FontWeight.w100,
                   ),
                   onPressed: () {
@@ -584,19 +583,21 @@ class SideBarOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color currentColor = isSelected ? Color.fromRGBO(59, 115, 224, 1.0) : Colors.black;
+    final Color currentColor = isSelected
+        ? Color.fromRGBO(59, 115, 224, 1.0)
+        : Theme.of(context).colorScheme.onSurface;
 
     return Material(
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
-        side: BorderSide(color: Colors.grey.withOpacity(0.5)),
+        side: BorderSide(color: Colors.black.withValues(alpha: 0.2)),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(15),
         onTap: onTapAction,
         child: Container(
-          height: 45,
+          height: 50,
           padding: EdgeInsets.only(left: 15, right: 15),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,

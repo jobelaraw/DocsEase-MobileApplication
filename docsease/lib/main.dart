@@ -7,8 +7,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import 'firebase_options.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:docsease/settings_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized(); // This is required for Firebase and other plugins to work properly
@@ -19,13 +21,15 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  await Supabase.initialize(
-    url: 'https://qihfxsgdnapcipirbiep.supabase.co',
-    anonKey: 'sb_publishable_r56F0TY29AmhmbkCHqPGXQ_MPErMRnC',
-  );
+  await Hive.initFlutter();
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]).then((_) {
-    runApp(const MyApp());
+    runApp(
+      ChangeNotifierProvider(
+        create: (context) => SettingsProvider()..loadSettings(),
+        child: const MyApp(),
+      ),
+    );
   });
 }
 
@@ -36,29 +40,77 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'DocsEase',
-      debugShowCheckedModeBanner: false,
-      builder: (context, child) {
-        final mediaQueryData = MediaQuery.of(context);
+    // Consumer listens to the broadcast and rebuilds MaterialApp when settings change
+    return Consumer<SettingsProvider>(
+      builder: (context, settings, child) {
+        // Calculate font scale: 0.5 slider = 1.0 (normal size). 1.0 slider = 1.2 (large).
+        double scaleFactor = 0.8 + (settings.fontSize * 0.4);
 
-        double scaleFactor = 1.0;
+        return MaterialApp(
+          debugShowMaterialGrid: false,
 
-        if (mediaQueryData.size.width < 400) {
-          scaleFactor = mediaQueryData.size.width / 400;
-        }
+          // Global Dark Mode Control!
+          themeMode: settings.isDarkMode ? ThemeMode.dark : ThemeMode.light,
 
-        return MediaQuery(
-          data: mediaQueryData.copyWith(textScaler: TextScaler.linear(scaleFactor)),
-          child: GestureDetector(
-            onTap: () {
-              FocusManager.instance.primaryFocus?.unfocus();
-            },
-            child: child!,
+          // Your Custom Light Theme (DocsEase Blue & White)
+          theme: ThemeData(
+            brightness: Brightness.light,
+            scaffoldBackgroundColor: const Color.fromRGBO(
+              235,
+              243,
+              255,
+              1.0,
+            ), // Light blue app background
+            colorScheme: const ColorScheme.light(
+              primary: Color.fromRGBO(32, 87, 206, 1.0), // DocsEase Blue (Headers, Buttons)
+              secondary: Color.fromRGBO(59, 115, 224, 1.0), // Lighter Dark Blue (Highlight texts)
+              tertiary: Color.fromRGBO(208, 236, 252, 1), // Lighter Blue (Container)
+              surface: Colors.white, // Color of scaffol, cards and containers
+              onPrimary: Colors.white, // Text color on top of primary buttons
+              onSurface: Colors.black87, // Text color on top of cards/background
+            ),
           ),
+
+          // Your Custom Dark Theme (Deep Grays & Adjusted Blues)
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            scaffoldBackgroundColor: const Color(0xFF121212), // Deep dark gray app background
+            colorScheme: const ColorScheme.dark(
+              primary: Color.fromRGBO(
+                43,
+                46,
+                59,
+                1,
+              ), // Slightly brighter blue for contrast in dark mode
+              secondary: Color.fromRGBO(50, 50, 50, 1),
+              tertiary: Color.fromARGB(255, 79, 79, 79),
+              surface: Color.fromARGB(
+                255,
+                67,
+                67,
+                67,
+              ), // Slightly lighter gray for cards/containers
+              onPrimary: Colors.white, // Text color on top of primary buttons
+              onSurface: Colors.white70, // Text color on top of dark cards
+            ),
+          ),
+
+          title: 'DocsEase',
+          debugShowCheckedModeBanner: false,
+          builder: (context, child) {
+            return MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scaleFactor)),
+              child: GestureDetector(
+                onTap: () {
+                  FocusManager.instance.primaryFocus?.unfocus();
+                },
+                child: child!,
+              ),
+            );
+          },
+          home: const AuthWrapper(),
         );
       },
-      home: const AuthWrapper(),
     );
   }
 }

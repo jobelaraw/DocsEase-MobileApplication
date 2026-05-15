@@ -15,7 +15,7 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
   late TabController _tabController;
   late ServiceDetail detail;
 
-  final Color primaryBlue = const Color(0xFF2057CE);
+  Color get primaryBlue => Theme.of(context).colorScheme.primary;
   final Color lightBlueBg = const Color(0xFFE9F1F7);
   final Color accentBlue = const Color(0xFF03A9F4);
 
@@ -37,7 +37,7 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: Column(
         children: [
           if (detail.tabs.length > 1) _buildTabSwitcher(),
@@ -74,11 +74,11 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
         indicatorPadding: const EdgeInsets.all(4),
         labelPadding: const EdgeInsets.symmetric(horizontal: 8),
         indicator: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -129,7 +129,13 @@ class _ContentList extends StatelessWidget {
         Text(detail.title, style: GoogleFonts.inter(fontSize: 25, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
 
-        Text(detail.description, style: GoogleFonts.inter(fontSize: 12, color: Colors.black54)),
+        Text(
+          detail.description,
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+          ),
+        ),
         const SizedBox(height: 25),
 
         // Requirements Checklist Card
@@ -199,11 +205,11 @@ class _RequirementsCardState extends State<_RequirementsCard> {
         const SizedBox(height: 20),
 
         Text(
-          "For ${_titleLabel}",
+          "For the ${_titleLabel}",
           style: GoogleFonts.inter(
             fontSize: 15,
             fontWeight: FontWeight.w700,
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
           ),
         ),
         const SizedBox(height: 12),
@@ -216,12 +222,14 @@ class _RequirementsCardState extends State<_RequirementsCard> {
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.10),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -253,13 +261,16 @@ class _RequirementsCardState extends State<_RequirementsCard> {
                         RichText(
                           text: TextSpan(
                             text: "Secure at:  ",
-                            style: GoogleFonts.inter(fontSize: 11, color: Colors.black54),
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                            ),
                             children: [
                               TextSpan(
                                 text: item.secureAt,
                                 style: GoogleFonts.inter(
                                   fontSize: 11,
-                                  color: const Color(0xFF2057CE),
+                                  color: Theme.of(context).colorScheme.secondary,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -332,13 +343,17 @@ class _StepItem extends StatelessWidget {
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
-                      color: Colors.black87,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     step.instruction,
-                    style: GoogleFonts.inter(fontSize: 12, color: Colors.black54, height: 1.4),
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                      height: 1.4,
+                    ),
                   ),
                 ],
               ),
@@ -350,12 +365,12 @@ class _StepItem extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color.fromARGB(255, 255, 255, 255)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.10),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -413,8 +428,11 @@ class _StepItem extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: () {},
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.black,
-                    side: const BorderSide(color: Colors.black87, width: 1.2),
+                    foregroundColor: Theme.of(context).colorScheme.onSurface,
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                      width: 1.2,
+                    ),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                   ),
