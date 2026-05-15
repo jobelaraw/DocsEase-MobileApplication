@@ -1,15 +1,13 @@
-import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:docsease/custom_button.dart';
 import 'package:docsease/custom_textfield.dart';
 import 'package:docsease/firebase_services.dart';
-import 'package:docsease/supabase_services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'dart:async';
 
 class EditProfile extends StatefulWidget {
   const EditProfile({super.key});
@@ -20,7 +18,6 @@ class EditProfile extends StatefulWidget {
 
 class _EditProfileState extends State<EditProfile> {
   final FirebaseServices _editService = FirebaseServices();
-  final SupabaseServices _uploadService = SupabaseServices();
 
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
@@ -366,9 +363,7 @@ class _EditProfileState extends State<EditProfile> {
                                     _confirmPasswordController.text == _newPasswordController.text;
 
                             if (!isPasswordValid || !isConfirmValid) {
-                              setState(() {
-                                invalidInput = true;
-                              });
+                              setState(() => invalidInput = true);
                               return;
                             }
                           }
@@ -381,14 +376,14 @@ class _EditProfileState extends State<EditProfile> {
 
                             String? newImageUrl;
                             if (_selectedImage != null) {
-                              newImageUrl = await _uploadService.uploadImageToSupabase(
+                              newImageUrl = await _editService.uploadProfileImage(
                                 _selectedImage!,
                                 currentUser.uid,
                               );
 
                               if (currentProfile != 'assets/default_profile.png' &&
                                   currentProfile.isNotEmpty) {
-                                await _uploadService.deleteOldImage(currentProfile);
+                                await _editService.deleteOldProfileImage(currentProfile);
                               }
                             }
 

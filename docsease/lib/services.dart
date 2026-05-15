@@ -19,10 +19,7 @@ class ServiceData {
   });
 }
 
-List<ServiceItem> buildServiceItems(
-  List<ServiceData> dataList,
-  Function(String) onTitleChange,
-) {
+List<ServiceItem> buildServiceItems(List<ServiceData> dataList, Function(String) onTitleChange) {
   return dataList.map((data) {
     return ServiceItem(
       data: data,
@@ -72,10 +69,7 @@ class _ServicesContent extends State<Services> {
     super.dispose();
   }
 
-  Widget buildFilteredCategory({
-    required String title,
-    required List<ServiceData> dataList,
-  }) {
+  Widget buildFilteredCategory({required String title, required List<ServiceData> dataList}) {
     final items = buildServiceItems(dataList, widget.onTitleChange);
 
     final filtered = items.where((item) {
@@ -105,7 +99,7 @@ class _ServicesContent extends State<Services> {
     return GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: Scaffold(
-        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         body: Stack(
           children: [
             CustomScrollView(
@@ -283,7 +277,7 @@ class ServiceCategory extends StatelessWidget {
                 style: GoogleFonts.inter(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
                 softWrap: true,
               ),
@@ -318,7 +312,7 @@ class ServiceCategory extends StatelessWidget {
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color: const Color.fromRGBO(32, 87, 206, 1.0),
+                  color: Theme.of(context).colorScheme.secondary,
                 ),
               ),
             ),
@@ -331,7 +325,7 @@ class ServiceCategory extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           decoration: BoxDecoration(
-            color: const Color.fromRGBO(208, 236, 252, 1),
+            color: Theme.of(context).colorScheme.tertiary,
             borderRadius: BorderRadius.circular(22),
           ),
           child: Column(
@@ -339,8 +333,7 @@ class ServiceCategory extends StatelessWidget {
               return Column(
                 children: [
                   displayedItems[index],
-                  if (index != displayedItems.length - 1)
-                    const SizedBox(height: 12),
+                  if (index != displayedItems.length - 1) const SizedBox(height: 12),
                 ],
               );
             }),
@@ -374,7 +367,7 @@ class ServiceItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(20),
       elevation: 4,
       child: InkWell(
@@ -395,7 +388,9 @@ class ServiceItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+            ),
           ),
           child: Row(
             children: [
@@ -415,14 +410,14 @@ class ServiceItem extends StatelessWidget {
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),
               ImageIcon(
                 AssetImage('assets/forward_icon.png'),
                 size: 18,
-                color: const Color.fromARGB(255, 0, 0, 0),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ],
           ),
@@ -460,14 +455,14 @@ class SeeAllScreen extends StatelessWidget {
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           decoration: BoxDecoration(
-            color: const Color.fromRGBO(208, 236, 252, 1),
+            color: Theme.of(context).colorScheme.tertiary,
             borderRadius: BorderRadius.circular(22),
           ),
           child: Column(
@@ -475,8 +470,7 @@ class SeeAllScreen extends StatelessWidget {
               return Column(
                 children: [
                   dynamicItems[index],
-                  if (index != dynamicItems.length - 1)
-                    const SizedBox(height: 10),
+                  if (index != dynamicItems.length - 1) const SizedBox(height: 10),
                 ],
               );
             }),

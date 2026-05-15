@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:docsease/app_modals.dart';
 import 'package:docsease/authentication.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:docsease/custom_button.dart';
 import 'package:docsease/custom_textfield.dart';
 import 'package:docsease/navigator_transition.dart';
@@ -9,8 +10,13 @@ import 'package:google_fonts/google_fonts.dart';
 
 class ForgotPassChangePassScreen extends StatefulWidget {
   final String targetEmail;
+  final String recoveryCode;
 
-  const ForgotPassChangePassScreen({super.key, required this.targetEmail});
+  const ForgotPassChangePassScreen({
+    super.key,
+    required this.targetEmail,
+    required this.recoveryCode,
+  });
 
   @override
   State<ForgotPassChangePassScreen> createState() => _ForgotPassChangePassScreenState();
@@ -231,7 +237,7 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                     buttonText: 'Save Changes',
                                     isLoading: isLoading,
                                     isButtonEnabled:
-                                    _passwordController.text.isNotEmpty ||
+                                        _passwordController.text.isNotEmpty &&
                                         _confirmPasswordController.text.isNotEmpty,
                                     onTapAction: () async {
                                       bool isPasswordValid =
@@ -249,13 +255,17 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                         context,
                                         onPrimary: () async {
                                           Navigator.of(context).pop();
+                                          
                                           try {
                                             setState(() => isLoading = true);
-
-                                            await FirebaseFirestore.instance
-                                                .collection('recovery_codes')
-                                                .doc(widget.targetEmail)
-                                                .delete();
+ 
+                                            HttpsCallable callable = FirebaseFunctions.instance
+                                                .httpsCallable('resetUserPassword');
+                                            await callable.call({
+                                              'email': widget.targetEmail,
+                                              'otp': widget.recoveryCode,
+                                              'newPassword': _passwordController.text.trim(),
+                                            });
 
                                             if (mounted) {
                                               setState(() => isLoading = false);

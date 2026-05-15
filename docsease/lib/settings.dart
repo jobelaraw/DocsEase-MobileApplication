@@ -1,5 +1,9 @@
+import 'package:docsease/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -14,6 +18,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double _fontSize = 0.5;
 
   final List<String> _languages = ['English', 'Filipino'];
+
+  late Box _settingsBox;
+  bool _isLoadingBox = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserSettings();
+  }
+
+  Future<void> _loadUserSettings() async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+
+    // If logged in, use their UID. If guest, use a generic 'guest' box.
+    String boxName = currentUser != null ? 'settings_${currentUser.uid}' : 'settings_guest';
+
+    _settingsBox = await Hive.openBox(boxName);
+
+    if (mounted) {
+      setState(() {
+        // Fetch saved data, or provide default values if it's their first time
+        _isDarkMode = _settingsBox.get('isDarkMode', defaultValue: false);
+        _selectedLanguage = _settingsBox.get('language', defaultValue: 'English');
+        _fontSize = _settingsBox.get('fontSize', defaultValue: 0.5);
+
+        _isLoadingBox = false; // Data is loaded, reveal the screen!
+      });
+    }
+    print(
+      '======================\n'
+      'Dark Mode: ${_isDarkMode}\n'
+      'Language: ${_selectedLanguage}\n'
+      'Font Size: ${_fontSize}\n'
+      '=======================',
+    );
+  }
+
+  void _saveChanges() {
+    // Save the new values directly into the user's Hive box
+    Provider.of<SettingsProvider>(
+      context,
+      listen: false,
+    ).saveSettings(_isDarkMode, _selectedLanguage, _fontSize);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Settings saved securely!',
+          style: GoogleFonts.inter(fontSize: 14, color: Colors.white),
+        ),
+        backgroundColor: const Color.fromRGBO(32, 87, 206, 1.0),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    print(
+      '======================\n'
+      'Dark Mode: ${_isDarkMode}\n'
+      'Language: ${_selectedLanguage}\n'
+      'Font Size: ${_fontSize}\n'
+      '=======================',
+    );
+  }
 
   void _showLanguagePicker() {
     showModalBottomSheet(
@@ -49,10 +119,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 (lang) => ListTile(
                   title: Text(lang, style: GoogleFonts.inter(fontSize: 15)),
                   trailing: _selectedLanguage == lang
-                      ? const Icon(
-                          Icons.check,
-                          color: Color.fromRGBO(32, 87, 206, 1.0),
-                        )
+                      ? const Icon(Icons.check, color: Color.fromRGBO(32, 87, 206, 1.0))
                       : null,
                   onTap: () {
                     setState(() => _selectedLanguage = lang);
@@ -68,261 +135,227 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _saveChanges() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Settings saved!',
-          style: GoogleFonts.inter(fontSize: 14, color: Colors.white),
-        ),
-        backgroundColor: const Color.fromRGBO(32, 87, 206, 1.0),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
+  // void _saveChanges() {
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     SnackBar(
+  //       content: Text(
+  //         'Settings saved!',
+  //         style: GoogleFonts.inter(fontSize: 14, color: Colors.white),
+  //       ),
+  //       backgroundColor: const Color.fromRGBO(32, 87, 206, 1.0),
+  //       behavior: SnackBarBehavior.floating,
+  //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+  //       margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+  //       duration: const Duration(seconds: 2),
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromRGBO(235, 243, 255, 1.0),
 
-      body: Column(
-        children: [
-          // ── Body ──
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 100),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  //APPEARANCE Section
-                  _sectionLabel('APPEARANCE'),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.grey.withOpacity(0.15)),
-                    ),
+      body: _isLoadingBox
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                // ── Body ──
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 100),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Dark Mode row
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 4,
+                        //APPEARANCE Section
+                        _sectionLabel('APPEARANCE'),
+                        const SizedBox(height: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.grey.withOpacity(0.15)),
                           ),
-                          child: Row(
+                          child: Column(
                             children: [
-                              const Icon(
-                                Icons.dark_mode_outlined,
-                                size: 22,
-                                color: Colors.black87,
+                              // Dark Mode row
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.dark_mode_outlined,
+                                      size: 22,
+                                      color: Colors.black87,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'Dark Mode',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    ),
+                                    Switch(
+                                      value: _isDarkMode,
+                                      onChanged: (val) => setState(() => _isDarkMode = val),
+                                      activeColor: const Color.fromRGBO(32, 87, 206, 1.0),
+                                      activeTrackColor: const Color.fromRGBO(32, 87, 206, 0.3),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'Dark Mode',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.black,
+
+                              Divider(
+                                height: 1,
+                                thickness: 1,
+                                color: Colors.grey.withOpacity(0.12),
+                                indent: 16,
+                                endIndent: 16,
+                              ),
+
+                              // Language
+                              InkWell(
+                                onTap: _showLanguagePicker,
+                                borderRadius: const BorderRadius.vertical(
+                                  bottom: Radius.circular(14),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.translate_outlined,
+                                        size: 22,
+                                        color: Colors.black87,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'Language',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        '$_selectedLanguage  ›',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          color: Colors.grey.shade500,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                              ),
-                              Switch(
-                                value: _isDarkMode,
-                                onChanged: (val) =>
-                                    setState(() => _isDarkMode = val),
-                                activeColor: const Color.fromRGBO(
-                                  32,
-                                  87,
-                                  206,
-                                  1.0,
-                                ),
-                                activeTrackColor: const Color.fromRGBO(
-                                  32,
-                                  87,
-                                  206,
-                                  0.3,
                                 ),
                               ),
                             ],
                           ),
                         ),
 
-                        Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: Colors.grey.withOpacity(0.12),
-                          indent: 16,
-                          endIndent: 16,
-                        ),
+                        const SizedBox(height: 24),
 
-                        // Language
-                        InkWell(
-                          onTap: _showLanguagePicker,
-                          borderRadius: const BorderRadius.vertical(
-                            bottom: Radius.circular(14),
+                        //ACCESSIBILITY Section
+                        _sectionLabel('ACCESSIBILITY'),
+                        const SizedBox(height: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.grey.withOpacity(0.15)),
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 16,
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.translate_outlined,
-                                  size: 22,
-                                  color: Colors.black87,
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Font Size',
+                                style: GoogleFonts.inter(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black,
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    'Language',
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  // Small A
+                                  Text(
+                                    'A',
                                     style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.black,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black54,
                                     ),
                                   ),
-                                ),
-                                Text(
-                                  '$_selectedLanguage  ›',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    color: Colors.grey.shade500,
+                                  Expanded(
+                                    child: SliderTheme(
+                                      data: SliderTheme.of(context).copyWith(
+                                        activeTrackColor: const Color.fromRGBO(32, 87, 206, 1.0),
+                                        inactiveTrackColor: Colors.grey.shade300,
+                                        thumbColor: const Color.fromRGBO(32, 87, 206, 1.0),
+                                        overlayColor: const Color.fromRGBO(32, 87, 206, 0.15),
+                                        trackHeight: 3.0,
+                                        thumbShape: const RoundSliderThumbShape(
+                                          enabledThumbRadius: 10,
+                                        ),
+                                      ),
+                                      child: Slider(
+                                        value: _fontSize,
+                                        min: 0.0,
+                                        max: 1.0,
+                                        onChanged: (val) => setState(() => _fontSize = val),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  // Large A
+                                  Text(
+                                    'A',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        //Save Changes Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: ElevatedButton(
+                            onPressed: _saveChanges,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color.fromRGBO(32, 87, 206, 1.0),
+                              foregroundColor: Colors.white,
+                              elevation: 6,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Text(
+                              'Save Changes',
+                              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 24),
-
-                  //ACCESSIBILITY Section
-                  _sectionLabel('ACCESSIBILITY'),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.grey.withOpacity(0.15)),
-                    ),
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Font Size',
-                          style: GoogleFonts.inter(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            // Small A
-                            Text(
-                              'A',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black54,
-                              ),
-                            ),
-                            Expanded(
-                              child: SliderTheme(
-                                data: SliderTheme.of(context).copyWith(
-                                  activeTrackColor: const Color.fromRGBO(
-                                    32,
-                                    87,
-                                    206,
-                                    1.0,
-                                  ),
-                                  inactiveTrackColor: Colors.grey.shade300,
-                                  thumbColor: const Color.fromRGBO(
-                                    32,
-                                    87,
-                                    206,
-                                    1.0,
-                                  ),
-                                  overlayColor: const Color.fromRGBO(
-                                    32,
-                                    87,
-                                    206,
-                                    0.15,
-                                  ),
-                                  trackHeight: 3.0,
-                                  thumbShape: const RoundSliderThumbShape(
-                                    enabledThumbRadius: 10,
-                                  ),
-                                ),
-                                child: Slider(
-                                  value: _fontSize,
-                                  min: 0.0,
-                                  max: 1.0,
-                                  onChanged: (val) =>
-                                      setState(() => _fontSize = val),
-                                ),
-                              ),
-                            ),
-                            // Large A
-                            Text(
-                              'A',
-                              style: GoogleFonts.inter(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  //Save Changes Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: ElevatedButton(
-                      onPressed: _saveChanges,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromRGBO(32, 87, 206, 1.0),
-                        foregroundColor: Colors.white,
-                        elevation: 6,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: Text(
-                        'Save Changes',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 
