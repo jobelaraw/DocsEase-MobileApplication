@@ -1,9 +1,13 @@
+import 'dart:convert';
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:docsease/custom_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:docsease/forgotpass_changepass.dart';
+import 'package:docsease/navigator_transition.dart';
+import 'package:http/http.dart' as http;
 
 class ForgotPasswordRecoveryScreen extends StatefulWidget {
   final String targetEmail;
@@ -15,15 +19,13 @@ class ForgotPasswordRecoveryScreen extends StatefulWidget {
 }
 
 class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScreen> {
-  final List<TextEditingController> _controllers = List.generate(
-    6,
-    (index) => TextEditingController(),
-  );
+  final List<TextEditingController> _controllers = List.generate(6, (index) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
 
   bool _isComplete = false;
   bool _hasError = false;
   bool isLoading = false;
+  bool _isResending = false;
 
   @override
   void initState() {
@@ -33,6 +35,40 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
       _focusNodes[i].addListener(() {
         setState(() {});
       });
+    }
+  }
+
+  String _generateRecoveryCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    Random rnd = Random();
+    return String.fromCharCodes(
+      Iterable.generate(6, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))),
+    );
+  }
+
+  Future<void> _resendCode() async {
+    setState(() => _isResending = true);
+    try {
+      String newCode = _generateRecoveryCode();
+      await FirebaseFirestore.instance
+          .collection('recovery_codes')
+          .doc(widget.targetEmail)
+          .set({'code': newCode, 'createdAt': FieldValue.serverTimestamp()});
+      final url = Uri.parse('https://api.emailjs.com/api/v1.0/email/send');
+      await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: '{ "service_id": "service_e6xjj5b", "template_id": "template_1u1on8f", "user_id": "MhxD0XeexOnz61prP", "accessToken": "ZwFXbNZRrkVkNGK4YFHWm", "template_params": { "to_email": "${widget.targetEmail}", "recovery_code": "$newCode" } }',
+      );
+      if (mounted) {
+        for (var c in _controllers) c.clear();
+        setState(() { _hasError = false; _isComplete = false; });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('A new code has been sent to your email.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isResending = false);
     }
   }
 
@@ -82,8 +118,8 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
         onKeyEvent: (FocusNode node, KeyEvent event) {
           if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.backspace) {
             if (_controllers[index].text.isEmpty && index > 0) {
-              _controllers[index - 1].clear(); // Delete the letter in the previous box
-              _focusNodes[index - 1].requestFocus(); // Jump focus to the previous box
+              _controllers[index - 1].clear();
+              _focusNodes[index - 1].requestFocus();
               return KeyEventResult.handled;
             }
           }
@@ -107,10 +143,7 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
           ),
           decoration: const InputDecoration(counterText: "", border: InputBorder.none),
           onChanged: (value) {
-            if (_hasError) {
-              setState(() => _hasError = false);
-            }
-
+            if (_hasError) setState(() => _hasError = false);
             if (value.isNotEmpty && index < 5) {
               _focusNodes[index + 1].requestFocus();
             }
@@ -138,7 +171,7 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                           height: 150,
                           width: 150,
                           decoration: BoxDecoration(
-                            border: Border.all(color: Color.fromRGBO(10, 49, 104, 1), width: 1.0),
+                            border: Border.all(color: const Color.fromRGBO(10, 49, 104, 1), width: 1.0),
                             color: Colors.white,
                             shape: BoxShape.circle,
                           ),
@@ -223,15 +256,36 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                             child: SingleChildScrollView(
                               padding: const EdgeInsets.fromLTRB(26, 0, 26, 20),
                               child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const SizedBox(height: 60),
-                                  Text(
-                                    'Enter recovery code sent to your email.',
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                      color: Colors.black87,
+                                  const SizedBox(height: 12),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    child: Center(
+                                      child: Text(
+                                        'Enter OTP to Verify Your Identity',
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 20,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    child: Center(
+                                      child: Text(
+                                        'Please type the 6-digit verification code sent to your registered email address.',
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w400,
+                                          fontSize: 13,
+                                          color: Colors.black54,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 50),
@@ -241,14 +295,12 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                   ),
                                   AnimatedSwitcher(
                                     duration: const Duration(milliseconds: 500),
-                                    switchInCurve:
-                                        Curves.easeOutBack, // Gives it that satisfying bounce!
+                                    switchInCurve: Curves.easeOutBack,
                                     switchOutCurve: Curves.easeIn,
                                     transitionBuilder: (Widget child, Animation<double> animation) {
                                       return SizeTransition(
                                         sizeFactor: animation,
-                                        axisAlignment:
-                                            -1.0, // Anchors the animation to the bottom of the text field
+                                        axisAlignment: -1.0,
                                         child: SlideTransition(
                                           position: Tween<Offset>(
                                             begin: const Offset(0, 0.5),
@@ -260,7 +312,7 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                     },
                                     child: _hasError
                                         ? Padding(
-                                            key: ValueKey('error'),
+                                            key: const ValueKey('error'),
                                             padding: const EdgeInsets.only(top: 5),
                                             child: Center(
                                               child: Text(
@@ -274,21 +326,21 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                             ),
                                           )
                                         : _isComplete
-                                        ? Padding(
-                                            key: ValueKey('complete'),
-                                            padding: const EdgeInsets.only(top: 5),
-                                            child: Center(
-                                              child: Text(
-                                                'Valid recovery code.',
-                                                style: GoogleFonts.inter(
-                                                  color: Colors.green,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500,
+                                            ? Padding(
+                                                key: const ValueKey('complete'),
+                                                padding: const EdgeInsets.only(top: 5),
+                                                child: Center(
+                                                  child: Text(
+                                                    'Valid recovery code.',
+                                                    style: GoogleFonts.inter(
+                                                      color: Colors.green,
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
                                                 ),
-                                              ),
-                                            ),
-                                          )
-                                        : const SizedBox.shrink(key: ValueKey('empty')),
+                                              )
+                                            : const SizedBox.shrink(key: ValueKey('empty')),
                                   ),
                                   const SizedBox(height: 40),
                                   CustomButton(
@@ -299,9 +351,7 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                       String enteredCode = _controllers.map((c) => c.text).join();
 
                                       if (!_isComplete) {
-                                        setState(() {
-                                          _isComplete = false;
-                                        });
+                                        setState(() => _isComplete = false);
                                         return;
                                       }
 
@@ -325,8 +375,8 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                         if (mounted) {
                                           Navigator.push(
                                             context,
-                                            MaterialPageRoute(
-                                              builder: (context) => ForgotPassChangePassScreen(
+                                            SlideRoute(
+                                              page: ForgotPassChangePassScreen(
                                                 targetEmail: widget.targetEmail,
                                                 recoveryCode: enteredCode,
                                               ),
@@ -343,6 +393,39 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                         }
                                       }
                                     },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Center(
+                                    child: GestureDetector(
+                                      onTap: _isResending ? null : _resendCode,
+                                      child: _isResending
+                                          ? const SizedBox(
+                                              height: 16,
+                                              width: 16,
+                                              child: CircularProgressIndicator(strokeWidth: 2),
+                                            )
+                                          : RichText(
+                                              text: TextSpan(
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 12,
+                                                  color: Colors.black54,
+                                                ),
+                                                children: [
+                                                  const TextSpan(text: "Didn't receive a code? "),
+                                                  TextSpan(
+                                                    text: 'Resend code',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: const Color(0xFF2B6FD4),
+                                                      decoration: TextDecoration.underline,
+                                                      decorationColor: const Color(0xFF2B6FD4),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                    ),
                                   ),
                                   const SizedBox(height: 30),
                                 ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'forgotpass_email.dart';
+import 'navigator_transition.dart';
 
 class CustomTextField extends StatefulWidget {
   final String inputLabel;
@@ -104,9 +105,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (context) => const ForgotPasswordEmailScreen(),
-                          ),
+                          SlideRoute(page: const ForgotPasswordEmailScreen()),
                         );
                       }, // Change later on
                       child: Text(

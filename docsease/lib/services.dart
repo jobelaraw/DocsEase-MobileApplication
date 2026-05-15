@@ -3,6 +3,7 @@ import 'package:docsease/chatbot.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'service_list.dart';
 import 'information.dart';
+import 'navigator_transition.dart';
 
 class ServiceData {
   final String label;
@@ -96,216 +97,59 @@ class _ServicesContent extends State<Services> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        FocusManager.instance.primaryFocus?.unfocus();
-      },
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,
         body: Stack(
           children: [
-            ListView(
-              padding: const EdgeInsets.all(20),
-              children: [
-                // Search Bar
-                GestureDetector(
-                  onTap: () {
-                    _searchFocusNode.requestFocus();
-                  },
-                  child: Container(
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: _searchFocusNode.hasFocus
-                            ? Theme.of(context).colorScheme.secondary
-                            : Colors.black.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const SizedBox(width: 18),
-                        Icon(
-                          Icons.search,
-                          color: Theme.of(context).colorScheme.onSurface,
-                          size: 25,
-                        ),
-                        const SizedBox(width: 20),
-
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            focusNode: _searchFocusNode,
-
-                            autofocus: false,
-                            onChanged: (value) {
-                              setState(() {
-                                searchQuery = value.toLowerCase();
-                              });
-                            },
-
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'Search transaction...',
-                              hintStyle: GoogleFonts.inter(fontSize: 15, color: Colors.grey),
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 18),
-                      ],
-                    ),
+            CustomScrollView(
+              slivers: [
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _SearchBarDelegate(
+                    focusNode: _searchFocusNode,
+                    controller: _searchController,
+                    hasFocus: _searchFocusNode.hasFocus,
+                    onChanged: (value) => setState(() => searchQuery = value.toLowerCase()),
                   ),
                 ),
-                const SizedBox(height: 35),
-
-                buildFilteredCategory(
-                  title: 'Business Permit and Licensing',
-                  dataList: ServiceLists.officeBusinessLicensing,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the Building Official',
-                  dataList: ServiceLists.officeBuildingOfficial,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Engineer',
-                  dataList: ServiceLists.officeCityEngineer,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Assessor',
-                  dataList: ServiceLists.officeCityAssessor,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Civil Registrar',
-                  dataList: ServiceLists.officeCivilRegistry,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Treasurer',
-                  dataList: ServiceLists.officeCityTreasurer,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Mayor',
-                  dataList: ServiceLists.officeCityMayor,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Vice Mayor/ SP & Secretary to the Sanggunian',
-                  dataList: ServiceLists.officeCityVmSpSecretarySangunian,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Information and Communications Technology Office',
-                  dataList: ServiceLists.officeICT,
-                ),
-
-                buildFilteredCategory(
-                  title: 'City Human Resources and Development Office',
-                  dataList: ServiceLists.officeCityHRDevelopment,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Public Employment Services Office',
-                  dataList: ServiceLists.officePublicEmploymentServices,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Environmental and Natural Resources Officer',
-                  dataList: ServiceLists.officeCENR,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Population Officer',
-                  dataList: ServiceLists.officeCityPopulationOfficer,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Cooperatives Officer',
-                  dataList: ServiceLists.officeCityCooperativesOfficer,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Information Officer',
-                  dataList: ServiceLists.officeCityInformationOfficer,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Social Welfare and Development Officer',
-                  dataList: ServiceLists.officeCSWD,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Accountant',
-                  dataList: ServiceLists.officeCityAccount,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Legal Officer',
-                  dataList: ServiceLists.officeCityLegalOfficer,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Agriculturist',
-                  dataList: ServiceLists.officeCityAgriculturist,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Planning and Development Coordinator',
-                  dataList: ServiceLists.officeCityPlanningDevCoor,
-                ),
-
-                buildFilteredCategory(
-                  title: 'City Human Settlements and Livelihood Office',
-                  dataList: ServiceLists.officecCityHumanSettlementsLivelihood,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Budget Officer',
-                  dataList: ServiceLists.officeCityBudgetOfficer,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City General Services Officer',
-                  dataList: ServiceLists.officeCityGeneralServicesOfficer,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Office of the City Health Officer',
-                  dataList: ServiceLists.officeCityHealthOfficer,
-                ),
-
-                buildFilteredCategory(
-                  title: 'City Health Office II',
-                  dataList: ServiceLists.officeCityHealthOfficerII,
-                ),
-
-                buildFilteredCategory(
-                  title: 'City Health Office II- Biñan Birthing Home',
-                  dataList: ServiceLists.officeCityHealthOfficerIIBirthingHome,
-                ),
-
-                buildFilteredCategory(
-                  title: 'City Disaster Risk Reduction and Management Office',
-                  dataList: ServiceLists.officeCDRRM,
-                ),
-
-                buildFilteredCategory(
-                  title: 'Public Order and Safety Office',
-                  dataList: ServiceLists.officePublicOrderAndSafety,
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 15, 20, 20),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      buildFilteredCategory(title: 'Business Permit and Licensing', dataList: ServiceLists.officeBusinessLicensing),
+                      buildFilteredCategory(title: 'Office of the Building Official', dataList: ServiceLists.officeBuildingOfficial),
+                      buildFilteredCategory(title: 'Office of the City Engineer', dataList: ServiceLists.officeCityEngineer),
+                      buildFilteredCategory(title: 'Office of the City Assessor', dataList: ServiceLists.officeCityAssessor),
+                      buildFilteredCategory(title: 'Office of the City Civil Registrar', dataList: ServiceLists.officeCivilRegistry),
+                      buildFilteredCategory(title: 'Office of the City Treasurer', dataList: ServiceLists.officeCityTreasurer),
+                      buildFilteredCategory(title: 'Office of the City Mayor', dataList: ServiceLists.officeCityMayor),
+                      buildFilteredCategory(title: 'Office of the City Vice Mayor/ SP & Secretary to the Sanggunian', dataList: ServiceLists.officeCityVmSpSecretarySangunian),
+                      buildFilteredCategory(title: 'Information and Communications Technology Office', dataList: ServiceLists.officeICT),
+                      buildFilteredCategory(title: 'City Human Resources and Development Office', dataList: ServiceLists.officeCityHRDevelopment),
+                      buildFilteredCategory(title: 'Public Employment Services Office', dataList: ServiceLists.officePublicEmploymentServices),
+                      buildFilteredCategory(title: 'Office of the City Environmental and Natural Resources Officer', dataList: ServiceLists.officeCENR),
+                      buildFilteredCategory(title: 'Office of the City Population Officer', dataList: ServiceLists.officeCityPopulationOfficer),
+                      buildFilteredCategory(title: 'Office of the City Cooperatives Officer', dataList: ServiceLists.officeCityCooperativesOfficer),
+                      buildFilteredCategory(title: 'Office of the City Information Officer', dataList: ServiceLists.officeCityInformationOfficer),
+                      buildFilteredCategory(title: 'Office of the City Social Welfare and Development Officer', dataList: ServiceLists.officeCSWD),
+                      buildFilteredCategory(title: 'Office of the City Accountant', dataList: ServiceLists.officeCityAccount),
+                      buildFilteredCategory(title: 'Office of the City Legal Officer', dataList: ServiceLists.officeCityLegalOfficer),
+                      buildFilteredCategory(title: 'Office of the City Agriculturist', dataList: ServiceLists.officeCityAgriculturist),
+                      buildFilteredCategory(title: 'Office of the City Planning and Development Coordinator', dataList: ServiceLists.officeCityPlanningDevCoor),
+                      buildFilteredCategory(title: 'City Human Settlements and Livelihood Office', dataList: ServiceLists.officecCityHumanSettlementsLivelihood),
+                      buildFilteredCategory(title: 'Office of the City Budget Officer', dataList: ServiceLists.officeCityBudgetOfficer),
+                      buildFilteredCategory(title: 'Office of the City General Services Officer', dataList: ServiceLists.officeCityGeneralServicesOfficer),
+                      buildFilteredCategory(title: 'Office of the City Health Officer', dataList: ServiceLists.officeCityHealthOfficer),
+                      buildFilteredCategory(title: 'City Health Office II', dataList: ServiceLists.officeCityHealthOfficerII),
+                      buildFilteredCategory(title: 'City Health Office II- Biñan Birthing Home', dataList: ServiceLists.officeCityHealthOfficerIIBirthingHome),
+                      buildFilteredCategory(title: 'City Disaster Risk Reduction and Management Office', dataList: ServiceLists.officeCDRRM),
+                      buildFilteredCategory(title: 'Public Order and Safety Office', dataList: ServiceLists.officePublicOrderAndSafety),
+                    ]),
+                  ),
                 ),
               ],
             ),
-
             // Floating Chatbot Button
             Positioned(
               bottom: 20,
@@ -317,10 +161,8 @@ class _ServicesContent extends State<Services> {
                     widget.onTitleChange('Chatbot');
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const ChatBotScreen()),
-                    ).then((_) {
-                      widget.onTitleChange('Services');
-                    });
+                      SlideRoute(page: const ChatBotScreen()),
+                    ).then((_) => widget.onTitleChange('Services'));
                   },
                   borderRadius: BorderRadius.circular(40),
                   child: Padding(
@@ -331,6 +173,76 @@ class _ServicesContent extends State<Services> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
+  final FocusNode focusNode;
+  final TextEditingController controller;
+  final bool hasFocus;
+  final ValueChanged<String> onChanged;
+
+  const _SearchBarDelegate({
+    required this.focusNode,
+    required this.controller,
+    required this.hasFocus,
+    required this.onChanged,
+  });
+
+  @override
+  double get minExtent => 70;
+  @override
+  double get maxExtent => 70;
+
+  @override
+  bool shouldRebuild(_SearchBarDelegate old) =>
+      old.hasFocus != hasFocus || old.controller != controller;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+      child: GestureDetector(
+        onTap: () => focusNode.requestFocus(),
+        child: Container(
+          height: 50,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: hasFocus
+                  ? const Color.fromRGBO(32, 87, 206, 1.0)
+                  : Colors.black.withOpacity(0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              const SizedBox(width: 18),
+              const Icon(Icons.search, color: Color.fromARGB(255, 0, 0, 0), size: 25),
+              const SizedBox(width: 20),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  autofocus: false,
+                  onChanged: onChanged,
+                  style: GoogleFonts.inter(fontSize: 15, color: Colors.black),
+                  decoration: InputDecoration(
+                    hintText: 'Search transaction...',
+                    hintStyle: GoogleFonts.inter(fontSize: 15, color: Colors.grey),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 18),
+            ],
+          ),
         ),
       ),
     );
@@ -379,9 +291,12 @@ class ServiceCategory extends StatelessWidget {
                 onTitleChange(title);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        SeeAllScreen(title: title, items: items, onTitleChange: onTitleChange),
+                  SlideRoute(
+                    page: SeeAllScreen(
+                      title: title,
+                      items: items,
+                      onTitleChange: onTitleChange,
+                    ),
                   ),
                 ).then((_) {
                   onTitleChange('Services');
@@ -463,7 +378,7 @@ class ServiceItem extends StatelessWidget {
           onTitleChange('Information');
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => InformationScreen(title: label)),
+            SlideRoute(page: InformationScreen(title: label)),
           ).then((_) {
             onTitleChange(returnTitle);
           });

@@ -3,6 +3,7 @@ import 'package:docsease/side_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'navigator_transition.dart';
 
 class AppStart extends StatelessWidget {
   const AppStart({super.key});
@@ -68,7 +69,7 @@ class AppStart extends StatelessWidget {
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const Authentication()),
+                            SlideRoute(page: const Authentication()),
                           );
                         },
                         style: ElevatedButton.styleFrom(
@@ -96,7 +97,7 @@ class AppStart extends StatelessWidget {
                         onPressed: () {
                           Navigator.pushAndRemoveUntil(
                             context,
-                            MaterialPageRoute(builder: (context) => const SideBar()),
+                            SlideRoute(page: const SideBar()),
                             (Route<dynamic> route) => false,
                           );
                         },

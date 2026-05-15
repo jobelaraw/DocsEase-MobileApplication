@@ -131,20 +131,41 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
 
                           Expanded(
                             child: SingleChildScrollView(
-                              padding: const EdgeInsets.symmetric(horizontal: 26),
+                              padding: const EdgeInsets.fromLTRB(26, 0, 26, 20),
                               child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const SizedBox(height: 20),
-                                  Text(
-                                    'Enter your new password.',
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                      color: Colors.black87.withOpacity(0.7),
+                                  const SizedBox(height: 12),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    child: Center(
+                                      child: Text(
+                                        'Enter Your New Password',
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 20,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(height: 40),
+                                  const SizedBox(height: 10),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    child: Center(
+                                      child: Text(
+                                        'Set a strong new password to secure your account.',
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w400,
+                                          fontSize: 13,
+                                          color: Colors.black54,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 30),
 
                                   CustomTextField(
                                     inputLabel: 'PASSWORD',
@@ -164,9 +185,9 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
 
                                       int score =
                                           (hasLength ? 1 : 0) +
-                                          (hasSymbol ? 1 : 0) +
-                                          (hasUppercase ? 1 : 0) +
-                                          (hasNumber ? 1 : 0);
+                                              (hasSymbol ? 1 : 0) +
+                                              (hasUppercase ? 1 : 0) +
+                                              (hasNumber ? 1 : 0);
 
                                       if (score < 4) {
                                         return 'Please meet all the password requirements.';
@@ -220,8 +241,8 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                           _passwordController.text.isNotEmpty && hasStrongPassword;
                                       bool isConfirmValid =
                                           _confirmPasswordController.text.isNotEmpty &&
-                                          _confirmPasswordController.text ==
-                                              _passwordController.text;
+                                              _confirmPasswordController.text ==
+                                                  _passwordController.text;
                                       if (!isPasswordValid || !isConfirmValid) {
                                         setState(() => invalidInput = true);
                                         return;
