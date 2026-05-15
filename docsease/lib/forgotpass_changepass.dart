@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:docsease/app_modals.dart';
+import 'package:docsease/authentication.dart';
 import 'package:docsease/custom_button.dart';
 import 'package:docsease/custom_textfield.dart';
+import 'package:docsease/navigator_transition.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -242,36 +245,41 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                         return;
                                       }
 
-                                      try {
-                                        setState(() => invalidInput = true);
+                                      await ConfirmChangesModal.show(
+                                        context,
+                                        onPrimary: () async {
+                                          Navigator.of(context).pop();
+                                          try {
+                                            setState(() => isLoading = true);
 
-                                        await FirebaseFirestore.instance
-                                            .collection('recovery_codes')
-                                            .doc(widget.targetEmail)
-                                            .delete();
+                                            await FirebaseFirestore.instance
+                                                .collection('recovery_codes')
+                                                .doc(widget.targetEmail)
+                                                .delete();
 
-                                        if (mounted) {
-                                          setState(() => invalidInput = false);
-
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                "Password updated successfully! Please sign in.",
-                                              ),
-                                              backgroundColor: Colors.green,
-                                            ),
-                                          );
-
-                                          Navigator.of(context).popUntil((route) => route.isFirst);
-                                        }
-                                      } catch (e) {
-                                        if (mounted) {
-                                          setState(() {
-                                            invalidInput = true;
-                                            isLoading = false;
-                                          });
-                                        }
-                                      }
+                                            if (mounted) {
+                                              setState(() => isLoading = false);
+                                              await ChangesSavedModal.show(
+                                                context,
+                                                onPrimary: () {
+                                                  Navigator.of(context).pop();
+                                                  Navigator.of(context).pushAndRemoveUntil(
+                                                    SlideRoute(page: const Authentication()),
+                                                    (route) => false,
+                                                  );
+                                                },
+                                              );
+                                            }
+                                          } catch (e) {
+                                            if (mounted) {
+                                              setState(() {
+                                                invalidInput = true;
+                                                isLoading = false;
+                                              });
+                                            }
+                                          }
+                                        },
+                                      );
                                     },
                                   ),
                                   const SizedBox(height: 30),

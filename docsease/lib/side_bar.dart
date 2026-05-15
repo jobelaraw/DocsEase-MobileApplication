@@ -42,8 +42,8 @@ class _SideBarState extends State<SideBar> {
     _fetchUserData();
 
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
-      List<ConnectivityResult> results,
-    ) {
+        List<ConnectivityResult> results,
+        ) {
       if (mounted) {
         setState(() {
           // If the result contains 'none', the user has no internet!
@@ -160,120 +160,120 @@ class _SideBarState extends State<SideBar> {
         appBar: AppBar(
           leadingWidth: 60,
           leading:
-              ((selectedIndex == 0 && currentTitle != 'Services') ||
-                  (selectedIndex == 1 && currentTitle != 'Profile'))
+          ((selectedIndex == 0 && currentTitle != 'Services') ||
+              (selectedIndex == 1 && currentTitle != 'Profile'))
               ? Padding(
-                  padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () {
-                      if (selectedIndex == 0) {
-                        _servicesNavKey.currentState?.pop();
-                      } else if (selectedIndex == 1) {
-                        _profileNavKey.currentState?.pop();
-                      }
-                    },
-                  ),
-                )
+            padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () {
+                if (selectedIndex == 0) {
+                  _servicesNavKey.currentState?.pop();
+                } else if (selectedIndex == 1) {
+                  _profileNavKey.currentState?.pop();
+                }
+              },
+            ),
+          )
               : null,
           centerTitle: (selectedIndex == 0 && currentTitle == 'Chatbot') ? false : true,
           titleSpacing: 0,
           title: selectedIndex == 0 && currentTitle == 'Chatbot'
               ? Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(width: 9),
-                    Stack(
+            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(width: 9),
+              Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Colors.white.withOpacity(0.0),
+                    child: ClipOval(
+                      child: Image.asset('assets/chatbot_icon.png', fit: BoxFit.contain),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: isOnline
+                        ? Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF39D236),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color.fromRGBO(32, 87, 206, 1.0),
+                          width: 1.5,
+                        ),
+                      ),
+                    )
+                        : Stack(
                       children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: Colors.white.withOpacity(0.0),
-                          child: ClipOval(
-                            child: Image.asset('assets/chatbot_icon.png', fit: BoxFit.contain),
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: Colors.grey,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color.fromRGBO(32, 87, 206, 1.0),
+                              width: 1.5,
+                            ),
                           ),
                         ),
                         Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: isOnline
-                              ? Container(
-                                  width: 12,
-                                  height: 12,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF39D236),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: const Color.fromRGBO(32, 87, 206, 1.0),
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                )
-                              : Stack(
-                                  children: [
-                                    Container(
-                                      width: 12,
-                                      height: 12,
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: const Color.fromRGBO(32, 87, 206, 1.0),
-                                          width: 1.5,
-                                        ),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      top: 4,
-                                      left: 4,
-                                      child: Container(
-                                        width: 4,
-                                        height: 4,
-                                        decoration: BoxDecoration(
-                                          color: const Color.fromRGBO(32, 87, 206, 1.0),
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          "DocsEase Bot",
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          isOnline ? "Online Assistant" : "Offline - Waiting for network...",
-                          style: GoogleFonts.inter(
-                            color: Colors.white60,
-                            fontSize: 11,
-                            fontWeight: FontWeight.normal,
+                          top: 4,
+                          left: 4,
+                          child: Container(
+                            width: 4,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: const Color.fromRGBO(32, 87, 206, 1.0),
+                              shape: BoxShape.circle,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ],
-                )
-              : Text(
-                  (selectedIndex == 0 || selectedIndex == 1) ? currentTitle : titles[selectedIndex],
-                  style: GoogleFonts.inter(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
                   ),
-                ),
+                ],
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "DocsEase Bot",
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    isOnline ? "Online Assistant" : "Offline - Waiting for network...",
+                    style: GoogleFonts.inter(
+                      color: Colors.white60,
+                      fontSize: 11,
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          )
+              : Text(
+            (selectedIndex == 0 || selectedIndex == 1) ? currentTitle : titles[selectedIndex],
+            style: GoogleFonts.inter(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
           actions: [
             Builder(
               builder: (BuildContext context) {
@@ -324,18 +324,18 @@ class _SideBarState extends State<SideBar> {
                             padding: MediaQuery.of(context).padding.top < 20
                                 ? EdgeInsets.all(20)
                                 : EdgeInsets.fromLTRB(
-                                    20,
-                                    MediaQuery.of(context).padding.top + 20,
-                                    20,
-                                    20,
-                                  ),
+                              20,
+                              MediaQuery.of(context).padding.top + 20,
+                              20,
+                              20,
+                            ),
                             decoration: BoxDecoration(color: Color.fromRGBO(32, 87, 206, 1.0)),
                             child: StreamBuilder<DocumentSnapshot>(
                               stream: FirebaseAuth.instance.currentUser != null
                                   ? FirebaseFirestore.instance
-                                        .collection('users')
-                                        .doc(FirebaseAuth.instance.currentUser!.uid)
-                                        .snapshots()
+                                  .collection('users')
+                                  .doc(FirebaseAuth.instance.currentUser!.uid)
+                                  .snapshots()
                                   : null,
                               builder: (context, snapshot) {
                                 String currentUsername = '...';
@@ -361,17 +361,17 @@ class _SideBarState extends State<SideBar> {
                                       child: ClipOval(
                                         child: hasDefaultProfile
                                             ? Image.asset(
-                                                currentProfile,
-                                                width: 75,
-                                                height: 75,
-                                                fit: BoxFit.cover,
-                                              )
+                                          currentProfile,
+                                          width: 75,
+                                          height: 75,
+                                          fit: BoxFit.cover,
+                                        )
                                             : Image.network(
-                                                currentProfile,
-                                                width: 75,
-                                                height: 75,
-                                                fit: BoxFit.cover,
-                                              ),
+                                          currentProfile,
+                                          width: 75,
+                                          height: 75,
+                                          fit: BoxFit.cover,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(height: 10),
@@ -411,7 +411,7 @@ class _SideBarState extends State<SideBar> {
                                       if (mounted) {
                                         if (selectedIndex == 0) {
                                           _servicesNavKey.currentState?.popUntil(
-                                            (route) => route.isFirst,
+                                                (route) => route.isFirst,
                                           );
 
                                           setState(() {
@@ -440,7 +440,7 @@ class _SideBarState extends State<SideBar> {
                                       if (mounted) {
                                         if (selectedIndex == 1) {
                                           _profileNavKey.currentState?.popUntil(
-                                            (route) => route.isFirst,
+                                                (route) => route.isFirst,
                                           );
                                           setState(() {
                                             currentTitle = 'Profile';
@@ -509,7 +509,7 @@ class _SideBarState extends State<SideBar> {
                               Navigator.pushAndRemoveUntil(
                                 context,
                                 SlideRoute(page: const AppStart()),
-                                (Route<dynamic> route) => false,
+                                    (Route<dynamic> route) => false,
                               );
                             } else {
                               await FirebaseServices().signOutUser();
@@ -615,10 +615,10 @@ class SideBarOption extends StatelessWidget {
                 style: isSelected
                     ? GoogleFonts.archivoBlack(fontSize: 15, color: currentColor)
                     : GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        color: currentColor,
-                      ),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                  color: currentColor,
+                ),
               ),
             ],
           ),
