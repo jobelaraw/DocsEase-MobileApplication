@@ -5,6 +5,7 @@ import 'package:docsease/custom_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:docsease/app_modals.dart';
 import 'package:docsease/forgotpass_changepass.dart';
 import 'package:docsease/navigator_transition.dart';
 import 'package:http/http.dart' as http;
@@ -63,8 +64,9 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
       if (mounted) {
         for (var c in _controllers) c.clear();
         setState(() { _hasError = false; _isComplete = false; });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('A new code has been sent to your email.')),
+        await ResendCodeModal.show(
+          context,
+          onPrimary: () => Navigator.of(context).pop(),
         );
       }
     } finally {
@@ -373,14 +375,20 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                         }
 
                                         if (mounted) {
-                                          Navigator.push(
+                                          await VerifiedModal.show(
                                             context,
-                                            SlideRoute(
-                                              page: ForgotPassChangePassScreen(
-                                                targetEmail: widget.targetEmail,
-                                                recoveryCode: enteredCode,
-                                              ),
-                                            ),
+                                            onPrimary: () {
+                                              Navigator.of(context).pop();
+                                              Navigator.push(
+                                                context,
+                                                SlideRoute(
+                                                  page: ForgotPassChangePassScreen(
+                                                    targetEmail: widget.targetEmail,
+                                                    recoveryCode: enteredCode,
+                                                  ),
+                                                ),
+                                              );
+                                            },
                                           );
                                         }
                                       } catch (e) {

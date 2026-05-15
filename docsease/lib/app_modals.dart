@@ -185,7 +185,7 @@ Widget build(BuildContext context) {
 
 //Exit confirmation modal
 class ExitConfirmationModal {
-  static Future<void> show(BuildContext context) {
+  static Future<void> show(BuildContext context, {VoidCallback? onPrimary, VoidCallback? onSecondary}) {
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
@@ -196,7 +196,8 @@ class ExitConfirmationModal {
         subtitle: 'Changes will not be saved if you leave this page.',
         primaryLabel: 'Yes',
         primaryColor: _kRed,
-        onPrimary: () => Navigator.of(context).pop(),
+        onPrimary: onPrimary ?? () => Navigator.of(context).pop(),
+        onSecondary: onSecondary ?? () => Navigator.of(context).pop(),
       ),
     );
   }
@@ -204,7 +205,7 @@ class ExitConfirmationModal {
 
 //Changes saved modal
 class ChangesSavedModal {
-  static Future<void> show(BuildContext context) {
+  static Future<void> show(BuildContext context, {required VoidCallback onPrimary, String? subtitle}) {
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
@@ -215,7 +216,7 @@ class ChangesSavedModal {
         subtitle: 'Password updated successfully. Redirecting you to sign in screen.',
         primaryLabel: 'Got it',
         singleAction: true,
-        onPrimary: () => Navigator.of(context).pop(),
+        onPrimary: onPrimary,
       ),
     );
   }
@@ -223,7 +224,7 @@ class ChangesSavedModal {
 
 //Confirm changes modal
 class ConfirmChangesModal {
-  static Future<void> show(BuildContext context) {
+  static Future<void> show(BuildContext context, {required VoidCallback onPrimary, VoidCallback? onSecondary}) {
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
@@ -234,7 +235,9 @@ class ConfirmChangesModal {
         subtitle: 'Are you sure you want to save changes?',
         primaryLabel: 'Yes',
         primaryColor: const Color(0xFF3B82F6),
-        onPrimary: () => Navigator.of(context).pop(),
+        onPrimary: onPrimary,
+        secondaryLabel: 'Cancel',
+        onSecondary: onSecondary ?? () => Navigator.of(context).pop(),
       ),
     );
   }
@@ -242,7 +245,7 @@ class ConfirmChangesModal {
 
 //Check email modal
 class CheckEmailModal {
-  static Future<void> show(BuildContext context) {
+  static Future<void> show(BuildContext context, {required VoidCallback onPrimary}) {
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
@@ -252,8 +255,9 @@ class CheckEmailModal {
         title: 'Check your Email',
         subtitle: 'A recovery code has been sent to your email. Please check your inbox.',
         primaryLabel: 'Got it',
+  
         singleAction: true,
-        onPrimary: () => Navigator.of(context).pop(),
+        onPrimary: onPrimary,
       ),
     );
   }
@@ -280,7 +284,7 @@ class ProfileSignInModal {
 
 //Verified modal
 class VerifiedModal {
-  static Future<void> show(BuildContext context) {
+  static Future<void> show(BuildContext context, {required VoidCallback onPrimary}) {
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
@@ -290,8 +294,29 @@ class VerifiedModal {
         title: 'Verified',
         subtitle: 'Code verified successfully. You may now change your password.',
         primaryLabel: 'Got it',
+  
         singleAction: true,
-        onPrimary: () => Navigator.of(context).pop(),
+        onPrimary: onPrimary,
+      ),
+    );
+  }
+}
+
+//Resend Recovery Code Modal
+class ResendCodeModal {
+  static Future<void> show(BuildContext context, {required VoidCallback onPrimary}) {
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.check_circle_outline_rounded,
+        iconColor: _kGreen,
+        iconBgColor: _kIconBgGreen,
+        title: 'New Code Sent',
+        subtitle: 'We’ve sent a new recovery code. Please check your inbox for the updated 6-digit recovery code.',
+        primaryLabel: 'Got it',
+
+        singleAction: true,
+        onPrimary: onPrimary,
       ),
     );
   }
@@ -299,7 +324,7 @@ class VerifiedModal {
 
 //Logout modal
 class LogoutModal {
-  static Future<void> show(BuildContext context) {
+  static Future<void> show(BuildContext context, {VoidCallback? onPrimary}) {
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
@@ -308,8 +333,10 @@ class LogoutModal {
         iconBgColor: _kIconBgRed,
         title: 'Are you sure you want to logout?',
         primaryLabel: 'Yes',
-        primaryColor: const Color(0xFF3B82F6),
-        onPrimary: () => Navigator.of(context).pop(),
+        primaryColor: _kRed,
+        secondaryLabel: 'Cancel',
+        onPrimary: onPrimary ?? () => Navigator.of(context).pop(),
+        onSecondary: () => Navigator.of(context).pop(),
       ),
     );
   }

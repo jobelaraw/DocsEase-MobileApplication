@@ -5,6 +5,7 @@ import 'package:docsease/custom_button.dart';
 import 'package:docsease/firebase_services.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:docsease/app_modals.dart';
 import 'package:docsease/forgotpass_recoverycode.dart';
 import 'package:docsease/custom_textfield.dart';
 import 'package:docsease/navigator_transition.dart';
@@ -291,13 +292,19 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                           setState(() => isLoading = false);
 
                                           if (emailSent) {
-                                            Navigator.push(
+                                            await CheckEmailModal.show(
                                               context,
-                                              SlideRoute(
-                                                page: ForgotPasswordRecoveryScreen(
-                                                  targetEmail: targetEmail,
-                                                ),
-                                              ),
+                                              onPrimary: () {
+                                                Navigator.of(context).pop();
+                                                Navigator.push(
+                                                  context,
+                                                  SlideRoute(
+                                                    page: ForgotPasswordRecoveryScreen(
+                                                      targetEmail: targetEmail,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
                                             );
                                           } else {
                                             ScaffoldMessenger.of(context).showSnackBar(

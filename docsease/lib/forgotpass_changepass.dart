@@ -1,7 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:docsease/app_modals.dart';
+import 'package:docsease/authentication.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:docsease/custom_button.dart';
 import 'package:docsease/custom_textfield.dart';
+import 'package:docsease/navigator_transition.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -248,47 +251,45 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                         return;
                                       }
 
-                                      try {
-                                        setState(() => isLoading = true);
+                                      await ConfirmChangesModal.show(
+                                        context,
+                                        onPrimary: () async {
+                                          Navigator.of(context).pop();
+                                          
+                                          try {
+                                            setState(() => isLoading = true);
+ 
+                                            HttpsCallable callable = FirebaseFunctions.instance
+                                                .httpsCallable('resetUserPassword');
+                                            await callable.call({
+                                              'email': widget.targetEmail,
+                                              'otp': widget.recoveryCode,
+                                              'newPassword': _passwordController.text.trim(),
+                                            });
 
-                                        HttpsCallable callable = FirebaseFunctions.instance
-                                            .httpsCallable('resetUserPassword');
-                                        await callable.call({
-                                          'email': widget.targetEmail,
-                                          'otp': widget.recoveryCode,
-                                          'newPassword': _passwordController.text.trim(),
-                                        });
-
-                                        if (mounted) {
-                                          setState(() => isLoading = false);
-
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                "Password updated successfully! Please sign in.",
-                                              ),
-                                              backgroundColor: Colors.green,
-                                            ),
-                                          );
-
-                                          Navigator.of(context).popUntil((route) => route.isFirst);
-                                        }
-                                      } catch (e) {
-                                        if (mounted) {
-                                          setState(() {
-                                            invalidInput = true;
-                                            isLoading = false;
-                                          });
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                "Failed to update password. Try again.",
-                                              ),
-                                            ),
-                                          );
-                                          print(e.toString());
-                                        }
-                                      }
+                                            if (mounted) {
+                                              setState(() => isLoading = false);
+                                              await ChangesSavedModal.show(
+                                                context,
+                                                onPrimary: () {
+                                                  Navigator.of(context).pop();
+                                                  Navigator.of(context).pushAndRemoveUntil(
+                                                    SlideRoute(page: const Authentication()),
+                                                    (route) => false,
+                                                  );
+                                                },
+                                              );
+                                            }
+                                          } catch (e) {
+                                            if (mounted) {
+                                              setState(() {
+                                                invalidInput = true;
+                                                isLoading = false;
+                                              });
+                                            }
+                                          }
+                                        },
+                                      );
                                     },
                                   ),
                                   const SizedBox(height: 30),

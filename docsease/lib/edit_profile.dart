@@ -157,24 +157,24 @@ class _EditProfileState extends State<EditProfile> {
                             child: ClipOval(
                               child: _selectedImage != null
                                   ? Image.file(
-                                      _selectedImage!,
-                                      width: 95,
-                                      height: 95,
-                                      fit: BoxFit.cover,
-                                    )
+                                _selectedImage!,
+                                width: 95,
+                                height: 95,
+                                fit: BoxFit.cover,
+                              )
                                   : currentProfile == 'assets/default_profile.png'
                                   ? Image.asset(
-                                      currentProfile,
-                                      width: 95,
-                                      height: 95,
-                                      fit: BoxFit.cover,
-                                    )
+                                currentProfile,
+                                width: 95,
+                                height: 95,
+                                fit: BoxFit.cover,
+                              )
                                   : Image.network(
-                                      currentProfile,
-                                      width: 95,
-                                      height: 95,
-                                      fit: BoxFit.cover,
-                                    ),
+                                currentProfile,
+                                width: 95,
+                                height: 95,
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ),
                           Positioned(
@@ -299,9 +299,9 @@ class _EditProfileState extends State<EditProfile> {
 
                           int score =
                               (hasLength ? 1 : 0) +
-                              (hasSymbol ? 1 : 0) +
-                              (hasUppercase ? 1 : 0) +
-                              (hasNumber ? 1 : 0);
+                                  (hasSymbol ? 1 : 0) +
+                                  (hasUppercase ? 1 : 0) +
+                                  (hasNumber ? 1 : 0);
 
                           if (score < 4) {
                             return 'Please meet all the password requirements.';
@@ -344,7 +344,7 @@ class _EditProfileState extends State<EditProfile> {
                         buttonText: 'Save Changes',
                         isLoading: isLoading,
                         isButtonEnabled:
-                            _usernameController.text.isNotEmpty ||
+                        _usernameController.text.isNotEmpty ||
                             _newPasswordController.text.isNotEmpty ||
                             _confirmPasswordController.text.isNotEmpty ||
                             _selectedImage != null,
@@ -353,14 +353,14 @@ class _EditProfileState extends State<EditProfile> {
                         onTapAction: () async {
                           bool isUpdatingPassword =
                               _newPasswordController.text.isNotEmpty ||
-                              _confirmPasswordController.text.isNotEmpty;
+                                  _confirmPasswordController.text.isNotEmpty;
 
                           if (isUpdatingPassword) {
                             bool isPasswordValid =
                                 _newPasswordController.text.isNotEmpty && hasStrongPassword;
                             bool isConfirmValid =
                                 _confirmPasswordController.text.isNotEmpty &&
-                                _confirmPasswordController.text == _newPasswordController.text;
+                                    _confirmPasswordController.text == _newPasswordController.text;
 
                             if (!isPasswordValid || !isConfirmValid) {
                               setState(() => invalidInput = true);

@@ -42,8 +42,8 @@ class _SideBarState extends State<SideBar> {
     _fetchUserData();
 
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
-      List<ConnectivityResult> results,
-    ) {
+        List<ConnectivityResult> results,
+        ) {
       if (mounted) {
         setState(() {
           // If the result contains 'none', the user has no internet!
@@ -158,8 +158,8 @@ class _SideBarState extends State<SideBar> {
         appBar: AppBar(
           leadingWidth: 60,
           leading:
-              ((selectedIndex == 0 && currentTitle != 'Services') ||
-                  (selectedIndex == 1 && currentTitle != 'Profile'))
+          ((selectedIndex == 0 && currentTitle != 'Services') ||
+              (selectedIndex == 1 && currentTitle != 'Profile'))
               ? Padding(
                   padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
                   child: IconButton(
@@ -237,40 +237,40 @@ class _SideBarState extends State<SideBar> {
                         ),
                       ],
                     ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          "DocsEase Bot",
-                          style: GoogleFonts.inter(
-                            color: Theme.of(context).colorScheme.onPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "DocsEase Bot",
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
-                        SizedBox(height: 2),
-                        Text(
-                          isOnline ? "Online Assistant" : "Offline - Waiting for network...",
-                          style: GoogleFonts.inter(
-                            color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.6),
-                            fontSize: 11,
-                            fontWeight: FontWeight.normal,
-                          ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        isOnline ? "Online Assistant" : "Offline - Waiting for network...",
+                        style: GoogleFonts.inter(
+                          color: Colors.white60,
+                          fontSize: 11,
+                          fontWeight: FontWeight.normal,
                         ),
-                      ],
-                    ),
-                  ],
-                )
+                      ),
+                    ],
+                  ),
+                ],
+              )
               : Text(
                   (selectedIndex == 0 || selectedIndex == 1) ? currentTitle : titles[selectedIndex],
                   style: GoogleFonts.inter(
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onPrimary,
+                    color: Colors.white,
                   ),
-                ),
+                ),  
           actions: [
             Builder(
               builder: (BuildContext context) {
@@ -330,9 +330,9 @@ class _SideBarState extends State<SideBar> {
                             child: StreamBuilder<DocumentSnapshot>(
                               stream: FirebaseAuth.instance.currentUser != null
                                   ? FirebaseFirestore.instance
-                                        .collection('users')
-                                        .doc(FirebaseAuth.instance.currentUser!.uid)
-                                        .snapshots()
+                                  .collection('users')
+                                  .doc(FirebaseAuth.instance.currentUser!.uid)
+                                  .snapshots()
                                   : null,
                               builder: (context, snapshot) {
                                 String currentUsername = '...';
@@ -358,17 +358,17 @@ class _SideBarState extends State<SideBar> {
                                       child: ClipOval(
                                         child: hasDefaultProfile
                                             ? Image.asset(
-                                                currentProfile,
-                                                width: 75,
-                                                height: 75,
-                                                fit: BoxFit.cover,
-                                              )
+                                          currentProfile,
+                                          width: 75,
+                                          height: 75,
+                                          fit: BoxFit.cover,
+                                        )
                                             : Image.network(
-                                                currentProfile,
-                                                width: 75,
-                                                height: 75,
-                                                fit: BoxFit.cover,
-                                              ),
+                                          currentProfile,
+                                          width: 75,
+                                          height: 75,
+                                          fit: BoxFit.cover,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(height: 10),
@@ -410,7 +410,7 @@ class _SideBarState extends State<SideBar> {
                                       if (mounted) {
                                         if (selectedIndex == 0) {
                                           _servicesNavKey.currentState?.popUntil(
-                                            (route) => route.isFirst,
+                                                (route) => route.isFirst,
                                           );
 
                                           setState(() {
@@ -439,7 +439,7 @@ class _SideBarState extends State<SideBar> {
                                       if (mounted) {
                                         if (selectedIndex == 1) {
                                           _profileNavKey.currentState?.popUntil(
-                                            (route) => route.isFirst,
+                                                (route) => route.isFirst,
                                           );
                                           setState(() {
                                             currentTitle = 'Profile';
@@ -508,7 +508,7 @@ class _SideBarState extends State<SideBar> {
                               Navigator.pushAndRemoveUntil(
                                 context,
                                 SlideRoute(page: const AppStart()),
-                                (Route<dynamic> route) => false,
+                                    (Route<dynamic> route) => false,
                               );
                             } else {
                               await FirebaseServices().signOutUser();
@@ -616,10 +616,10 @@ class SideBarOption extends StatelessWidget {
                 style: isSelected
                     ? GoogleFonts.archivoBlack(fontSize: 15, color: currentColor)
                     : GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        color: currentColor,
-                      ),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                  color: currentColor,
+                ),
               ),
             ],
           ),

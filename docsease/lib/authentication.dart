@@ -257,7 +257,7 @@ class _SignInState extends State<SignIn> {
           buttonText: 'Sign In',
           isLoading: _isEmailLoading,
           isButtonEnabled:
-              widget.emailController.text.isNotEmpty && widget.passwordController.text.isNotEmpty,
+          widget.emailController.text.isNotEmpty && widget.passwordController.text.isNotEmpty,
           onTapAction: () async {
             bool isEmailValid = widget.emailController.text.isNotEmpty;
             bool isPasswordValid = widget.passwordController.text.isNotEmpty;
@@ -335,7 +335,7 @@ class _SignInState extends State<SignIn> {
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(builder: (context) => SideBar()),
-              (Route<dynamic> route) => false,
+                  (Route<dynamic> route) => false,
             );
           },
         ),
@@ -461,9 +461,9 @@ class _SignUpState extends State<SignUp> {
 
             int score =
                 (hasLength ? 1 : 0) +
-                (hasSymbol ? 1 : 0) +
-                (hasUppercase ? 1 : 0) +
-                (hasNumber ? 1 : 0);
+                    (hasSymbol ? 1 : 0) +
+                    (hasUppercase ? 1 : 0) +
+                    (hasNumber ? 1 : 0);
 
             if (score < 4) {
               return 'Please meet all the password requirements.';
@@ -508,7 +508,7 @@ class _SignUpState extends State<SignUp> {
           buttonText: 'Sign Up',
           isLoading: _isEmailLoading,
           isButtonEnabled:
-              widget.usernameController.text.isNotEmpty &&
+          widget.usernameController.text.isNotEmpty &&
               widget.emailController.text.isNotEmpty &&
               widget.passwordController.text.isNotEmpty &&
               widget.confirmController.text.isNotEmpty,
@@ -519,7 +519,7 @@ class _SignUpState extends State<SignUp> {
             bool isPasswordValid = widget.passwordController.text.isNotEmpty && hasStrongPassword;
             bool isConfirmValid =
                 widget.confirmController.text.isNotEmpty &&
-                widget.confirmController.text == widget.passwordController.text;
+                    widget.confirmController.text == widget.passwordController.text;
 
             if (!isUsernameValid || !isEmailValid || !isPasswordValid || !isConfirmValid) {
               setState(() {
