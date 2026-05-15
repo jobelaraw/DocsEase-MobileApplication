@@ -328,6 +328,7 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                             MaterialPageRoute(
                                               builder: (context) => ForgotPassChangePassScreen(
                                                 targetEmail: widget.targetEmail,
+                                                recoveryCode: enteredCode,
                                               ),
                                             ),
                                           );

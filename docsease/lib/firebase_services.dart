@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 
 class FirebaseServices {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -153,6 +155,43 @@ class FirebaseServices {
     } catch (e) {
       print("Sign Out Error: $e");
       rethrow;
+    }
+  }
+
+  Future<String?> uploadProfileImage(File imageFile, String uid) async {
+    try {
+      // Create a unique file name
+      final fileExtension = imageFile.path.split('.').last;
+      final fileName = '$uid-${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+
+      // Point to the 'profile_images' folder in Firebase Storage
+      final Reference storageRef = FirebaseStorage.instance.ref().child('profile_images/$fileName');
+
+      // Upload the file
+      final UploadTask uploadTask = storageRef.putFile(imageFile);
+      final TaskSnapshot snapshot = await uploadTask;
+
+      // Ask Firebase for the secure download URL
+      final String downloadUrl = await snapshot.ref.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      print("Firebase Storage Upload Error: $e");
+      return null;
+    }
+  }
+
+  Future<void> deleteOldProfileImage(String oldImageUrl) async {
+    try {
+      // Safety check to ensure it's actually a Firebase URL
+      if (!oldImageUrl.contains('firebasestorage.googleapis.com')) return;
+
+      // Firebase is incredibly smart: it can find and delete the file directly from the URL!
+      final Reference storageRef = FirebaseStorage.instance.refFromURL(oldImageUrl);
+      await storageRef.delete();
+
+      print("Old image successfully deleted from Firebase Storage!");
+    } catch (e) {
+      print("Firebase Storage Delete Error: $e");
     }
   }
 }

@@ -18,10 +18,7 @@ class ServiceData {
   });
 }
 
-List<ServiceItem> buildServiceItems(
-  List<ServiceData> dataList,
-  Function(String) onTitleChange,
-) {
+List<ServiceItem> buildServiceItems(List<ServiceData> dataList, Function(String) onTitleChange) {
   return dataList.map((data) {
     return ServiceItem(
       data: data,
@@ -71,10 +68,7 @@ class _ServicesContent extends State<Services> {
     super.dispose();
   }
 
-  Widget buildFilteredCategory({
-    required String title,
-    required List<ServiceData> dataList,
-  }) {
+  Widget buildFilteredCategory({required String title, required List<ServiceData> dataList}) {
     final items = buildServiceItems(dataList, widget.onTitleChange);
 
     final filtered = items.where((item) {
@@ -106,7 +100,7 @@ class _ServicesContent extends State<Services> {
         FocusManager.instance.primaryFocus?.unfocus();
       },
       child: Scaffold(
-        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         body: Stack(
           children: [
             ListView(
@@ -120,12 +114,12 @@ class _ServicesContent extends State<Services> {
                   child: Container(
                     height: 50,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: _searchFocusNode.hasFocus
-                            ? const Color.fromRGBO(32, 87, 206, 1.0)
-                            : Colors.black.withOpacity(0.3),
+                            ? Theme.of(context).colorScheme.secondary
+                            : Colors.black.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(
@@ -133,7 +127,7 @@ class _ServicesContent extends State<Services> {
                         const SizedBox(width: 18),
                         Icon(
                           Icons.search,
-                          color: const Color.fromARGB(255, 0, 0, 0),
+                          color: Theme.of(context).colorScheme.onSurface,
                           size: 25,
                         ),
                         const SizedBox(width: 20),
@@ -152,14 +146,11 @@ class _ServicesContent extends State<Services> {
 
                             style: GoogleFonts.inter(
                               fontSize: 15,
-                              color: Colors.black,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                             decoration: InputDecoration(
                               hintText: 'Search transaction...',
-                              hintStyle: GoogleFonts.inter(
-                                fontSize: 15,
-                                color: Colors.grey,
-                              ),
+                              hintStyle: GoogleFonts.inter(fontSize: 15, color: Colors.grey),
                               border: InputBorder.none,
                               isDense: true,
                               contentPadding: EdgeInsets.zero,
@@ -209,8 +200,7 @@ class _ServicesContent extends State<Services> {
                 ),
 
                 buildFilteredCategory(
-                  title:
-                      'Office of the City Vice Mayor/ SP & Secretary to the Sanggunian',
+                  title: 'Office of the City Vice Mayor/ SP & Secretary to the Sanggunian',
                   dataList: ServiceLists.officeCityVmSpSecretarySangunian,
                 ),
 
@@ -230,8 +220,7 @@ class _ServicesContent extends State<Services> {
                 ),
 
                 buildFilteredCategory(
-                  title:
-                      'Office of the City Environmental and Natural Resources Officer',
+                  title: 'Office of the City Environmental and Natural Resources Officer',
                   dataList: ServiceLists.officeCENR,
                 ),
 
@@ -251,8 +240,7 @@ class _ServicesContent extends State<Services> {
                 ),
 
                 buildFilteredCategory(
-                  title:
-                      'Office of the City Social Welfare and Development Officer',
+                  title: 'Office of the City Social Welfare and Development Officer',
                   dataList: ServiceLists.officeCSWD,
                 ),
 
@@ -272,8 +260,7 @@ class _ServicesContent extends State<Services> {
                 ),
 
                 buildFilteredCategory(
-                  title:
-                      'Office of the City Planning and Development Coordinator',
+                  title: 'Office of the City Planning and Development Coordinator',
                   dataList: ServiceLists.officeCityPlanningDevCoor,
                 ),
 
@@ -330,9 +317,7 @@ class _ServicesContent extends State<Services> {
                     widget.onTitleChange('Chatbot');
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const ChatBotScreen(),
-                      ),
+                      MaterialPageRoute(builder: (context) => const ChatBotScreen()),
                     ).then((_) {
                       widget.onTitleChange('Services');
                     });
@@ -340,11 +325,7 @@ class _ServicesContent extends State<Services> {
                   borderRadius: BorderRadius.circular(40),
                   child: Padding(
                     padding: const EdgeInsets.all(2.0),
-                    child: Image.asset(
-                      'assets/chatbot_icon.png',
-                      width: 70,
-                      height: 70,
-                    ),
+                    child: Image.asset('assets/chatbot_icon.png', width: 70, height: 70),
                   ),
                 ),
               ),
@@ -384,7 +365,7 @@ class ServiceCategory extends StatelessWidget {
                 style: GoogleFonts.inter(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
                 softWrap: true,
               ),
@@ -399,11 +380,8 @@ class ServiceCategory extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => SeeAllScreen(
-                      title: title,
-                      items: items,
-                      onTitleChange: onTitleChange,
-                    ),
+                    builder: (context) =>
+                        SeeAllScreen(title: title, items: items, onTitleChange: onTitleChange),
                   ),
                 ).then((_) {
                   onTitleChange('Services');
@@ -419,7 +397,7 @@ class ServiceCategory extends StatelessWidget {
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color: const Color.fromRGBO(32, 87, 206, 1.0),
+                  color: Theme.of(context).colorScheme.secondary,
                 ),
               ),
             ),
@@ -432,7 +410,7 @@ class ServiceCategory extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           decoration: BoxDecoration(
-            color: const Color.fromRGBO(208, 236, 252, 1),
+            color: Theme.of(context).colorScheme.tertiary,
             borderRadius: BorderRadius.circular(22),
           ),
           child: Column(
@@ -440,8 +418,7 @@ class ServiceCategory extends StatelessWidget {
               return Column(
                 children: [
                   displayedItems[index],
-                  if (index != displayedItems.length - 1)
-                    const SizedBox(height: 12),
+                  if (index != displayedItems.length - 1) const SizedBox(height: 12),
                 ],
               );
             }),
@@ -475,7 +452,7 @@ class ServiceItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(20),
       elevation: 4,
       child: InkWell(
@@ -486,9 +463,7 @@ class ServiceItem extends StatelessWidget {
           onTitleChange('Information');
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => InformationScreen(title: label),
-            ),
+            MaterialPageRoute(builder: (context) => InformationScreen(title: label)),
           ).then((_) {
             onTitleChange(returnTitle);
           });
@@ -498,7 +473,9 @@ class ServiceItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+            ),
           ),
           child: Row(
             children: [
@@ -518,14 +495,14 @@ class ServiceItem extends StatelessWidget {
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),
               ImageIcon(
                 AssetImage('assets/forward_icon.png'),
                 size: 18,
-                color: const Color.fromARGB(255, 0, 0, 0),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ],
           ),
@@ -563,14 +540,14 @@ class SeeAllScreen extends StatelessWidget {
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           decoration: BoxDecoration(
-            color: const Color.fromRGBO(208, 236, 252, 1),
+            color: Theme.of(context).colorScheme.tertiary,
             borderRadius: BorderRadius.circular(22),
           ),
           child: Column(
@@ -578,8 +555,7 @@ class SeeAllScreen extends StatelessWidget {
               return Column(
                 children: [
                   dynamicItems[index],
-                  if (index != dynamicItems.length - 1)
-                    const SizedBox(height: 10),
+                  if (index != dynamicItems.length - 1) const SizedBox(height: 10),
                 ],
               );
             }),
