@@ -31,6 +31,7 @@ class _AppModalBase extends StatelessWidget {
     required this.onPrimary,
     this.onSecondary,
     this.singleAction = false,
+    this.extraContent,
   });
 
   final IconData iconData;
@@ -44,27 +45,28 @@ class _AppModalBase extends StatelessWidget {
   final VoidCallback onPrimary;
   final VoidCallback? onSecondary;
   final bool singleAction;
+  final Widget? extraContent;
 
   @override
 Widget build(BuildContext context) {
   return Dialog(
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-    backgroundColor: Colors.white,
+    backgroundColor: Theme.of(context).brightness == Brightness.dark
+    ? Theme.of(context).colorScheme.primary
+    : Colors.white,
     insetPadding: const EdgeInsets.symmetric(horizontal: 24),
     child: Container(
-      constraints: const BoxConstraints(maxWidth: 400),
-      padding: const EdgeInsets.all(20), 
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10), 
       child: IntrinsicHeight(
         child: Stack(
           children: [
             
             // contents
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SizedBox(height: 10),
                   
                   // icons
                   Container(
@@ -76,39 +78,48 @@ Widget build(BuildContext context) {
                     ),
                     child: Icon(iconData, color: iconColor, size: 24),
                   ), 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 15),
                   
                   // Title
                   Text(
                     title,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
-                      color: Colors.black,
+                      color: Theme.of(context).brightness == Brightness.dark
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : Colors.black,
                     ),
                   ),
-                  
+                  const SizedBox(height: 5),
+
                   //subtitle
                   if (subtitle != null) ...[
-                    const SizedBox(height: 12),
                     Text(
                       subtitle!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF4B5563),
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Color(0xFF4B5563),
                         height: 1.5,
                       ),
                     ),
                   ],
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
+
+                  if (extraContent != null) ...[
+                    const SizedBox(height: 12),
+                    extraContent!,
+                  ],
 
                   // Buttons
                   if (singleAction)
                     _buildSecondaryButton(context, primaryLabel, onPrimary)
                   else ...[
-                    _buildPrimaryButton(primaryLabel, onPrimary),
+                    _buildPrimaryButton(context, primaryLabel, onPrimary),
                     const SizedBox(height: 12),
                     _buildSecondaryButton(
                       context,
@@ -119,27 +130,6 @@ Widget build(BuildContext context) {
                 ],
               ),
             ),
-
-            // close button "X"
-            Positioned(
-              top: 0,
-              right: 0,
-              child: GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    size: 18,
-                    color: Color(0xFF374151),
-                  ),
-                ),
-              ),
-            ),
           ],
         ),
       ),
@@ -148,7 +138,7 @@ Widget build(BuildContext context) {
 }
 
   //first button
-  Widget _buildPrimaryButton(String label, VoidCallback onPressed) {
+  Widget _buildPrimaryButton(BuildContext context, String label, VoidCallback onPressed) {
     return SizedBox(
       width: double.infinity,
       height: 35,
@@ -173,11 +163,22 @@ Widget build(BuildContext context) {
       child: OutlinedButton(
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFF374151),
-          side: const BorderSide(color: Color(0xFFE5E7EB)),
+          side: BorderSide(
+            color: const Color(0xFFE5E7EB),
+          ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         ),
         onPressed: onPressed,
-        child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        child: Text(
+        label, 
+        style: TextStyle(
+          fontSize: 13, 
+          fontWeight: FontWeight.w600, 
+          color: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(context).colorScheme.onPrimary
+          : const Color(0xFF374151),
+        ),
+      ),
       ),
     );
   }
@@ -185,7 +186,12 @@ Widget build(BuildContext context) {
 
 //Exit confirmation modal
 class ExitConfirmationModal {
-  static Future<void> show(BuildContext context, {VoidCallback? onPrimary, VoidCallback? onSecondary}) {
+  static Future<void> show(
+    BuildContext context, {
+    VoidCallback? onPrimary,
+    VoidCallback? onSecondary,
+    // remove all the saved/pending parameters too
+  }) {
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
@@ -194,6 +200,7 @@ class ExitConfirmationModal {
         iconBgColor: _kIconBgRed,
         title: 'Are you sure you want to exit?',
         subtitle: 'Changes will not be saved if you leave this page.',
+        // no extraContent here
         primaryLabel: 'Yes',
         primaryColor: _kRed,
         onPrimary: onPrimary ?? () => Navigator.of(context).pop(),
@@ -213,7 +220,7 @@ class ChangesSavedModal {
         iconColor: _kGreen,
         iconBgColor: _kIconBgGreen,
         title: 'Changes Saved!',
-        subtitle: 'Password updated successfully. Redirecting you to sign in screen.',
+        subtitle: 'Updated successfully. Please click to continue.',
         primaryLabel: 'Got it',
         singleAction: true,
         onPrimary: onPrimary,
@@ -237,7 +244,7 @@ class ConfirmChangesModal {
         primaryColor: const Color(0xFF3B82F6),
         onPrimary: onPrimary,
         secondaryLabel: 'Cancel',
-        onSecondary: onSecondary ?? () => Navigator.of(context).pop(),
+        onSecondary: onSecondary ?? () => Navigator.of(context, rootNavigator: true).pop(), // ← key fix
       ),
     );
   }
@@ -324,7 +331,11 @@ class ResendCodeModal {
 
 //Logout modal
 class LogoutModal {
-  static Future<void> show(BuildContext context, {VoidCallback? onPrimary}) {
+  static Future<void> show(
+    BuildContext context, {
+    VoidCallback? onPrimary,
+    bool hasUnsavedChanges = false,
+  }) {
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
@@ -332,11 +343,14 @@ class LogoutModal {
         iconColor: _kRed,
         iconBgColor: _kIconBgRed,
         title: 'Are you sure you want to logout?',
+        subtitle: hasUnsavedChanges
+            ? 'You have unsaved Settings changes that will be lost.'
+            : null,
         primaryLabel: 'Yes',
         primaryColor: _kRed,
         secondaryLabel: 'Cancel',
-        onPrimary: onPrimary ?? () => Navigator.of(context).pop(),
-        onSecondary: () => Navigator.of(context).pop(),
+        onPrimary: onPrimary ?? () => Navigator.of(context, rootNavigator: true).pop(),
+        onSecondary: () => Navigator.of(context, rootNavigator: true).pop(),
       ),
     );
   }

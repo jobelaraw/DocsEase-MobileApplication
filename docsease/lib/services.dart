@@ -111,6 +111,7 @@ class _ServicesContent extends State<Services> {
                     controller: _searchController,
                     hasFocus: _searchFocusNode.hasFocus,
                     onChanged: (value) => setState(() => searchQuery = value.toLowerCase()),
+                    brightness: Theme.of(context).brightness,
                   ),
                 ),
                 SliverPadding(
@@ -184,12 +185,14 @@ class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
   final TextEditingController controller;
   final bool hasFocus;
   final ValueChanged<String> onChanged;
+  final Brightness brightness;
 
   const _SearchBarDelegate({
     required this.focusNode,
     required this.controller,
     required this.hasFocus,
     required this.onChanged,
+    required this.brightness,
   });
 
   @override
@@ -199,30 +202,30 @@ class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(_SearchBarDelegate old) =>
-      old.hasFocus != hasFocus || old.controller != controller;
+      old.hasFocus != hasFocus || old.controller != controller || old.brightness != brightness; 
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
       child: GestureDetector(
         onTap: () => focusNode.requestFocus(),
         child: Container(
           height: 50,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: hasFocus
-                  ? const Color.fromRGBO(32, 87, 206, 1.0)
-                  : Colors.black.withOpacity(0.3),
+                  ? Theme.of(context).colorScheme.secondary
+                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
             ),
           ),
           child: Row(
             children: [
               const SizedBox(width: 18),
-              const Icon(Icons.search, color: Color.fromARGB(255, 0, 0, 0), size: 25),
+              Icon(Icons.search, color:Theme.of(context).colorScheme.onSurface, size: 25),
               const SizedBox(width: 20),
               Expanded(
                 child: TextField(
@@ -230,10 +233,10 @@ class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
                   focusNode: focusNode,
                   autofocus: false,
                   onChanged: onChanged,
-                  style: GoogleFonts.inter(fontSize: 15, color: Colors.black),
+                  style: GoogleFonts.inter(fontSize: 15, color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
-                    hintText: 'Search transaction...',
-                    hintStyle: GoogleFonts.inter(fontSize: 15, color: Colors.grey),
+                    hintText: 'Search service...',
+                    hintStyle: GoogleFonts.inter(fontSize: 15, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: EdgeInsets.zero,
@@ -277,7 +280,9 @@ class ServiceCategory extends StatelessWidget {
                 style: GoogleFonts.inter(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
+                  color: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : Colors.black,
                 ),
                 softWrap: true,
               ),
@@ -312,7 +317,9 @@ class ServiceCategory extends StatelessWidget {
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color: Theme.of(context).colorScheme.secondary,
+                  color: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : Theme.of(context).colorScheme.secondary,
                 ),
               ),
             ),
@@ -325,7 +332,9 @@ class ServiceCategory extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.tertiary,
+            color: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.tertiary,
             borderRadius: BorderRadius.circular(22),
           ),
           child: Column(
@@ -367,7 +376,9 @@ class ServiceItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Theme.of(context).colorScheme.surface,
+      color: Theme.of(context).brightness == Brightness.dark
+      ? Theme.of(context).colorScheme.tertiary
+      : Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(20),
       elevation: 4,
       child: InkWell(
@@ -462,7 +473,9 @@ class SeeAllScreen extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.tertiary,
+            color: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.tertiary,
             borderRadius: BorderRadius.circular(22),
           ),
           child: Column(

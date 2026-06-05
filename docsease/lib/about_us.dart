@@ -48,7 +48,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFD6E8F5),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: Column(
         children: [
           Expanded(
@@ -168,11 +168,27 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildStatCard('15k +', 'Active Users', const Color(0xFF2B6FD4), Colors.white, Colors.white70),
+                        child: _buildStatCard('15k +', 'Active Users', 
+                        Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.tertiary
+                        : const Color(0xFF2B6FD4), 
+                        Colors.white, 
+                        Colors.white70
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _buildStatCard('4.9', 'App Store Rating', const Color(0xFFADD0EC), Colors.black87, Colors.black54),
+                        child: _buildStatCard('4.9', 'App Store Rating', 
+                        Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.primary
+                        : const Color(0xFFADD0EC), 
+                        Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Colors.black87,                        
+                        Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Colors.black87,
+                        ),
                       ),
                     ],
                   ),
@@ -188,20 +204,26 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                         style: GoogleFonts.inter(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Colors.black87,
                         ),
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFADD0EC),
+                          color: Theme.of(context).brightness == Brightness.dark
+                                  ? Theme.of(context).colorScheme.primary
+                                  : const Color(0xFFADD0EC),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
                           'Creators',
                           style: GoogleFonts.inter(
                             fontSize: 13,
-                            color: Colors.black87,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                  ? Theme.of(context).colorScheme.onPrimary
+                                  : Colors.white,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -224,7 +246,9 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                     style: GoogleFonts.inter(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Colors.black87,
                     ),
                   ),
 
@@ -301,10 +325,14 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).brightness == Brightness.dark
+                ? Theme.of(context).colorScheme.primary
+                : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFFCDD8E3),
+        color: Theme.of(context).brightness == Brightness.dark
+                ? Theme.of(context).colorScheme.surface 
+                : const Color(0xFFCDD8E3),
           width: 1.0,
         ),
         boxShadow: [
@@ -324,7 +352,12 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: const Color(0xFFD0DDE8),
-              border: Border.all(color: Colors.grey.shade300, width: 1.5),
+              border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.onPrimary
+                    :Colors.grey.shade300, 
+                width: 1.5
+                ),
             ),
             child: ClipOval(
               child: Image.asset(
@@ -349,7 +382,9 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                   style: GoogleFonts.inter(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -357,7 +392,9 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                   dev['role']!,
                   style: GoogleFonts.inter(
                     fontSize: 13,
-                    color: Colors.black54,
+                    color: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Colors.black54,
                   ),
                 ),
               ],
@@ -401,9 +438,16 @@ class _ContactTile extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F4F8),
+        color: Theme.of(context).brightness == Brightness.dark
+                ? Theme.of(context).colorScheme.primary
+                : const Color(0xFFF0F4F8),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFCDD8E3), width: 1.0),
+        border: Border.all(
+        color: Theme.of(context).brightness == Brightness.dark
+                ? Theme.of(context).colorScheme.surface 
+                : const Color(0xFFCDD8E3),
+        width: 1.0
+        ),
       ),
       child: Row(
         children: [
@@ -411,7 +455,9 @@ class _ContactTile extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: const Color(0xFFDEEAF4),
+              color: Theme.of(context).brightness == Brightness.dark
+                ? Theme.of(context).colorScheme.tertiary
+                : const Color(0xFFDEEAF4),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Padding(
@@ -428,7 +474,9 @@ class _ContactTile extends StatelessWidget {
             label,
             style: GoogleFonts.inter(
               fontSize: fontSize,
-              color: const Color(0xFF2B6FD4),
+              color: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : const Color(0xFF2B6FD4),
               fontWeight: FontWeight.w500,
             ),
           ),

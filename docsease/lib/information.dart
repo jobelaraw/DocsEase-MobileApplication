@@ -64,7 +64,7 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       constraints: const BoxConstraints(minHeight: 60),
-      decoration: BoxDecoration(color: lightBlueBg, borderRadius: BorderRadius.circular(15)),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.tertiary, borderRadius: BorderRadius.circular(15)),
       child: TabBar(
         controller: _tabController,
         dividerColor: Colors.transparent,
@@ -84,8 +84,12 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
             ),
           ],
         ),
-        labelColor: primaryBlue,
-        unselectedLabelColor: Colors.grey,
+        labelColor: Theme.of(context).brightness == Brightness.dark 
+        ? Theme.of(context).colorScheme.onPrimary
+        : primaryBlue,
+        unselectedLabelColor: Theme.of(context).brightness == Brightness.dark 
+        ? Theme.of(context).colorScheme.onPrimary
+        : Colors.grey,
         labelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, height: 1.0),
 
         unselectedLabelStyle: GoogleFonts.inter(
@@ -255,7 +259,7 @@ class _RequirementsCardState extends State<_RequirementsCard> {
                       children: [
                         Text(
                           item.title,
-                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
+                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 50)),
                         ),
                         const SizedBox(height: 2),
                         RichText(
@@ -270,7 +274,9 @@ class _RequirementsCardState extends State<_RequirementsCard> {
                                 text: item.secureAt,
                                 style: GoogleFonts.inter(
                                   fontSize: 11,
-                                  color: Theme.of(context).colorScheme.secondary,
+                                  color: Theme.of(context).brightness == Brightness.dark 
+                                      ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)
+                                      : const Color(0xFF3B73E0),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -367,7 +373,10 @@ class _StepItem extends StatelessWidget {
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color.fromARGB(255, 255, 255, 255)),
+            border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1)
+            : const Color.fromARGB(255, 255, 255, 255)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.1),
@@ -404,33 +413,46 @@ class _StepItem extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              
               //For start navigation
-              // SizedBox(
-              //   height: 48,
-              //   child: ElevatedButton(
-              //     onPressed: () {},
-              //     style: ElevatedButton.styleFrom(
-              //       backgroundColor: const Color(0xFF2057CE),
-              //       foregroundColor: Colors.white,
-              //       shape: RoundedRectangleBorder(
-              //         borderRadius: BorderRadius.circular(12),
-              //       ),
-              //       elevation: 0,
-              //       padding: const EdgeInsets.symmetric(horizontal: 20),
-              //     ),
-              //     child: const Text("Start Navigate",
-              //         style: TextStyle(fontWeight: FontWeight.bold)),
-              //   ),
-              // ),
-              // const SizedBox(width: 12),
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () {},
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.tertiary
+                    : const Color(0xFF2057CE),
+                    foregroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        width: 1.5,
+                      ),
+                    ),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                  ),
+                  child: const Text("Start Navigate",
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(width: 12),
               SizedBox(
                 height: 45,
                 child: OutlinedButton(
                   onPressed: () {},
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.onSurface,
+                    foregroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : Theme.of(context).colorScheme.onSurface,
                     side: BorderSide(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                      color: Theme.of(context).brightness == Brightness.dark
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                       width: 1.2,
                     ),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -460,9 +482,14 @@ class _InfoBox extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
+        color: Theme.brightnessOf(  context) == Brightness.dark
+            ? Theme.of(context).colorScheme.primary
+            :const Color(0xFFF8F9FA),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(
+          color: Theme.brightnessOf(  context) == Brightness.dark
+            ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1)
+            : Colors.grey.shade100),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -471,7 +498,9 @@ class _InfoBox extends StatelessWidget {
             label,
             style: GoogleFonts.inter(
               fontSize: 12,
-              color: Colors.black54,
+              color: Theme.brightnessOf(context) == Brightness.dark
+              ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)
+              : Colors.black54,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -481,7 +510,9 @@ class _InfoBox extends StatelessWidget {
             style: GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Theme.brightnessOf(context) == Brightness.dark
+              ? Theme.of(context).colorScheme.onPrimary
+              : Colors.black87,
               height: 1.2,
             ),
           ),
@@ -503,24 +534,30 @@ class _InfoGrid extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(child: _buildCard(Icons.location_on, "LOCATION", detail.location)),
+          Expanded(child: _buildCard(context, Icons.location_on, "LOCATION", detail.location)),
           const SizedBox(width: 15),
-          Expanded(child: _buildContactCard()),
+          Expanded(child: _buildContactCard(context)),
         ],
       ),
     );
   }
 
-  Widget _buildCard(IconData icon, String label, String value) {
+  Widget _buildCard(BuildContext context, IconData icon, String label, String value) {
     return Material(
       borderRadius: BorderRadius.circular(25),
       elevation: 4,
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).brightness == Brightness.dark 
+              ? Theme.of(context).colorScheme.primary 
+              : Colors.white,
           borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: Colors.grey.shade100),
+          border: Border.all(
+            color: Theme.brightnessOf(  context) == Brightness.dark
+            ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1)
+            : Colors.grey.shade100,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -536,7 +573,9 @@ class _InfoGrid extends StatelessWidget {
                   label,
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: Colors.black45,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)
+                        : Colors.black45,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -548,7 +587,9 @@ class _InfoGrid extends StatelessWidget {
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Colors.black,
                 height: 1.3,
               ),
             ),
@@ -558,16 +599,22 @@ class _InfoGrid extends StatelessWidget {
     );
   }
 
-  Widget _buildContactCard() {
+  Widget _buildContactCard(BuildContext context) {
     return Material(
       borderRadius: BorderRadius.circular(25),
       elevation: 4,
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+           color: Theme.of(context).brightness == Brightness.dark 
+              ? Theme.of(context).colorScheme.primary 
+              : Colors.white,
           borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: Colors.grey.shade100),
+          border: Border.all(
+            color: Theme.brightnessOf(  context) == Brightness.dark
+            ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1)
+            : Colors.grey.shade100,
+            ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -584,7 +631,9 @@ class _InfoGrid extends StatelessWidget {
                   "CONTACT",
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: Colors.black45,
+                    color: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Colors.black,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -597,7 +646,9 @@ class _InfoGrid extends StatelessWidget {
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Colors.black,
               ),
             ),
             const SizedBox(height: 4),
@@ -607,7 +658,9 @@ class _InfoGrid extends StatelessWidget {
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Colors.black,
               ),
             ),
           ],
@@ -626,7 +679,9 @@ class _ScheduleTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         decoration: BoxDecoration(
-          color: const Color.fromRGBO(185, 217, 235, 0.45),
+          color: Theme.of(context).brightness == Brightness.dark 
+              ? Theme.of(context).colorScheme.primary
+          : const Color.fromRGBO(185, 217, 235, 0.45),
           borderRadius: BorderRadius.circular(25),
         ),
         child: Column(
@@ -640,7 +695,9 @@ class _ScheduleTile extends StatelessWidget {
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black54,
+                    color: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Colors.black,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -670,7 +727,9 @@ class _ScheduleTile extends StatelessWidget {
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: Colors.black,
+                    color: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Colors.black,
                   ),
                 ),
                 Text(
@@ -678,7 +737,9 @@ class _ScheduleTile extends StatelessWidget {
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: Colors.black,
+                    color: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Colors.black,
                   ),
                 ),
               ],
