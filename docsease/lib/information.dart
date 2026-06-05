@@ -162,7 +162,10 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       constraints: const BoxConstraints(minHeight: 60),
-      decoration: BoxDecoration(color: Theme.of(context).colorScheme.tertiary, borderRadius: BorderRadius.circular(15)),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.tertiary,
+        borderRadius: BorderRadius.circular(15),
+      ),
       child: TabBar(
         controller: _tabController,
         dividerColor: Colors.transparent,
@@ -182,12 +185,12 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
             ),
           ],
         ),
-        labelColor: Theme.of(context).brightness == Brightness.dark 
-        ? Theme.of(context).colorScheme.onPrimary
-        : primaryBlue,
-        unselectedLabelColor: Theme.of(context).brightness == Brightness.dark 
-        ? Theme.of(context).colorScheme.onPrimary
-        : Colors.grey,
+        labelColor: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.onPrimary
+            : primaryBlue,
+        unselectedLabelColor: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.onPrimary
+            : Colors.grey,
         labelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, height: 1.0),
         unselectedLabelStyle: GoogleFonts.inter(
           fontWeight: FontWeight.bold,
@@ -266,13 +269,20 @@ class _ContentList extends StatelessWidget {
         if (tab.steps.isNotEmpty) ...[
           Row(
             children: [
-              Icon(Icons.assignment_turned_in_outlined, color: Colors.black),
+              Icon(
+                Icons.assignment_turned_in_outlined,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
               const SizedBox(width: 8),
               Text(
                 tab.steps.length != 1
                     ? "Step-by-Step Guide (1-${tab.steps.length})"
                     : "Step-by-Step Guide (1)",
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
             ],
           ),
@@ -322,11 +332,15 @@ class _RequirementsCard extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(Icons.assignment_outlined, color: Colors.black),
+            Icon(Icons.assignment_outlined, color: Theme.of(context).colorScheme.onSurface),
             const SizedBox(width: 8),
             Text(
               "Requirements Checklist",
-              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
             ),
           ],
         ),
@@ -374,7 +388,11 @@ class _RequirementsCard extends StatelessWidget {
                       children: [
                         Text(
                           item.title,
-                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 50)),
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 50),
+                          ),
                         ),
                         const SizedBox(height: 2),
                         RichText(
@@ -389,8 +407,10 @@ class _RequirementsCard extends StatelessWidget {
                                 text: item.secureAt.isNotEmpty ? item.secureAt : "Not Applicable",
                                 style: GoogleFonts.inter(
                                   fontSize: 11,
-                                  color: Theme.of(context).brightness == Brightness.dark 
-                                      ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)
+                                  color: Theme.of(context).brightness == Brightness.dark
+                                      ? Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface.withValues(alpha: 0.8)
                                       : const Color(0xFF3B73E0),
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -494,9 +514,10 @@ class _StepItem extends StatelessWidget {
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-            color: Theme.of(context).brightness == Brightness.dark
-            ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1)
-            : const Color.fromARGB(255, 255, 255, 255)),
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1)
+                  : const Color.fromARGB(255, 255, 255, 255),
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.1),
@@ -557,7 +578,7 @@ class _StepItem extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ), */
-            
+
             // Mark As Done button
             SizedBox(
               height: 45,
@@ -566,11 +587,11 @@ class _StepItem extends StatelessWidget {
                       onPressed: () => onToggle(uniqueKey, false),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.tertiary
-                        : const Color(0xFF2057CE),
+                            ? Theme.of(context).colorScheme.tertiary
+                            : const Color(0xFF2057CE),
                         foregroundColor: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : Colors.white,
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                           side: BorderSide(
@@ -593,12 +614,12 @@ class _StepItem extends StatelessWidget {
                       onPressed: () => onToggle(uniqueKey, true),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : Theme.of(context).colorScheme.onSurface,
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context).colorScheme.onSurface,
                         side: BorderSide(
                           color: Theme.of(context).brightness == Brightness.dark
-                          ? Theme.of(context).colorScheme.onPrimary
-                          : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                           width: 1.2,
                         ),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -630,14 +651,15 @@ class _InfoBox extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
-        color: Theme.brightnessOf(  context) == Brightness.dark
+        color: Theme.brightnessOf(context) == Brightness.dark
             ? Theme.of(context).colorScheme.primary
-            :const Color(0xFFF8F9FA),
+            : const Color(0xFFF8F9FA),
         borderRadius: BorderRadius.circular(15),
         border: Border.all(
-          color: Theme.brightnessOf(  context) == Brightness.dark
-            ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1)
-            : Colors.grey.shade100),
+          color: Theme.brightnessOf(context) == Brightness.dark
+              ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1)
+              : Colors.grey.shade100,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -647,8 +669,8 @@ class _InfoBox extends StatelessWidget {
             style: GoogleFonts.inter(
               fontSize: 12,
               color: Theme.brightnessOf(context) == Brightness.dark
-              ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)
-              : Colors.black54,
+                  ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)
+                  : Colors.black54,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -659,8 +681,8 @@ class _InfoBox extends StatelessWidget {
               fontSize: 12,
               fontWeight: FontWeight.bold,
               color: Theme.brightnessOf(context) == Brightness.dark
-              ? Theme.of(context).colorScheme.onPrimary
-              : Colors.black87,
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : Colors.black87,
               height: 1.2,
             ),
           ),
@@ -697,14 +719,14 @@ class _InfoGrid extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark 
-              ? Theme.of(context).colorScheme.primary 
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Theme.of(context).colorScheme.primary
               : Colors.white,
           borderRadius: BorderRadius.circular(25),
           border: Border.all(
-            color: Theme.brightnessOf(  context) == Brightness.dark
-            ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1)
-            : Colors.grey.shade100,
+            color: Theme.brightnessOf(context) == Brightness.dark
+                ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1)
+                : Colors.grey.shade100,
           ),
         ),
         child: Column(
@@ -754,15 +776,15 @@ class _InfoGrid extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-           color: Theme.of(context).brightness == Brightness.dark 
-              ? Theme.of(context).colorScheme.primary 
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Theme.of(context).colorScheme.primary
               : Colors.white,
           borderRadius: BorderRadius.circular(25),
           border: Border.all(
-            color: Theme.brightnessOf(  context) == Brightness.dark
-            ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1)
-            : Colors.grey.shade100,
-            ),
+            color: Theme.brightnessOf(context) == Brightness.dark
+                ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1)
+                : Colors.grey.shade100,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -779,8 +801,8 @@ class _InfoGrid extends StatelessWidget {
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.onSurface
-                    : Colors.black,
+                        ? Theme.of(context).colorScheme.onSurface
+                        : Colors.black,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -824,9 +846,9 @@ class _ScheduleTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark 
+          color: Theme.of(context).brightness == Brightness.dark
               ? Theme.of(context).colorScheme.primary
-          : const Color.fromRGBO(185, 217, 235, 0.45),
+              : const Color.fromRGBO(185, 217, 235, 0.45),
           borderRadius: BorderRadius.circular(25),
         ),
         child: Column(
@@ -841,8 +863,8 @@ class _ScheduleTile extends StatelessWidget {
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.onSurface
-                    : Colors.black,
+                        ? Theme.of(context).colorScheme.onSurface
+                        : Colors.black,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -873,8 +895,8 @@ class _ScheduleTile extends StatelessWidget {
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.onSurface
-                    : Colors.black,
+                        ? Theme.of(context).colorScheme.onSurface
+                        : Colors.black,
                   ),
                 ),
                 Text(
@@ -883,8 +905,8 @@ class _ScheduleTile extends StatelessWidget {
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.onSurface
-                    : Colors.black,
+                        ? Theme.of(context).colorScheme.onSurface
+                        : Colors.black,
                   ),
                 ),
               ],

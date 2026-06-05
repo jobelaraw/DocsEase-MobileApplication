@@ -67,10 +67,7 @@ class AppStart extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            SlideRoute(page: const Authentication()),
-                          );
+                          Navigator.push(context, SlideRoute(page: const Authentication()));
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF3B73E0),
@@ -97,7 +94,7 @@ class AppStart extends StatelessWidget {
                         onPressed: () {
                           Navigator.pushAndRemoveUntil(
                             context,
-                            SlideRoute(page: const SideBar()),
+                            SlideRoute(page: const SideBar(isGuest: true)),
                             (Route<dynamic> route) => false,
                           );
                         },
