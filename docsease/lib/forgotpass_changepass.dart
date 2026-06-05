@@ -1,10 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:docsease/app_modals.dart';
 import 'package:docsease/authentication.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:docsease/custom_button.dart';
 import 'package:docsease/custom_textfield.dart';
 import 'package:docsease/navigator_transition.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -188,9 +187,9 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
 
                                       int score =
                                           (hasLength ? 1 : 0) +
-                                              (hasSymbol ? 1 : 0) +
-                                              (hasUppercase ? 1 : 0) +
-                                              (hasNumber ? 1 : 0);
+                                          (hasSymbol ? 1 : 0) +
+                                          (hasUppercase ? 1 : 0) +
+                                          (hasNumber ? 1 : 0);
 
                                       if (score < 4) {
                                         return 'Please meet all the password requirements.';
@@ -244,8 +243,8 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                           _passwordController.text.isNotEmpty && hasStrongPassword;
                                       bool isConfirmValid =
                                           _confirmPasswordController.text.isNotEmpty &&
-                                              _confirmPasswordController.text ==
-                                                  _passwordController.text;
+                                          _confirmPasswordController.text ==
+                                              _passwordController.text;
                                       if (!isPasswordValid || !isConfirmValid) {
                                         setState(() => invalidInput = true);
                                         return;
@@ -255,10 +254,10 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                         context,
                                         onPrimary: () async {
                                           Navigator.of(context).pop();
-                                          
+
                                           try {
                                             setState(() => isLoading = true);
- 
+
                                             HttpsCallable callable = FirebaseFunctions.instance
                                                 .httpsCallable('resetUserPassword');
                                             await callable.call({
