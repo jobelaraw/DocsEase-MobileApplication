@@ -277,12 +277,7 @@ class _SignInState extends State<SignIn> {
 
               await authService.signIn(inputEmail, inputPassword);
               if (mounted) {
-                setState(() => _isEmailLoading = false);
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SideBar()),
-                  (route) => false,
-                );
+                Navigator.of(context).popUntil((route) => route.isFirst);
               }
             } catch (e) {
               if (mounted) {
@@ -314,13 +309,9 @@ class _SignInState extends State<SignIn> {
               if (mounted) {
                 setState(() => _isGoogleLoading = false);
 
-              if (result != null) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SideBar()),
-                  (route) => false,
-                );
-              }
+                if (result != null) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
               }
             } catch (e) {
               if (mounted) {
@@ -343,7 +334,7 @@ class _SignInState extends State<SignIn> {
           onTapAction: () {
             Navigator.pushAndRemoveUntil(
               context,
-              MaterialPageRoute(builder: (context) => SideBar()),
+              MaterialPageRoute(builder: (context) => SideBar(isGuest: true)),
               (Route<dynamic> route) => false,
             );
           },
@@ -545,11 +536,7 @@ class _SignUpState extends State<SignUp> {
                 widget.usernameController.text.trim(),
               );
               if (mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SideBar()),
-                  (route) => false,
-                );
+                Navigator.of(context).popUntil((route) => route.isFirst);
               }
             } catch (e) {
               if (mounted) {
@@ -582,13 +569,9 @@ class _SignUpState extends State<SignUp> {
               if (mounted) {
                 setState(() => _isGoogleLoading = false);
 
-              if (result != null) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SideBar()),
-                  (route) => false,
-                );
-              }
+                if (result != null) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
               }
             } catch (e) {
               if (mounted) {
@@ -611,7 +594,7 @@ class _SignUpState extends State<SignUp> {
           onTapAction: () {
             Navigator.pushAndRemoveUntil(
               context,
-              MaterialPageRoute(builder: (context) => SideBar()),
+              MaterialPageRoute(builder: (context) => SideBar(isGuest: true)),
               (Route<dynamic> route) => false,
             );
           },

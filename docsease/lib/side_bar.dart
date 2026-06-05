@@ -436,7 +436,9 @@ class _SideBarState extends State<SideBar> {
                                   return _SkeletonProfileHeader();
                                 }
 
-                                String currentUsername = 'Loading...';
+                                String currentUsername = widget.isGuest
+                                    ? 'Guest Account'
+                                    : 'Loading...';
                                 String currentProfile = 'assets/default_profile.png';
 
                                 if (snapshot.hasData && snapshot.data!.exists) {
@@ -455,7 +457,7 @@ class _SideBarState extends State<SideBar> {
                                   children: [
                                     CircleAvatar(
                                       radius: 40,
-                                      backgroundColor: Theme.of(context).colorScheme.surface,
+                                      backgroundColor: Theme.of(context).colorScheme.primary,
                                       child: ClipOval(
                                         child: hasDefaultProfile
                                             ? Image.asset(

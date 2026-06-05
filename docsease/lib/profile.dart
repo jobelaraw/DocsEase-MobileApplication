@@ -243,8 +243,8 @@ class _ProfileState extends State<Profile> {
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Theme.of(context).brightness == Brightness.dark
-                            ? Theme.of(context).colorScheme.tertiary
-                            : Colors.white,
+                          ? Theme.of(context).colorScheme.tertiary
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(25),
                       boxShadow: [
                         BoxShadow(
