@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'info_model.dart';
-import 'info_data.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:docsease/info_model.dart';
 
 class InformationScreen extends StatefulWidget {
-  final String title;
-  const InformationScreen({super.key, required this.title});
+  final ServiceDetail detail;
+  const InformationScreen({super.key, required this.detail});
 
   @override
   State<InformationScreen> createState() => _InformationScreenState();
@@ -13,7 +14,6 @@ class InformationScreen extends StatefulWidget {
 
 class _InformationScreenState extends State<InformationScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  late ServiceDetail detail;
 
   Color get primaryBlue => Theme.of(context).colorScheme.primary;
   final Color lightBlueBg = const Color(0xFFE9F1F7);
@@ -22,44 +22,142 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
   @override
   void initState() {
     super.initState();
-    detail = ServiceRepo.getDetail(widget.title);
-    if (detail.tabs.length > 1) {
-      _tabController = TabController(length: detail.tabs.length, vsync: this);
+    if (widget.detail.tabs.length > 1) {
+      _tabController = TabController(length: widget.detail.tabs.length, vsync: this);
     }
   }
 
   @override
   void dispose() {
-    if (detail.tabs.length > 1) _tabController.dispose();
+    if (widget.detail.tabs.length > 1) _tabController.dispose();
     super.dispose();
+  }
+
+  // Calculates overall progress and pushes it to Firestore
+  void _updateProgress(List<String> reqs, List<String> steps) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || widget.detail.serviceId.isEmpty) return;
+
+    int totalReqs = 0;
+    int totalSteps = 0;
+    for (var tab in widget.detail.tabs) {
+      totalReqs += tab.requirements.length;
+      totalSteps += tab.steps.length;
+    }
+
+    int total = totalReqs + totalSteps;
+    int completed = reqs.length + steps.length;
+    double progress = total == 0 ? 0.0 : (completed / total);
+    String status = progress >= 1.0 ? "Completed" : "In Progress";
+
+    final docRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('service_history')
+        .doc(widget.detail.serviceId);
+
+    // If everything is unchecked, remove the document entirely
+    if (completed == 0) {
+      await docRef.delete();
+    } else {
+      await docRef.set({
+        'service_id': widget.detail.serviceId,
+        'service_name': widget.detail.title,
+        'checked_requirements': reqs,
+        'completed_steps': steps,
+        'progress': progress,
+        'status': status,
+        'last_updated': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    // Fallback if user is not logged in
+    if (user == null) return const Scaffold(body: Center(child: Text("Please log in first.")));
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      body: Column(
-        children: [
-          if (detail.tabs.length > 1) _buildTabSwitcher(),
-          Expanded(
-            child: detail.tabs.length > 1
-                ? TabBarView(
-                    controller: _tabController,
-                    children: detail.tabs
-                        .map(
-                          (tab) => _ContentList(tab: tab, detail: detail, accentColor: accentBlue),
-                        )
-                        .toList(),
-                  )
-                : _ContentList(tab: detail.tabs.first, detail: detail, accentColor: accentBlue),
-          ),
-        ],
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('service_history')
+            .doc(widget.detail.serviceId)
+            .snapshots(),
+        builder: (context, snapshot) {
+          List<String> checkedReqs = [];
+          List<String> completedSteps = [];
+
+          if (snapshot.hasData && snapshot.data!.exists) {
+            var data = snapshot.data!.data() as Map<String, dynamic>;
+            checkedReqs = List<String>.from(data['checked_requirements'] ?? []);
+            completedSteps = List<String>.from(data['completed_steps'] ?? []);
+          }
+
+          void handleToggleReq(String uniqueId, bool isChecked) {
+            List<String> newReqs = List.from(checkedReqs);
+            if (isChecked)
+              newReqs.add(uniqueId);
+            else
+              newReqs.remove(uniqueId);
+            _updateProgress(newReqs, completedSteps);
+          }
+
+          void handleToggleStep(String uniqueId, bool isDone) {
+            List<String> newSteps = List.from(completedSteps);
+            if (isDone)
+              newSteps.add(uniqueId);
+            else
+              newSteps.remove(uniqueId);
+            _updateProgress(checkedReqs, newSteps);
+          }
+
+          return Column(
+            children: [
+              if (widget.detail.tabs.length > 1) _buildTabSwitcher(),
+              Expanded(
+                child: widget.detail.tabs.isEmpty
+                    ? const Center(child: Text("No data available for this service."))
+                    : widget.detail.tabs.length > 1
+                    ? TabBarView(
+                        controller: _tabController,
+                        children: widget.detail.tabs
+                            .map(
+                              (tab) => _ContentList(
+                                tab: tab,
+                                detail: widget.detail,
+                                accentColor: accentBlue,
+                                checkedReqs: checkedReqs,
+                                completedSteps: completedSteps,
+                                onToggleReq: handleToggleReq,
+                                onToggleStep: handleToggleStep,
+                              ),
+                            )
+                            .toList(),
+                      )
+                    : _ContentList(
+                        tab: widget.detail.tabs.first,
+                        detail: widget.detail,
+                        accentColor: accentBlue,
+                        checkedReqs: checkedReqs,
+                        completedSteps: completedSteps,
+                        onToggleReq: handleToggleReq,
+                        onToggleStep: handleToggleStep,
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
   Widget _buildTabSwitcher() {
-    if (detail.tabs.length <= 1) return const SizedBox.shrink();
+    if (widget.detail.tabs.length <= 1) return const SizedBox.shrink();
 
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -91,20 +189,19 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
         ? Theme.of(context).colorScheme.onPrimary
         : Colors.grey,
         labelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, height: 1.0),
-
         unselectedLabelStyle: GoogleFonts.inter(
           fontWeight: FontWeight.bold,
           fontSize: 13,
           height: 1.0,
         ),
-        tabs: detail.tabs.map((tab) {
+        tabs: widget.detail.tabs.map((tab) {
           return Tab(
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Align(
                 alignment: Alignment.center,
                 child: Text(
-                  tab.name,
+                  tab.name.isEmpty ? "Process" : tab.name,
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -122,8 +219,20 @@ class _ContentList extends StatelessWidget {
   final ServiceDetail detail;
   final ServiceTab tab;
   final Color accentColor;
+  final List<String> checkedReqs;
+  final List<String> completedSteps;
+  final Function(String, bool) onToggleReq;
+  final Function(String, bool) onToggleStep;
 
-  const _ContentList({required this.detail, required this.tab, required this.accentColor});
+  const _ContentList({
+    required this.detail,
+    required this.tab,
+    required this.accentColor,
+    required this.checkedReqs,
+    required this.completedSteps,
+    required this.onToggleReq,
+    required this.onToggleStep,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +243,7 @@ class _ContentList extends StatelessWidget {
         const SizedBox(height: 8),
 
         Text(
-          detail.description,
+          detail.description.isNotEmpty ? detail.description : "No description available.",
           style: GoogleFonts.inter(
             fontSize: 12,
             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
@@ -142,25 +251,44 @@ class _ContentList extends StatelessWidget {
         ),
         const SizedBox(height: 25),
 
-        // Requirements Checklist Card
-        _RequirementsCard(requirements: tab.requirements, iconColor: accentColor),
-        const SizedBox(height: 30),
-
-        Text(
-          "Step-by-Step Guide (1-${tab.steps.length})",
-          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        const SizedBox(height: 20),
-
-        // Steps
-        ...tab.steps.asMap().entries.map(
-          (entry) => _StepItem(
-            num: entry.key + 1,
-            step: entry.value,
-            isLast: entry.key == tab.steps.length - 1,
-            accentColor: accentColor,
+        if (tab.requirements.isNotEmpty) ...[
+          _RequirementsCard(
+            requirements: tab.requirements,
+            iconColor: accentColor,
+            title: detail.title,
+            tabName: tab.name,
+            checkedReqs: checkedReqs,
+            onToggle: onToggleReq,
           ),
-        ),
+          const SizedBox(height: 30),
+        ],
+
+        if (tab.steps.isNotEmpty) ...[
+          Row(
+            children: [
+              Icon(Icons.assignment_turned_in_outlined, color: Colors.black),
+              const SizedBox(width: 8),
+              Text(
+                tab.steps.length != 1
+                    ? "Step-by-Step Guide (1-${tab.steps.length})"
+                    : "Step-by-Step Guide (1)",
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          ...tab.steps.asMap().entries.map(
+            (entry) => _StepItem(
+              num: entry.key + 1,
+              step: entry.value,
+              accentColor: accentColor,
+              tabName: tab.name,
+              completedSteps: completedSteps,
+              onToggle: onToggleStep,
+            ),
+          ),
+        ],
+
         const SizedBox(height: 10),
         _InfoGrid(detail: detail, accentColor: accentColor),
         const SizedBox(height: 30),
@@ -170,58 +298,47 @@ class _ContentList extends StatelessWidget {
   }
 }
 
-class _RequirementsCard extends StatefulWidget {
+class _RequirementsCard extends StatelessWidget {
   final List<RequirementItem> requirements;
   final Color iconColor;
+  final String title;
+  final String tabName;
+  final List<String> checkedReqs;
+  final Function(String, bool) onToggle;
 
-  const _RequirementsCard({required this.requirements, required this.iconColor});
-
-  @override
-  State<_RequirementsCard> createState() => _RequirementsCardState();
-}
-
-class _RequirementsCardState extends State<_RequirementsCard> {
-  late Map<String, bool> _checkedItems;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkedItems = {for (var item in widget.requirements) item.title: false};
-  }
+  const _RequirementsCard({
+    required this.requirements,
+    required this.iconColor,
+    required this.title,
+    required this.tabName,
+    required this.checkedReqs,
+    required this.onToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header row
         Row(
           children: [
-            Icon(Icons.assignment_outlined, color: widget.iconColor),
+            Icon(Icons.assignment_outlined, color: Colors.black),
             const SizedBox(width: 8),
-
             Text(
               "Requirements Checklist",
               style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 15),
 
-        Text(
-          "For the ${_titleLabel}",
-          style: GoogleFonts.inter(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-          ),
-        ),
-        const SizedBox(height: 12),
+        ...requirements.map((item) {
+          // Creates a unique key so identical requirement names on different tabs don't clash
+          final uniqueKey = "$tabName : ${item.title}";
+          final checked = checkedReqs.contains(uniqueKey);
 
-        ...widget.requirements.map((item) {
-          final checked = _checkedItems[item.title] ?? false;
           return GestureDetector(
-            onTap: () => setState(() => _checkedItems[item.title] = !checked),
+            onTap: () => onToggle(uniqueKey, !checked),
             child: Container(
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -242,17 +359,15 @@ class _RequirementsCardState extends State<_RequirementsCard> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Checkbox
                   Checkbox(
                     value: checked,
-                    onChanged: (v) => setState(() => _checkedItems[item.title] = v ?? false),
+                    onChanged: (v) => onToggle(uniqueKey, v ?? false),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-                    activeColor: widget.iconColor,
+                    activeColor: iconColor,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     visualDensity: VisualDensity.compact,
                   ),
                   const SizedBox(width: 6),
-                  // Text column
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,7 +386,7 @@ class _RequirementsCardState extends State<_RequirementsCard> {
                             ),
                             children: [
                               TextSpan(
-                                text: item.secureAt,
+                                text: item.secureAt.isNotEmpty ? item.secureAt : "Not Applicable",
                                 style: GoogleFonts.inter(
                                   fontSize: 11,
                                   color: Theme.of(context).brightness == Brightness.dark 
@@ -294,25 +409,31 @@ class _RequirementsCardState extends State<_RequirementsCard> {
       ],
     );
   }
-
-  String get _titleLabel => "New Business Application";
 }
 
 class _StepItem extends StatelessWidget {
   final int num;
   final ServiceStep step;
-  final bool isLast;
   final Color accentColor;
+  final String tabName;
+  final List<String> completedSteps;
+  final Function(String, bool) onToggle;
 
   const _StepItem({
     required this.num,
     required this.step,
-    required this.isLast,
     required this.accentColor,
+    required this.tabName,
+    required this.completedSteps,
+    required this.onToggle,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Unique key logic to prevent bleeding states across tabs
+    final uniqueKey = "$tabName : ${step.title}";
+    bool isDone = completedSteps.contains(uniqueKey);
+
     return Column(
       children: [
         Row(
@@ -320,19 +441,19 @@ class _StepItem extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 22,
-              backgroundColor: num == 3 ? Colors.white : accentColor,
+              backgroundColor: isDone ? accentColor : Colors.white,
               child: Container(
-                decoration: num == 3
-                    ? BoxDecoration(
+                decoration: isDone
+                    ? null
+                    : BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.black, width: 2),
-                      )
-                    : null,
+                      ),
                 alignment: Alignment.center,
                 child: Text(
                   "$num",
                   style: TextStyle(
-                    color: num == 3 ? Colors.black : Colors.white,
+                    color: isDone ? Colors.white : Colors.black,
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                   ),
@@ -367,7 +488,6 @@ class _StepItem extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
-        // info boxes (Fee, Time, person)
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -385,7 +505,6 @@ class _StepItem extends StatelessWidget {
               ),
             ],
           ),
-
           child: Column(
             children: [
               IntrinsicHeight(
@@ -402,68 +521,97 @@ class _StepItem extends StatelessWidget {
                   ],
                 ),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               _InfoBox(label: "Person In-charge:", value: step.personsInCharge.join('\n')),
             ],
           ),
         ),
 
-        if (isLast) ...[
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              
-              //For start navigation
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.tertiary
-                    : const Color(0xFF2057CE),
-                    foregroundColor: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                        color: Theme.of(context).colorScheme.onPrimary,
-                        width: 1.5,
+        const SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            // Start Navigate button
+            /* SizedBox(
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.tertiary
+                  : const Color(0xFF2057CE),
+                  foregroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      width: 1.5,
+                    ),
+                  ),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                ),
+                child: const Text("Start Navigate",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ), */
+            
+            // Mark As Done button
+            SizedBox(
+              height: 45,
+              child: isDone
+                  ? ElevatedButton(
+                      onPressed: () => onToggle(uniqueKey, false),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.tertiary
+                        : const Color(0xFF2057CE),
+                        foregroundColor: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            width: 1.5,
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        elevation: 0,
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.check, size: 18),
+                          SizedBox(width: 8),
+                          Text("Completed", style: TextStyle(fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    )
+                  : OutlinedButton(
+                      onPressed: () => onToggle(uniqueKey, true),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Theme.of(context).colorScheme.onSurface,
+                        side: BorderSide(
+                          color: Theme.of(context).brightness == Brightness.dark
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                          width: 1.2,
+                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                      ),
+                      child: const Text(
+                        "Mark As Done",
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                  ),
-                  child: const Text("Start Navigate",
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                height: 45,
-                child: OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : Theme.of(context).colorScheme.onSurface,
-                    side: BorderSide(
-                      color: Theme.of(context).brightness == Brightness.dark
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                      width: 1.2,
-                    ),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                  ),
-                  child: const Text("Mark As Done", style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
         const SizedBox(height: 20),
       ],
     );
@@ -506,7 +654,7 @@ class _InfoBox extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            value,
+            value.isNotEmpty ? value : "N/A",
             style: GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.bold,
@@ -568,7 +716,7 @@ class _InfoGrid extends StatelessWidget {
                   decoration: const BoxDecoration(shape: BoxShape.circle),
                   child: Icon(icon, color: const Color(0xFF3B73E0), size: 18),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text(
                   label,
                   style: GoogleFonts.inter(
@@ -626,7 +774,6 @@ class _InfoGrid extends StatelessWidget {
                   child: const Icon(Icons.phone, color: Color(0xFF3B73E0), size: 18),
                 ),
                 const SizedBox(width: 8),
-
                 Text(
                   "CONTACT",
                   style: GoogleFonts.inter(
@@ -640,9 +787,8 @@ class _InfoGrid extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 15),
-
             Text(
-              detail.contactPhone,
+              detail.contactPhone.isNotEmpty ? detail.contactPhone : "N/A",
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -652,9 +798,8 @@ class _InfoGrid extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-
             Text(
-              detail.contactEmail,
+              detail.contactEmail.isNotEmpty ? detail.contactEmail : "N/A",
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,

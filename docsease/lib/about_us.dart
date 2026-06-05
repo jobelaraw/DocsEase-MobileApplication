@@ -15,9 +15,24 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
   Timer? _autoSlideTimer;
 
   final List<Map<String, String>> _developers = [
-    {'name': 'Jobel R. Araw', 'role': 'Project Manager', 'image': 'assets/jobel.png', 'roleIcon': 'assets/projectmanager_icon.png'},
-    {'name': 'Jester Von G. Resma', 'role': 'Developer', 'image': 'assets/von.png', 'roleIcon': 'assets/developer_icon.png'},
-    {'name': 'Meagan S. Enguerra', 'role': 'UI/UX Designer', 'image': 'assets/meagan.png', 'roleIcon': 'assets/designer_icon.png'},
+    {
+      'name': 'Jobel R. Araw',
+      'role': 'Project Manager',
+      'image': 'assets/jobel.png',
+      'roleIcon': 'assets/projectmanager_icon.png',
+    },
+    {
+      'name': 'Jester Von G. Resma',
+      'role': 'Developer',
+      'image': 'assets/von.png',
+      'roleIcon': 'assets/developer_icon.png',
+    },
+    {
+      'name': 'Meagan S. Enguerra',
+      'role': 'UI/UX Designer',
+      'image': 'assets/meagan.png',
+      'roleIcon': 'assets/designer_icon.png',
+    },
   ];
 
   @override
@@ -72,11 +87,10 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(30),
-                      child: SizedBox(
-                        height: 260,
-                        child: Stack(
-                          children: [
-                            PageView.builder(
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: PageView.builder(
                               controller: _imageController,
                               itemCount: 3,
                               onPageChanged: (i) {
@@ -94,13 +108,14 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                                   fit: BoxFit.cover,
                                   width: double.infinity,
                                   height: double.infinity,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    color: const Color(0xFF7A9BB5),
-                                  ),
+                                  errorBuilder: (_, __, ___) =>
+                                      Container(color: const Color(0xFF7A9BB5)),
                                 );
                               },
                             ),
-                            Container(
+                          ),
+                          Positioned.fill(
+                            child: Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   begin: Alignment.topCenter,
@@ -112,33 +127,37 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                                 ),
                               ),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'DocsEase',
-                                    style: GoogleFonts.inter(
-                                      color: const Color(0xFF93C5FD),
-                                      fontSize: 35,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                          ),
+                          Container(
+                            width: double.infinity,
+                            constraints: const BoxConstraints(minHeight: 260),
+                            padding: const EdgeInsets.all(25),
+                            alignment: Alignment.bottomLeft,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'DocsEase',
+                                  style: GoogleFonts.inter(
+                                    color: const Color(0xFF93C5FD),
+                                    fontSize: 35,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  const SizedBox(height: 15),
-                                  Text(
-                                    'A mobile assistant designed to help citizens navigate government services more easily in Binan City Hall. It provides clear information, guided steps, and smart navigation to simplify document processing in government offices.',
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontSize: 16.5,
-                                      height: 1.5,
-                                    ),
+                                ),
+                                const SizedBox(height: 15),
+                                Text(
+                                  'A mobile assistant designed to help citizens navigate government services more easily in Binan City Hall. It provides clear information, guided steps, and smart navigation to simplify document processing in government offices.',
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontSize: 16.5,
+                                    height: 1.5,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -154,9 +173,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                         height: _imagePage == i ? 10 : 8,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: _imagePage == i
-                              ? const Color(0xFF2B6FD4)
-                              : Colors.grey.shade400,
+                          color: _imagePage == i ? const Color(0xFF2B6FD4) : Colors.grey.shade400,
                         ),
                       );
                     }),
@@ -234,9 +251,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                   const SizedBox(height: 20),
 
                   // Developers List
-                  Column(
-                    children: _developers.map((dev) => _buildDevTile(dev)).toList(),
-                  ),
+                  Column(children: _developers.map((dev) => _buildDevTile(dev)).toList()),
 
                   const SizedBox(height: 24),
 
@@ -254,7 +269,6 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
 
                   const SizedBox(height: 14),
 
-
                   _ContactTile(
                     iconAsset: 'assets/email_icon.png',
                     fallbackIcon: Icons.mail_outline,
@@ -262,7 +276,6 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                     fontSize: 16,
                   ),
                   const SizedBox(height: 10),
-
 
                   _ContactTile(
                     iconAsset: 'assets/contact_icon.png',
@@ -279,9 +292,15 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                     children: [
                       _SocialCircle(iconAsset: 'assets/fb_icon.png', fallbackIcon: Icons.facebook),
                       const SizedBox(width: 12),
-                      _SocialCircle(iconAsset: 'assets/share_icon.png', fallbackIcon: Icons.share_outlined),
+                      _SocialCircle(
+                        iconAsset: 'assets/share_icon.png',
+                        fallbackIcon: Icons.share_outlined,
+                      ),
                       const SizedBox(width: 12),
-                      _SocialCircle(iconAsset: 'assets/connect_icon.png', fallbackIcon: Icons.chat_bubble_outline),
+                      _SocialCircle(
+                        iconAsset: 'assets/connect_icon.png',
+                        fallbackIcon: Icons.chat_bubble_outline,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 30),
@@ -312,7 +331,10 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(val, style: GoogleFonts.inter(color: textCol, fontSize: 30, fontWeight: FontWeight.bold)),
+          Text(
+            val,
+            style: GoogleFonts.inter(color: textCol, fontSize: 30, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 4),
           Text(label, style: GoogleFonts.inter(color: subCol, fontSize: 15)),
         ],
@@ -363,11 +385,8 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
               child: Image.asset(
                 dev['image']!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.person,
-                  size: 30,
-                  color: Colors.white70,
-                ),
+                errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.person, size: 30, color: Colors.white70),
               ),
             ),
           ),
@@ -406,11 +425,8 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
             width: 26,
             height: 26,
             color: const Color(0xFF2B6FD4),
-            errorBuilder: (_, __, ___) => const Icon(
-              Icons.work_outline,
-              size: 24,
-              color: Color(0xFF2B6FD4),
-            ),
+            errorBuilder: (_, __, ___) =>
+                const Icon(Icons.work_outline, size: 24, color: Color(0xFF2B6FD4)),
           ),
         ],
       ),
@@ -465,7 +481,8 @@ class _ContactTile extends StatelessWidget {
               child: Image.asset(
                 iconAsset,
                 color: const Color(0xFF2B6FD4),
-                errorBuilder: (_, __, ___) => Icon(fallbackIcon, size: 22, color: const Color(0xFF2B6FD4)),
+                errorBuilder: (_, __, ___) =>
+                    Icon(fallbackIcon, size: 22, color: const Color(0xFF2B6FD4)),
               ),
             ),
           ),
@@ -508,7 +525,8 @@ class _SocialCircle extends StatelessWidget {
         child: Image.asset(
           iconAsset,
           color: const Color(0xFF2B6FD4),
-          errorBuilder: (_, __, ___) => Icon(fallbackIcon, size: 22, color: const Color(0xFF2B6FD4)),
+          errorBuilder: (_, __, ___) =>
+              Icon(fallbackIcon, size: 22, color: const Color(0xFF2B6FD4)),
         ),
       ),
     );

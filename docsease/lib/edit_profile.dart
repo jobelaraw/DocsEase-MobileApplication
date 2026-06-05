@@ -27,8 +27,8 @@ class _EditProfileState extends State<EditProfile> {
   String passwordText = '';
   bool hasStrongPassword = false;
 
-  String currentEmail = '...';
-  String currentUsername = '...';
+  String currentEmail = 'Loading...';
+  String currentUsername = 'Loading...';
   String currentProfile = 'assets/default_profile.png';
 
   bool invalidInput = false;
@@ -158,24 +158,24 @@ class _EditProfileState extends State<EditProfile> {
                             child: ClipOval(
                               child: _selectedImage != null
                                   ? Image.file(
-                                _selectedImage!,
-                                width: 95,
-                                height: 95,
-                                fit: BoxFit.cover,
-                              )
+                                      _selectedImage!,
+                                      width: 95,
+                                      height: 95,
+                                      fit: BoxFit.cover,
+                                    )
                                   : currentProfile == 'assets/default_profile.png'
                                   ? Image.asset(
-                                currentProfile,
-                                width: 95,
-                                height: 95,
-                                fit: BoxFit.cover,
-                              )
+                                      currentProfile,
+                                      width: 95,
+                                      height: 95,
+                                      fit: BoxFit.cover,
+                                    )
                                   : Image.network(
-                                currentProfile,
-                                width: 95,
-                                height: 95,
-                                fit: BoxFit.cover,
-                              ),
+                                      currentProfile,
+                                      width: 95,
+                                      height: 95,
+                                      fit: BoxFit.cover,
+                                    ),
                             ),
                           ),
                           Positioned(
@@ -302,9 +302,9 @@ class _EditProfileState extends State<EditProfile> {
 
                           int score =
                               (hasLength ? 1 : 0) +
-                                  (hasSymbol ? 1 : 0) +
-                                  (hasUppercase ? 1 : 0) +
-                                  (hasNumber ? 1 : 0);
+                              (hasSymbol ? 1 : 0) +
+                              (hasUppercase ? 1 : 0) +
+                              (hasNumber ? 1 : 0);
 
                           if (score < 4) {
                             return 'Please meet all the password requirements.';

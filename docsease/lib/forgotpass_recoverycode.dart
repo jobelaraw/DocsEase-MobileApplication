@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:docsease/custom_button.dart';
@@ -20,7 +19,10 @@ class ForgotPasswordRecoveryScreen extends StatefulWidget {
 }
 
 class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScreen> {
-  final List<TextEditingController> _controllers = List.generate(6, (index) => TextEditingController());
+  final List<TextEditingController> _controllers = List.generate(
+    6,
+    (index) => TextEditingController(),
+  );
   final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
 
   bool _isComplete = false;
@@ -51,23 +53,24 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
     setState(() => _isResending = true);
     try {
       String newCode = _generateRecoveryCode();
-      await FirebaseFirestore.instance
-          .collection('recovery_codes')
-          .doc(widget.targetEmail)
-          .set({'code': newCode, 'createdAt': FieldValue.serverTimestamp()});
+      await FirebaseFirestore.instance.collection('recovery_codes').doc(widget.targetEmail).set({
+        'code': newCode,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
       final url = Uri.parse('https://api.emailjs.com/api/v1.0/email/send');
       await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: '{ "service_id": "service_e6xjj5b", "template_id": "template_1u1on8f", "user_id": "MhxD0XeexOnz61prP", "accessToken": "ZwFXbNZRrkVkNGK4YFHWm", "template_params": { "to_email": "${widget.targetEmail}", "recovery_code": "$newCode" } }',
+        body:
+            '{ "service_id": "service_e6xjj5b", "template_id": "template_1u1on8f", "user_id": "MhxD0XeexOnz61prP", "accessToken": "ZwFXbNZRrkVkNGK4YFHWm", "template_params": { "to_email": "${widget.targetEmail}", "recovery_code": "$newCode" } }',
       );
       if (mounted) {
         for (var c in _controllers) c.clear();
-        setState(() { _hasError = false; _isComplete = false; });
-        await ResendCodeModal.show(
-          context,
-          onPrimary: () => Navigator.of(context).pop(),
-        );
+        setState(() {
+          _hasError = false;
+          _isComplete = false;
+        });
+        await ResendCodeModal.show(context, onPrimary: () => Navigator.of(context).pop());
       }
     } finally {
       if (mounted) setState(() => _isResending = false);
@@ -173,7 +176,10 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                           height: 150,
                           width: 150,
                           decoration: BoxDecoration(
-                            border: Border.all(color: const Color.fromRGBO(10, 49, 104, 1), width: 1.0),
+                            border: Border.all(
+                              color: const Color.fromRGBO(10, 49, 104, 1),
+                              width: 1.0,
+                            ),
                             color: Colors.white,
                             shape: BoxShape.circle,
                           ),
@@ -328,21 +334,21 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                             ),
                                           )
                                         : _isComplete
-                                            ? Padding(
-                                                key: const ValueKey('complete'),
-                                                padding: const EdgeInsets.only(top: 5),
-                                                child: Center(
-                                                  child: Text(
-                                                    'Valid recovery code.',
-                                                    style: GoogleFonts.inter(
-                                                      color: Colors.green,
-                                                      fontSize: 12,
-                                                      fontWeight: FontWeight.w500,
-                                                    ),
-                                                  ),
+                                        ? Padding(
+                                            key: const ValueKey('complete'),
+                                            padding: const EdgeInsets.only(top: 5),
+                                            child: Center(
+                                              child: Text(
+                                                'Valid recovery code.',
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.green,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
                                                 ),
-                                              )
-                                            : const SizedBox.shrink(key: ValueKey('empty')),
+                                              ),
+                                            ),
+                                          )
+                                        : const SizedBox.shrink(key: ValueKey('empty')),
                                   ),
                                   const SizedBox(height: 40),
                                   CustomButton(

@@ -1,9 +1,9 @@
 import 'package:docsease/custom_button.dart';
 import 'package:docsease/side_bar.dart';
 import 'package:docsease/firebase_services.dart';
+import 'package:docsease/custom_textfield.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:docsease/custom_textfield.dart';
 import 'dart:async';
 
 class Authentication extends StatefulWidget {
@@ -257,7 +257,7 @@ class _SignInState extends State<SignIn> {
           buttonText: 'Sign In',
           isLoading: _isEmailLoading,
           isButtonEnabled:
-          widget.emailController.text.isNotEmpty && widget.passwordController.text.isNotEmpty,
+              widget.emailController.text.isNotEmpty && widget.passwordController.text.isNotEmpty,
           onTapAction: () async {
             bool isEmailValid = widget.emailController.text.isNotEmpty;
             bool isPasswordValid = widget.passwordController.text.isNotEmpty;
@@ -344,7 +344,7 @@ class _SignInState extends State<SignIn> {
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(builder: (context) => SideBar()),
-                  (Route<dynamic> route) => false,
+              (Route<dynamic> route) => false,
             );
           },
         ),
@@ -470,9 +470,9 @@ class _SignUpState extends State<SignUp> {
 
             int score =
                 (hasLength ? 1 : 0) +
-                    (hasSymbol ? 1 : 0) +
-                    (hasUppercase ? 1 : 0) +
-                    (hasNumber ? 1 : 0);
+                (hasSymbol ? 1 : 0) +
+                (hasUppercase ? 1 : 0) +
+                (hasNumber ? 1 : 0);
 
             if (score < 4) {
               return 'Please meet all the password requirements.';
@@ -517,7 +517,7 @@ class _SignUpState extends State<SignUp> {
           buttonText: 'Sign Up',
           isLoading: _isEmailLoading,
           isButtonEnabled:
-          widget.usernameController.text.isNotEmpty &&
+              widget.usernameController.text.isNotEmpty &&
               widget.emailController.text.isNotEmpty &&
               widget.passwordController.text.isNotEmpty &&
               widget.confirmController.text.isNotEmpty,
@@ -528,7 +528,7 @@ class _SignUpState extends State<SignUp> {
             bool isPasswordValid = widget.passwordController.text.isNotEmpty && hasStrongPassword;
             bool isConfirmValid =
                 widget.confirmController.text.isNotEmpty &&
-                    widget.confirmController.text == widget.passwordController.text;
+                widget.confirmController.text == widget.passwordController.text;
 
             if (!isUsernameValid || !isEmailValid || !isPasswordValid || !isConfirmValid) {
               setState(() {
@@ -601,17 +601,32 @@ class _SignUpState extends State<SignUp> {
           },
         ),
         const SizedBox(height: 30),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Already have an account?',
-              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.normal),
-            ),
-            SizedBox(width: 5),
-            CustomTextButton(inkwellText: 'Sign In', onTapAction: widget.onTapAction),
-          ],
+        Text(
+          'Don\'t want to create an account?',
+          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.normal),
         ),
+        SizedBox(height: 10),
+        CustomTextButton(
+          inkwellText: 'Continue as Guest',
+          onTapAction: () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => SideBar()),
+              (Route<dynamic> route) => false,
+            );
+          },
+        ),
+        // Row(
+        //   mainAxisAlignment: MainAxisAlignment.center,
+        //   children: [
+        //     Text(
+        //       'Already have an account?',
+        //       style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.normal),
+        //     ),
+        //     SizedBox(width: 5),
+        //     CustomTextButton(inkwellText: 'Sign In', onTapAction: widget.onTapAction),
+        //   ],
+        // ),
       ],
     );
   }
