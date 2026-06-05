@@ -1,15 +1,19 @@
 import 'package:docsease/about_us.dart';
+import 'package:docsease/app_modals.dart';
 import 'package:docsease/app_start.dart';
 import 'package:docsease/firebase_services.dart';
 import 'package:docsease/profile.dart';
 import 'package:docsease/services.dart';
 import 'package:docsease/settings.dart';
+import 'package:docsease/settings_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:async';
+
+import 'package:provider/provider.dart';
 
 class SideBar extends StatefulWidget {
   final bool isGuest;
@@ -38,12 +42,16 @@ class _SideBarState extends State<SideBar> {
   String currentUsername = 'Loading...';
   String currentProfile = 'assets/default_profile.png';
 
+  bool _settingsLoaded = false;
+
   @override
   void initState() {
     super.initState();
 
     _checkInitialConnection();
     _fetchUserData();
+
+    Provider.of<SettingsProvider>(context, listen: false).loadSettings();
 
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
       List<ConnectivityResult> results,
@@ -82,6 +90,15 @@ class _SideBarState extends State<SideBar> {
       const AboutUsScreen(),
       const SettingsScreen(),
     ];
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_settingsLoaded) {
+      _settingsLoaded = true;
+      Provider.of<SettingsProvider>(context, listen: false).loadSettings();
+    }
   }
 
   Future<void> _checkInitialConnection() async {
@@ -124,6 +141,58 @@ class _SideBarState extends State<SideBar> {
     super.dispose();
   }
 
+  // --- NEW: Universal wrapper for Drawer Navigation ---
+  void _handleDrawerNavigation(int targetIndex) {
+    if (selectedIndex == 3 && targetIndex != 3) {
+      final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+
+      if (settingsProvider.hasUnsavedPreview) {
+        ExitConfirmationModal.show(
+          context,
+          onPrimary: () {
+            Navigator.of(context).pop(); // Close modal
+            settingsProvider.revertDarkModePreview();
+            _executeDrawerSwitch(targetIndex);
+          },
+          onSecondary: () {
+            Navigator.of(context).pop(); // Close modal, abort switch
+          },
+        );
+        return; // Pause execution here until user picks an option
+      }
+      settingsProvider.revertDarkModePreview(); // Clean up if no changes
+    }
+
+    _executeDrawerSwitch(targetIndex);
+  }
+
+  // Uses YOUR original logic so deep navigation state is perfectly preserved
+  void _executeDrawerSwitch(int targetIndex) {
+    if (selectedIndex == targetIndex) {
+      if (targetIndex == 0) {
+        _servicesNavKey.currentState?.popUntil((route) => route.isFirst);
+        setState(() {
+          _tabTitles[0] = 'Services';
+          currentTitle = 'Services';
+        });
+      } else if (targetIndex == 1) {
+        _profileNavKey.currentState?.popUntil((route) => route.isFirst);
+        setState(() {
+          _tabTitles[1] = 'Profile';
+          currentTitle = 'Profile';
+        });
+      }
+    } else {
+      setState(() {
+        _previousIndex = selectedIndex;
+        _tabHistory.remove(targetIndex);
+        _tabHistory.add(targetIndex);
+        selectedIndex = targetIndex;
+        currentTitle = _tabTitles[targetIndex];
+      });
+    }
+  }
+
   // Smart back navigation that handles nested screens and the tab history stack
   Future<bool> _handleBackNavigation() async {
     bool handledByNested = false;
@@ -142,6 +211,34 @@ class _SideBarState extends State<SideBar> {
 
     // 3. If we are at the root of a tab, pop the History Stack instead!
     if (_tabHistory.length > 1) {
+      if (selectedIndex == 3) {
+        final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+
+        if (settingsProvider.hasUnsavedPreview) {
+          ExitConfirmationModal.show(
+            context,
+            onPrimary: () {
+              Navigator.of(context).pop();
+              settingsProvider.revertDarkModePreview();
+              setState(() {
+                _previousIndex = selectedIndex;
+                _tabHistory.removeLast(); // Remove current tab
+                selectedIndex = _tabHistory.last; // Navigate to the previous tab
+
+                // Restore exactly the title we left off on for this specific tab
+                currentTitle = _tabTitles[selectedIndex];
+              });
+            },
+            onSecondary: () {
+              Navigator.of(context).pop();
+            },
+          );
+          return false; // don't switch tab yet, wait for user's choice
+        }
+
+        // No unsaved changes, just switch normally
+        settingsProvider.revertDarkModePreview();
+      }
       setState(() {
         _previousIndex = selectedIndex;
         _tabHistory.removeLast(); // Remove current tab
@@ -411,28 +508,7 @@ class _SideBarState extends State<SideBar> {
                                   onTapAction: () {
                                     Navigator.pop(context);
                                     Future.delayed(const Duration(milliseconds: 50), () {
-                                      if (mounted) {
-                                        if (selectedIndex == 0) {
-                                          // IF ALREADY ON HOME: Reset Home to root
-                                          _servicesNavKey.currentState?.popUntil(
-                                            (route) => route.isFirst,
-                                          );
-                                          setState(() {
-                                            _tabTitles[0] = 'Services';
-                                            currentTitle = 'Services';
-                                          });
-                                        } else {
-                                          // IF SWITCHING TO HOME: Do NOT reset, just jump over to it!
-                                          setState(() {
-                                            _previousIndex = selectedIndex;
-                                            _tabHistory.remove(0);
-                                            _tabHistory.add(0);
-                                            selectedIndex = 0;
-                                            currentTitle =
-                                                _tabTitles[0]; // Restores the exact title
-                                          });
-                                        }
-                                      }
+                                      if (mounted) _handleDrawerNavigation(0);
                                     });
                                   },
                                 ),
@@ -445,28 +521,7 @@ class _SideBarState extends State<SideBar> {
                                   onTapAction: () {
                                     Navigator.pop(context);
                                     Future.delayed(const Duration(milliseconds: 50), () {
-                                      if (mounted) {
-                                        if (selectedIndex == 1) {
-                                          // IF ALREADY ON PROFILE: Reset Profile to root
-                                          _profileNavKey.currentState?.popUntil(
-                                            (route) => route.isFirst,
-                                          );
-                                          setState(() {
-                                            _tabTitles[1] = 'Profile';
-                                            currentTitle = 'Profile';
-                                          });
-                                        } else {
-                                          // IF SWITCHING TO PROFILE: Do NOT reset, just jump over to it!
-                                          setState(() {
-                                            _previousIndex = selectedIndex;
-                                            _tabHistory.remove(1);
-                                            _tabHistory.add(1);
-                                            selectedIndex = 1;
-                                            currentTitle =
-                                                _tabTitles[1]; // Restores the exact title
-                                          });
-                                        }
-                                      }
+                                      if (mounted) _handleDrawerNavigation(1);
                                     });
                                   },
                                 ),
@@ -479,15 +534,7 @@ class _SideBarState extends State<SideBar> {
                                   onTapAction: () {
                                     Navigator.pop(context);
                                     Future.delayed(const Duration(milliseconds: 50), () {
-                                      if (mounted && selectedIndex != 2) {
-                                        setState(() {
-                                          _previousIndex = selectedIndex;
-                                          _tabHistory.remove(2);
-                                          _tabHistory.add(2);
-                                          selectedIndex = 2;
-                                          currentTitle = _tabTitles[2];
-                                        });
-                                      }
+                                      if (mounted) _handleDrawerNavigation(2);
                                     });
                                   },
                                 ),
@@ -500,15 +547,7 @@ class _SideBarState extends State<SideBar> {
                                   onTapAction: () {
                                     Navigator.pop(context);
                                     Future.delayed(const Duration(milliseconds: 50), () {
-                                      if (mounted && selectedIndex != 3) {
-                                        setState(() {
-                                          _previousIndex = selectedIndex;
-                                          _tabHistory.remove(3);
-                                          _tabHistory.add(3);
-                                          selectedIndex = 3;
-                                          currentTitle = _tabTitles[3];
-                                        });
-                                      }
+                                      if (mounted) _handleDrawerNavigation(3);
                                     });
                                   },
                                 ),
@@ -524,18 +563,35 @@ class _SideBarState extends State<SideBar> {
                         padding: const EdgeInsets.only(left: 10, bottom: 20),
                         child: TextButton.icon(
                           onPressed: () async {
+                            final settingsProvider = Provider.of<SettingsProvider>(
+                              context,
+                              listen: false,
+                            );
+                            final nav = Navigator.of(context, rootNavigator: true);
+
                             Navigator.pop(context);
-                            if (widget.isGuest) {
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const AppStart(),
-                                ), // Default push
-                                (Route<dynamic> route) => false,
-                              );
-                            } else {
-                              await FirebaseServices().signOutUser();
-                            }
+                            await Future.delayed(const Duration(milliseconds: 300));
+                            if (!mounted) return;
+
+                            LogoutModal.show(
+                              context,
+                              hasUnsavedChanges: settingsProvider.hasUnsavedPreview,
+                              onPrimary: () async {
+                                settingsProvider.revertDarkModePreview();
+                                nav.pop();
+                                if (widget.isGuest) {
+                                  Navigator.pushAndRemoveUntil(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const AppStart(),
+                                    ), // Default push
+                                    (Route<dynamic> route) => false,
+                                  );
+                                } else {
+                                  await FirebaseServices().signOutUser();
+                                }
+                              },
+                            );
                           },
                           icon: ImageIcon(
                             AssetImage(

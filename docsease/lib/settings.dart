@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:docsease/app_modals.dart';
+import 'package:docsease/custom_button.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -22,10 +24,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late Box _settingsBox;
   bool _isLoadingBox = true;
 
+  bool _savedBeforeLeaving = false;
+
   @override
   void initState() {
     super.initState();
     _loadUserSettings();
+  }
+
+  @override
+  void dispose() {
+    // If user navigated away WITHOUT saving, revert the dark mode preview
+    if (!_savedBeforeLeaving) {
+      Provider.of<SettingsProvider>(context, listen: false).revertDarkModePreview();
+    }
+    super.dispose();
   }
 
   Future<void> _loadUserSettings() async {
@@ -55,26 +68,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _saveChanges() {
-    // Save the new values directly into the user's Hive box
-    Provider.of<SettingsProvider>(
-      context,
-      listen: false,
-    ).saveSettings(_isDarkMode, _selectedLanguage, _fontSize);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Settings saved securely!',
-          style: GoogleFonts.inter(fontSize: 14, color: Colors.white),
-        ),
-        backgroundColor: const Color.fromRGBO(32, 87, 206, 1.0),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+void _saveChanges() async {
+  await ConfirmChangesModal.show(
+    context,
+    onPrimary: () {
+      Navigator.of(context).pop(); // close confirm modal
+      ChangesSavedModal.show(
+        context,
+        onPrimary: () {
+          Navigator.of(context).pop(); 
+          _savedBeforeLeaving = true;
+        Provider.of<SettingsProvider>(context, listen: false)
+              .saveSettings(_isDarkMode, _selectedLanguage, _fontSize);
+        },
+      );
+    },
+    onSecondary: () {
+      Navigator.of(context).pop(); 
+    },
+  );
 
     print(
       '======================\n'
@@ -111,7 +123,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : Colors.black87,
                 ),
               ),
               const SizedBox(height: 8),
@@ -135,27 +149,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // void _saveChanges() {
-  //   ScaffoldMessenger.of(context).showSnackBar(
-  //     SnackBar(
-  //       content: Text(
-  //         'Settings saved!',
-  //         style: GoogleFonts.inter(fontSize: 14, color: Colors.white),
-  //       ),
-  //       backgroundColor: const Color.fromRGBO(32, 87, 206, 1.0),
-  //       behavior: SnackBarBehavior.floating,
-  //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-  //       margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-  //       duration: const Duration(seconds: 2),
-  //     ),
-  //   );
-  // }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromRGBO(235, 243, 255, 1.0),
-
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: _isLoadingBox
           ? const Center(child: CircularProgressIndicator())
           : Column(
@@ -172,7 +169,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 8),
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Theme.of(context).brightness == Brightness.dark
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.white,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(color: Colors.grey.withOpacity(0.15)),
                           ),
@@ -183,10 +182,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                                 child: Row(
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.dark_mode_outlined,
                                       size: 22,
-                                      color: Colors.black87,
+                                      color: Theme.of(context).brightness == Brightness.dark
+                                          ? Theme.of(context).colorScheme.onPrimary
+                                          : Colors.black87,
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
@@ -195,13 +196,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         style: GoogleFonts.inter(
                                           fontSize: 15,
                                           fontWeight: FontWeight.w500,
-                                          color: Colors.black,
+                                          color: Theme.of(context).colorScheme.onSurface,
                                         ),
                                       ),
                                     ),
                                     Switch(
                                       value: _isDarkMode,
-                                      onChanged: (val) => setState(() => _isDarkMode = val),
+                                      onChanged: (val) {
+                                        setState(() => _isDarkMode = val);
+                                        // Instantly previews the theme change app-wide
+                                        Provider.of<SettingsProvider>(context, listen: false).previewDarkMode(val);
+                                      },
                                       activeColor: const Color.fromRGBO(32, 87, 206, 1.0),
                                       activeTrackColor: const Color.fromRGBO(32, 87, 206, 0.3),
                                     ),
@@ -227,10 +232,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                                   child: Row(
                                     children: [
-                                      const Icon(
+                                      Icon(
                                         Icons.translate_outlined,
                                         size: 22,
-                                        color: Colors.black87,
+                                        color: Theme.of(context).brightness == Brightness.dark
+                                            ? Theme.of(context).colorScheme.onPrimary
+                                            : Colors.black87,
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
@@ -239,7 +246,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           style: GoogleFonts.inter(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w500,
-                                            color: Colors.black,
+                                            color: Theme.of(context).colorScheme.onSurface,
                                           ),
                                         ),
                                       ),
@@ -247,7 +254,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         '$_selectedLanguage  ›',
                                         style: GoogleFonts.inter(
                                           fontSize: 14,
-                                          color: Colors.grey.shade500,
+                                          color: Theme.of(context).colorScheme.onSurface,
                                         ),
                                       ),
                                     ],
@@ -265,7 +272,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 8),
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Theme.of(context).brightness == Brightness.dark
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.white,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(color: Colors.grey.withOpacity(0.15)),
                           ),
@@ -278,7 +287,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 style: GoogleFonts.inter(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
-                                  color: Colors.black,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                               const SizedBox(height: 10),
@@ -290,7 +299,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     style: GoogleFonts.inter(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.black54,
+                                      color: Theme.of(context).brightness == Brightness.dark
+                                          ? Theme.of(context).colorScheme.onPrimary
+                                          : Colors.black87,
                                     ),
                                   ),
                                   Expanded(
@@ -319,7 +330,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     style: GoogleFonts.inter(
                                       fontSize: 20,
                                       fontWeight: FontWeight.w700,
-                                      color: Colors.black87,
+                                      color: Theme.of(context).brightness == Brightness.dark
+                                          ? Theme.of(context).colorScheme.onPrimary
+                                          : Colors.black87,
                                     ),
                                   ),
                                 ],
@@ -331,24 +344,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 28),
 
                         //Save Changes Button
-                        SizedBox(
-                          width: double.infinity,
-                          height: 54,
-                          child: ElevatedButton(
-                            onPressed: _saveChanges,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color.fromRGBO(32, 87, 206, 1.0),
-                              foregroundColor: Colors.white,
-                              elevation: 6,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: Text(
-                              'Save Changes',
-                              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                          ),
+                        CustomButton(
+                          buttonText: 'Save Changes',
+                          btnElevation: 4,
+                          btnRadius: 15,
+                          onTapAction: _saveChanges,
                         ),
                       ],
                     ),
@@ -365,7 +365,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       style: GoogleFonts.inter(
         fontSize: 11,
         fontWeight: FontWeight.w700,
-        color: Colors.grey.shade500,
+        color: Theme.of(context).brightness == Brightness.dark
+        ? Theme.of(context).colorScheme.onPrimary
+        : Colors.black87,
         letterSpacing: 1.0,
       ),
     );

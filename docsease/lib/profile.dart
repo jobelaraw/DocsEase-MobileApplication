@@ -137,7 +137,7 @@ class _ProfileState extends State<Profile> {
                           children: [
                             CircleAvatar(
                               radius: 50,
-                              backgroundColor: Theme.of(context).colorScheme.surface,
+                              backgroundColor: Theme.of(context).colorScheme.primary,
                               child: ClipOval(
                                 child: hasDefaultProfile
                                     ? Image.asset(
@@ -170,7 +170,7 @@ class _ProfileState extends State<Profile> {
                                 child: Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.surface,
+                                    color: Theme.of(context).colorScheme.onPrimary,
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
@@ -242,7 +242,9 @@ class _ProfileState extends State<Profile> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
+                      color: Theme.of(context).brightness == Brightness.dark
+                            ? Theme.of(context).colorScheme.tertiary
+                            : Colors.white,
                       borderRadius: BorderRadius.circular(25),
                       boxShadow: [
                         BoxShadow(
