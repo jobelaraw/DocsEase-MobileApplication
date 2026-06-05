@@ -72,10 +72,14 @@ class _CustomButtonState extends State<CustomButton> {
                         : widget.onTapAction
                   : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromRGBO(59, 115, 224, 1.0),
+                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.tertiary
+                  : const Color.fromRGBO(59, 115, 224, 1.0),
                 foregroundColor: Colors.white,
                 elevation: widget.btnElevation,
-                shadowColor: const Color.fromRGBO(59, 115, 224, 1.0),
+                shadowColor: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.tertiary
+                  : const Color.fromRGBO(59, 115, 224, 1.0),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(widget.btnRadius),
                 ),
