@@ -205,7 +205,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.surface
+                  : Theme.of(context).colorScheme.tertiary,
       body: Column(
         children: [
           // --- SCROLLABLE CHAT AREA ---
@@ -243,15 +245,17 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                   child: Container(
                     height: 50,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF2F2F2),
-                      borderRadius: BorderRadius.circular(30),
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.primary
+                        : const Color(0xFFF2F2F2),                      
+                        borderRadius: BorderRadius.circular(30),
                     ),
                     child: TextField(
                       controller: _controller,
                       onSubmitted: (_) => _sendMessage(),
                       decoration: InputDecoration(
                         hintText: "Ask about your transaction...",
-                        hintStyle: GoogleFonts.inter(color: Colors.grey, fontSize: 14),
+                        hintStyle: GoogleFonts.inter(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 14),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                       ),
@@ -265,7 +269,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                     width: 50,
                     height: 50,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondary,
+                      color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.secondary,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -290,7 +296,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: const Color(0xFF1E65E2),
+            backgroundColor: Theme.of(context).colorScheme.primary,
             child: ClipOval(
               child: Image.asset(
                 'assets/chatbot_icon.png',
@@ -304,8 +310,10 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.only(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.surface,              
+                borderRadius: BorderRadius.only(
                 topRight: Radius.circular(20),
                 bottomLeft: Radius.circular(20),
                 bottomRight: Radius.circular(20),
@@ -348,7 +356,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                           color: const Color(0xFF39D236),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: Theme.of(context).scaffoldBackgroundColor,
+                            color: Theme.of(context).colorScheme.surface,
                             width: 1.5,
                           ),
                         ),
@@ -362,7 +370,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                               color: Colors.grey,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: Theme.of(context).scaffoldBackgroundColor,
+                                color: Theme.of(context).colorScheme.surface,
                                 width: 1.5,
                               ),
                             ),
@@ -374,7 +382,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                               width: 3,
                               height: 3,
                               decoration: BoxDecoration(
-                                color: Theme.of(context).scaffoldBackgroundColor,
+                                color: Theme.of(context).colorScheme.surface,
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -405,7 +413,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                       child: Container(
                         padding: const EdgeInsets.fromLTRB(15, 15, 15, 7),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.only(
                             topRight: Radius.circular(20),
                             bottomLeft: Radius.circular(20),
@@ -473,7 +483,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                         child: Icon(
                           _speakingIndex == index ? Icons.stop : Icons.volume_up_outlined,
                           size: 20,
-                          color: Theme.of(context).colorScheme.primary,
+                          color: Theme.of(context).colorScheme.onPrimary,
                         ),
                       ),
                     ),

@@ -1,16 +1,19 @@
 import 'package:docsease/about_us.dart';
+import 'package:docsease/app_modals.dart';
 import 'package:docsease/app_start.dart';
 import 'package:docsease/firebase_services.dart';
 import 'package:docsease/profile.dart';
 import 'package:docsease/services.dart';
 import 'package:docsease/settings.dart';
+import 'package:docsease/settings_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:docsease/navigator_transition.dart';
 import 'dart:async';
+
+import 'package:provider/provider.dart';
 
 class SideBar extends StatefulWidget {
   final bool isGuest;
@@ -24,6 +27,11 @@ class _SideBarState extends State<SideBar> {
   int selectedIndex = 0;
   int _previousIndex = 0;
   String currentTitle = 'Services';
+
+  // Tab History Stack and Titles
+  final List<int> _tabHistory = [0];
+  final List<String> _tabTitles = ['Services', 'Profile', 'About', 'Settings'];
+
   final GlobalKey<NavigatorState> _servicesNavKey = GlobalKey<NavigatorState>();
   final GlobalKey<NavigatorState> _profileNavKey = GlobalKey<NavigatorState>();
   late final List<Widget> screens;
@@ -34,6 +42,8 @@ class _SideBarState extends State<SideBar> {
   String currentUsername = 'Loading...';
   String currentProfile = 'assets/default_profile.png';
 
+  bool _settingsLoaded = false;
+
   @override
   void initState() {
     super.initState();
@@ -41,9 +51,11 @@ class _SideBarState extends State<SideBar> {
     _checkInitialConnection();
     _fetchUserData();
 
+    Provider.of<SettingsProvider>(context, listen: false).loadSettings();
+
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
-        List<ConnectivityResult> results,
-        ) {
+      List<ConnectivityResult> results,
+    ) {
       if (mounted) {
         setState(() {
           // If the result contains 'none', the user has no internet!
@@ -56,22 +68,37 @@ class _SideBarState extends State<SideBar> {
       ServicesNavigator(
         navigatorKey: _servicesNavKey,
         onTitleChange: (newTitle) {
-          setState(() {
-            currentTitle = newTitle;
-          });
+          if (mounted) {
+            setState(() {
+              _tabTitles[0] = newTitle;
+              if (selectedIndex == 0) currentTitle = newTitle;
+            });
+          }
         },
       ),
       ProfileNavigator(
         navigatorKey: _profileNavKey,
         onTitleChange: (newTitle) {
-          setState(() {
-            currentTitle = newTitle;
-          });
+          if (mounted) {
+            setState(() {
+              _tabTitles[1] = newTitle;
+              if (selectedIndex == 1) currentTitle = newTitle;
+            });
+          }
         },
       ),
       const AboutUsScreen(),
       const SettingsScreen(),
     ];
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_settingsLoaded) {
+      _settingsLoaded = true;
+      Provider.of<SettingsProvider>(context, listen: false).loadSettings();
+    }
   }
 
   Future<void> _checkInitialConnection() async {
@@ -88,7 +115,6 @@ class _SideBarState extends State<SideBar> {
 
     if (user != null) {
       try {
-        // Fetch the rest of the custom profile from Firestore
         DocumentSnapshot userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
@@ -109,68 +135,139 @@ class _SideBarState extends State<SideBar> {
     }
   }
 
-  // List of titles along with the screens
-  late final List<String> titles = ['Services', 'Profile', 'About', 'Settings'];
-
   @override
   void dispose() {
     _connectivitySubscription.cancel();
     super.dispose();
   }
 
+  // --- NEW: Universal wrapper for Drawer Navigation ---
+  void _handleDrawerNavigation(int targetIndex) {
+    if (selectedIndex == 3 && targetIndex != 3) {
+      final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+
+      if (settingsProvider.hasUnsavedPreview) {
+        ExitConfirmationModal.show(
+          context,
+          onPrimary: () {
+            Navigator.of(context).pop(); // Close modal
+            settingsProvider.revertDarkModePreview();
+            _executeDrawerSwitch(targetIndex);
+          },
+          onSecondary: () {
+            Navigator.of(context).pop(); // Close modal, abort switch
+          },
+        );
+        return; // Pause execution here until user picks an option
+      }
+      settingsProvider.revertDarkModePreview(); // Clean up if no changes
+    }
+
+    _executeDrawerSwitch(targetIndex);
+  }
+
+  // Uses YOUR original logic so deep navigation state is perfectly preserved
+  void _executeDrawerSwitch(int targetIndex) {
+    if (selectedIndex == targetIndex) {
+      if (targetIndex == 0) {
+        _servicesNavKey.currentState?.popUntil((route) => route.isFirst);
+        setState(() {
+          _tabTitles[0] = 'Services';
+          currentTitle = 'Services';
+        });
+      } else if (targetIndex == 1) {
+        _profileNavKey.currentState?.popUntil((route) => route.isFirst);
+        setState(() {
+          _tabTitles[1] = 'Profile';
+          currentTitle = 'Profile';
+        });
+      }
+    } else {
+      setState(() {
+        _previousIndex = selectedIndex;
+        _tabHistory.remove(targetIndex);
+        _tabHistory.add(targetIndex);
+        selectedIndex = targetIndex;
+        currentTitle = _tabTitles[targetIndex];
+      });
+    }
+  }
+
+  // Smart back navigation that handles nested screens and the tab history stack
+  Future<bool> _handleBackNavigation() async {
+    bool handledByNested = false;
+
+    // 1. Give priority to nested navigators (e.g., InformationScreen, EditProfile)
+    if (selectedIndex == 0) {
+      handledByNested = await _servicesNavKey.currentState?.maybePop() ?? false;
+    } else if (selectedIndex == 1) {
+      handledByNested = await _profileNavKey.currentState?.maybePop() ?? false;
+    }
+
+    // 2. If a nested page was popped, we're done here.
+    if (handledByNested) {
+      return false; // Tells WillPopScope not to exit the app
+    }
+
+    // 3. If we are at the root of a tab, pop the History Stack instead!
+    if (_tabHistory.length > 1) {
+      if (selectedIndex == 3) {
+        final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+
+        if (settingsProvider.hasUnsavedPreview) {
+          ExitConfirmationModal.show(
+            context,
+            onPrimary: () {
+              Navigator.of(context).pop();
+              settingsProvider.revertDarkModePreview();
+              setState(() {
+                _previousIndex = selectedIndex;
+                _tabHistory.removeLast(); // Remove current tab
+                selectedIndex = _tabHistory.last; // Navigate to the previous tab
+
+                // Restore exactly the title we left off on for this specific tab
+                currentTitle = _tabTitles[selectedIndex];
+              });
+            },
+            onSecondary: () {
+              Navigator.of(context).pop();
+            },
+          );
+          return false; // don't switch tab yet, wait for user's choice
+        }
+
+        // No unsaved changes, just switch normally
+        settingsProvider.revertDarkModePreview();
+      }
+      setState(() {
+        _previousIndex = selectedIndex;
+        _tabHistory.removeLast(); // Remove current tab
+        selectedIndex = _tabHistory.last; // Navigate to the previous tab
+
+        // Restore exactly the title we left off on for this specific tab
+        currentTitle = _tabTitles[selectedIndex];
+      });
+      return false;
+    }
+
+    // 4. If history only has 1 item left (Home), exit the app
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async {
-        // If we are on the Services tab...
-        if (selectedIndex == 0) {
-          // Ask the nested Services navigator if it has pages to pop
-          bool handledByNested = await _servicesNavKey.currentState?.maybePop() ?? false;
-          if (handledByNested) {
-            return false; // Handled by nested navigator! Do NOT pop the root.
-          }
-          return true; // We are at the main Home screen. Let Android close/background the app.
-        }
-
-        // If we are on the Profile tab...
-        if (selectedIndex == 1) {
-          // Ask the nested Profile navigator if it has pages to pop
-          bool handledByNested = await _profileNavKey.currentState?.maybePop() ?? false;
-          if (handledByNested) {
-            return false; // Handled by nested navigator!
-          }
-          // If at the root of Profile, standard app behavior is to jump back to Home tab
-          setState(() {
-            selectedIndex = 0;
-            currentTitle = 'Services';
-          });
-          return false;
-        }
-
-        // 3. For any other tab (About, Settings), jump back to the Home tab
-        setState(() {
-          selectedIndex = 0;
-          currentTitle = 'Services';
-        });
-        return false;
-      },
+      onWillPop: _handleBackNavigation,
       child: Scaffold(
         appBar: AppBar(
           leadingWidth: 60,
-          leading:
-          ((selectedIndex == 0 && currentTitle != 'Services') ||
-              (selectedIndex == 1 && currentTitle != 'Profile'))
+          // Hide back button ONLY on absolute root 'Services' view
+          leading: !(selectedIndex == 0 && currentTitle == 'Services')
               ? Padding(
                   padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
                   child: IconButton(
                     icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onPrimary),
-                    onPressed: () {
-                      if (selectedIndex == 0) {
-                        _servicesNavKey.currentState?.pop();
-                      } else if (selectedIndex == 1) {
-                        _profileNavKey.currentState?.pop();
-                      }
-                    },
+                    onPressed: _handleBackNavigation, // Uses the smart back logic
                   ),
                 )
               : null,
@@ -181,7 +278,7 @@ class _SideBarState extends State<SideBar> {
                   mainAxisAlignment: MainAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SizedBox(width: 9),
+                    const SizedBox(width: 9),
                     Stack(
                       children: [
                         CircleAvatar(
@@ -237,40 +334,40 @@ class _SideBarState extends State<SideBar> {
                         ),
                       ],
                     ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        "DocsEase Bot",
-                        style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          "DocsEase Bot",
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        isOnline ? "Online Assistant" : "Offline - Waiting for network...",
-                        style: GoogleFonts.inter(
-                          color: Colors.white60,
-                          fontSize: 11,
-                          fontWeight: FontWeight.normal,
+                        const SizedBox(height: 2),
+                        Text(
+                          isOnline ? "Online Assistant" : "Offline - Waiting for network...",
+                          style: GoogleFonts.inter(
+                            color: Colors.white60,
+                            fontSize: 11,
+                            fontWeight: FontWeight.normal,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              )
+                      ],
+                    ),
+                  ],
+                )
               : Text(
-                  (selectedIndex == 0 || selectedIndex == 1) ? currentTitle : titles[selectedIndex],
+                  currentTitle,
                   style: GoogleFonts.inter(
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
-                ),  
+                ),
           actions: [
             Builder(
               builder: (BuildContext context) {
@@ -282,7 +379,7 @@ class _SideBarState extends State<SideBar> {
                       Scaffold.of(context).openEndDrawer();
                     },
                     icon: ImageIcon(
-                      AssetImage('assets/hamburger_icon.png'),
+                      const AssetImage('assets/hamburger_icon.png'),
                       size: 20,
                       color: Theme.of(context).colorScheme.onPrimary,
                     ),
@@ -319,7 +416,7 @@ class _SideBarState extends State<SideBar> {
                         children: [
                           Container(
                             padding: MediaQuery.of(context).padding.top < 20
-                                ? EdgeInsets.all(20)
+                                ? const EdgeInsets.all(20)
                                 : EdgeInsets.fromLTRB(
                                     20,
                                     MediaQuery.of(context).padding.top + 20,
@@ -330,12 +427,18 @@ class _SideBarState extends State<SideBar> {
                             child: StreamBuilder<DocumentSnapshot>(
                               stream: FirebaseAuth.instance.currentUser != null
                                   ? FirebaseFirestore.instance
-                                  .collection('users')
-                                  .doc(FirebaseAuth.instance.currentUser!.uid)
-                                  .snapshots()
+                                        .collection('users')
+                                        .doc(FirebaseAuth.instance.currentUser!.uid)
+                                        .snapshots()
                                   : null,
                               builder: (context, snapshot) {
-                                String currentUsername = '...';
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return _SkeletonProfileHeader();
+                                }
+
+                                String currentUsername = widget.isGuest
+                                    ? 'Guest Account'
+                                    : 'Loading...';
                                 String currentProfile = 'assets/default_profile.png';
 
                                 if (snapshot.hasData && snapshot.data!.exists) {
@@ -354,21 +457,21 @@ class _SideBarState extends State<SideBar> {
                                   children: [
                                     CircleAvatar(
                                       radius: 40,
-                                      backgroundColor: Theme.of(context).colorScheme.surface,
+                                      backgroundColor: Theme.of(context).colorScheme.primary,
                                       child: ClipOval(
                                         child: hasDefaultProfile
                                             ? Image.asset(
-                                          currentProfile,
-                                          width: 75,
-                                          height: 75,
-                                          fit: BoxFit.cover,
-                                        )
+                                                currentProfile,
+                                                width: 75,
+                                                height: 75,
+                                                fit: BoxFit.cover,
+                                              )
                                             : Image.network(
-                                          currentProfile,
-                                          width: 75,
-                                          height: 75,
-                                          fit: BoxFit.cover,
-                                        ),
+                                                currentProfile,
+                                                width: 75,
+                                                height: 75,
+                                                fit: BoxFit.cover,
+                                              ),
                                       ),
                                     ),
                                     const SizedBox(height: 10),
@@ -396,7 +499,7 @@ class _SideBarState extends State<SideBar> {
                             ),
                           ),
                           Padding(
-                            padding: EdgeInsets.fromLTRB(15, 25, 15, 15),
+                            padding: const EdgeInsets.fromLTRB(15, 25, 15, 15),
                             child: Column(
                               children: [
                                 SideBarOption(
@@ -407,27 +510,11 @@ class _SideBarState extends State<SideBar> {
                                   onTapAction: () {
                                     Navigator.pop(context);
                                     Future.delayed(const Duration(milliseconds: 50), () {
-                                      if (mounted) {
-                                        if (selectedIndex == 0) {
-                                          _servicesNavKey.currentState?.popUntil(
-                                                (route) => route.isFirst,
-                                          );
-
-                                          setState(() {
-                                            currentTitle = 'Services';
-                                          });
-                                        } else {
-                                          setState(() {
-                                            _previousIndex = selectedIndex;
-                                            currentTitle = 'Services';
-                                            selectedIndex = 0;
-                                          });
-                                        }
-                                      }
+                                      if (mounted) _handleDrawerNavigation(0);
                                     });
                                   },
                                 ),
-                                SizedBox(height: 13),
+                                const SizedBox(height: 13),
                                 SideBarOption(
                                   selectedImage: 'assets/profile_icon.png',
                                   unselectedImage: 'assets/profile_outlined_icon.png',
@@ -436,26 +523,11 @@ class _SideBarState extends State<SideBar> {
                                   onTapAction: () {
                                     Navigator.pop(context);
                                     Future.delayed(const Duration(milliseconds: 50), () {
-                                      if (mounted) {
-                                        if (selectedIndex == 1) {
-                                          _profileNavKey.currentState?.popUntil(
-                                                (route) => route.isFirst,
-                                          );
-                                          setState(() {
-                                            currentTitle = 'Profile';
-                                          });
-                                        } else {
-                                          setState(() {
-                                            _previousIndex = selectedIndex;
-                                            currentTitle = 'Profile';
-                                            selectedIndex = 1;
-                                          });
-                                        }
-                                      }
+                                      if (mounted) _handleDrawerNavigation(1);
                                     });
                                   },
                                 ),
-                                SizedBox(height: 13),
+                                const SizedBox(height: 13),
                                 SideBarOption(
                                   selectedImage: 'assets/about_icon.png',
                                   unselectedImage: 'assets/about_outlined_icon.png',
@@ -464,16 +536,11 @@ class _SideBarState extends State<SideBar> {
                                   onTapAction: () {
                                     Navigator.pop(context);
                                     Future.delayed(const Duration(milliseconds: 50), () {
-                                      if (mounted) {
-                                        setState(() {
-                                          _previousIndex = selectedIndex;
-                                          selectedIndex = 2;
-                                        });
-                                      }
+                                      if (mounted) _handleDrawerNavigation(2);
                                     });
                                   },
                                 ),
-                                SizedBox(height: 13),
+                                const SizedBox(height: 13),
                                 SideBarOption(
                                   selectedImage: 'assets/settings_icon.png',
                                   unselectedImage: 'assets/settings_outlined_icon.png',
@@ -482,12 +549,7 @@ class _SideBarState extends State<SideBar> {
                                   onTapAction: () {
                                     Navigator.pop(context);
                                     Future.delayed(const Duration(milliseconds: 50), () {
-                                      if (mounted) {
-                                        setState(() {
-                                          _previousIndex = selectedIndex;
-                                          selectedIndex = 3;
-                                        });
-                                      }
+                                      if (mounted) _handleDrawerNavigation(3);
                                     });
                                   },
                                 ),
@@ -503,19 +565,40 @@ class _SideBarState extends State<SideBar> {
                         padding: const EdgeInsets.only(left: 10, bottom: 20),
                         child: TextButton.icon(
                           onPressed: () async {
+                            final settingsProvider = Provider.of<SettingsProvider>(
+                              context,
+                              listen: false,
+                            );
+                            final nav = Navigator.of(context, rootNavigator: true);
+
                             Navigator.pop(context);
-                            if (widget.isGuest) {
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                SlideRoute(page: const AppStart()),
+                            await Future.delayed(const Duration(milliseconds: 300));
+                            if (!mounted) return;
+
+                            LogoutModal.show(
+                              context,
+                              hasUnsavedChanges: settingsProvider.hasUnsavedPreview,
+                              onPrimary: () async {
+                                settingsProvider.revertDarkModePreview();
+                                nav.pop();
+                                if (widget.isGuest) {
+                                  Navigator.pushAndRemoveUntil(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const AppStart(),
+                                    ), // Default push
                                     (Route<dynamic> route) => false,
-                              );
-                            } else {
-                              await FirebaseServices().signOutUser();
-                            }
+                                  );
+                                } else {
+                                  await FirebaseServices().signOutUser();
+                                }
+                              },
+                            );
                           },
                           icon: ImageIcon(
-                            AssetImage(widget.isGuest ? "assets/logout_icon.png" : "assets/logout_icon.png"),
+                            AssetImage(
+                              widget.isGuest ? "assets/logout_icon.png" : "assets/logout_icon.png",
+                            ),
                             size: 20,
                             color: const Color.fromRGBO(252, 64, 64, 1),
                           ),
@@ -555,11 +638,8 @@ class _SideBarState extends State<SideBar> {
             ],
           ),
         ),
-        body: TabSwitcher(
-          currentIndex: selectedIndex,
-          previousIndex: _previousIndex,
-          child: screens[selectedIndex],
-        ),
+        // USING INDEXED STACK TO PRESERVE WIDGET STATES!
+        body: IndexedStack(index: selectedIndex, children: screens),
       ),
     );
   }
@@ -584,7 +664,7 @@ class SideBarOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color currentColor = isSelected
-        ? Color.fromRGBO(59, 115, 224, 1.0)
+        ? const Color.fromRGBO(59, 115, 224, 1.0)
         : Theme.of(context).colorScheme.onSurface;
 
     return Material(
@@ -598,7 +678,7 @@ class SideBarOption extends StatelessWidget {
         onTap: onTapAction,
         child: Container(
           height: 50,
-          padding: EdgeInsets.only(left: 15, right: 15),
+          padding: const EdgeInsets.only(left: 15, right: 15),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -606,20 +686,19 @@ class SideBarOption extends StatelessWidget {
                 isSelected ? selectedImage : unselectedImage,
                 width: 25,
                 height: 25,
-                // colorFilter: ColorFilter.mode(currentColor, BlendMode.srcIn),
                 color: currentColor,
                 fit: BoxFit.contain,
               ),
-              SizedBox(width: 15),
+              const SizedBox(width: 15),
               Text(
                 optionName,
                 style: isSelected
                     ? GoogleFonts.archivoBlack(fontSize: 15, color: currentColor)
                     : GoogleFonts.inter(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w400,
-                  color: currentColor,
-                ),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: currentColor,
+                      ),
               ),
             ],
           ),
@@ -659,6 +738,81 @@ class ProfileNavigator extends StatelessWidget {
       onGenerateRoute: (settings) {
         return MaterialPageRoute(builder: (context) => Profile(onTitleChange: onTitleChange));
       },
+    );
+  }
+}
+
+class _ShimmerEffect extends StatefulWidget {
+  final Widget child;
+  const _ShimmerEffect({required this.child});
+
+  @override
+  State<_ShimmerEffect> createState() => _ShimmerEffectState();
+}
+
+class _ShimmerEffectState extends State<_ShimmerEffect> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))
+      ..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.3, end: 0.8).animate(_controller),
+      child: widget.child,
+    );
+  }
+}
+
+class _SkeletonProfileHeader extends StatelessWidget {
+  const _SkeletonProfileHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return _ShimmerEffect(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.5),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: 120,
+            height: 16,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            width: 80,
+            height: 12,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

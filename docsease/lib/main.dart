@@ -71,25 +71,14 @@ class MyApp extends StatelessWidget {
             ),
           ),
 
-          // Your Custom Dark Theme (Deep Grays & Adjusted Blues)
+          // Your Custom Dark Theme (Deep Grays)
           darkTheme: ThemeData(
             brightness: Brightness.dark,
-            scaffoldBackgroundColor: const Color(0xFF121212), // Deep dark gray app background
             colorScheme: const ColorScheme.dark(
-              primary: Color.fromRGBO(
-                43,
-                46,
-                59,
-                1,
-              ), // Slightly brighter blue for contrast in dark mode
-              secondary: Color.fromRGBO(50, 50, 50, 1),
-              tertiary: Color.fromARGB(255, 79, 79, 79),
-              surface: Color.fromARGB(
-                255,
-                67,
-                67,
-                67,
-              ), // Slightly lighter gray for cards/containers
+              primary: const Color (0XFF242424),// app bar and header background, slightly lighter than the scaffold to create depth
+              secondary: Colors.black87, 
+              tertiary: const Color (0XFF202020), 
+              surface: const Color(0XFF121212),
               onPrimary: Colors.white, // Text color on top of primary buttons
               onSurface: Colors.white70, // Text color on top of dark cards
             ),

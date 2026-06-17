@@ -167,14 +167,16 @@ class _CustomTextFieldState extends State<CustomTextField> {
               hintStyle: GoogleFonts.inter(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: Colors.grey,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               filled: true,
               fillColor: hasError
                   ? Colors.red.withOpacity(0.03)
                   : displaySuccess
                   ? Colors.green.withOpacity(0.03)
-                  : Colors.white,
+                  : (Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.primary 
+                    : Colors.white),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(24.0),
                 borderSide: BorderSide(
@@ -182,7 +184,9 @@ class _CustomTextFieldState extends State<CustomTextField> {
                       ? Colors.red
                       : displaySuccess
                       ? Colors.green
-                      : Colors.black.withOpacity(0.3),
+                      : (Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Colors.black.withOpacity(0.3)),
                 ),
               ),
               focusedBorder: OutlineInputBorder(
@@ -233,7 +237,9 @@ class _CustomTextFieldState extends State<CustomTextField> {
                           ? Colors.red.withOpacity(0.5)
                           : displaySuccess
                           ? Colors.green.withOpacity(0.5)
-                          : Colors.black.withOpacity(0.3),
+                          : (Theme.of(context).brightness == Brightness.dark
+                            ? Theme.of(context).colorScheme.onSurface
+                            : Colors.black.withOpacity(0.3)),
                       iconSize: 20,
                       padding: EdgeInsets.zero,
                     ),

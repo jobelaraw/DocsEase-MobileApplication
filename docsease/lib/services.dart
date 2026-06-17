@@ -1,36 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:docsease/chatbot.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'service_list.dart';
-import 'information.dart';
-import 'navigator_transition.dart';
-
-class ServiceData {
-  final String label;
-  final IconData icon;
-  final Color bgColor;
-  final Color iconColor;
-
-  const ServiceData({
-    required this.label,
-    required this.icon,
-    required this.bgColor,
-    required this.iconColor,
-  });
-}
-
-List<ServiceItem> buildServiceItems(List<ServiceData> dataList, Function(String) onTitleChange) {
-  return dataList.map((data) {
-    return ServiceItem(
-      data: data,
-      label: data.label,
-      iconData: data.icon,
-      iconBgColor: data.bgColor,
-      iconColor: data.iconColor,
-      onTitleChange: onTitleChange,
-    );
-  }).toList();
-}
+import 'package:docsease/info_model.dart';
+import 'package:docsease/information.dart';
+import 'package:docsease/chatbot.dart';
+import 'package:docsease/navigator_transition.dart';
+import 'package:docsease/firebase_services.dart';
 
 class Services extends StatefulWidget {
   final Function(String) onTitleChange;
@@ -46,18 +20,14 @@ class _ServicesContent extends State<Services> {
   final TextEditingController _searchController = TextEditingController();
   String searchQuery = '';
 
-  List<ServiceItem> filterItems(List<ServiceItem> items) {
-    if (searchQuery.isEmpty) return items;
+  late Future<List<Office>> _officesFuture;
 
-    return items.where((item) {
-      return item.label.toLowerCase().contains(searchQuery);
-    }).toList();
-  }
+  final FirebaseServices _getService = FirebaseServices();
 
   @override
   void initState() {
     super.initState();
-    // Tells the app to rebuild the UI whenever the focus changes (clicked or unclicked)
+    _officesFuture = _getService.getOffices();
     _searchFocusNode.addListener(() {
       setState(() {});
     });
@@ -66,27 +36,26 @@ class _ServicesContent extends State<Services> {
   @override
   void dispose() {
     _searchFocusNode.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
-  Widget buildFilteredCategory({required String title, required List<ServiceData> dataList}) {
-    final items = buildServiceItems(dataList, widget.onTitleChange);
-
-    final filtered = items.where((item) {
-      return item.label.toLowerCase().contains(searchQuery);
+  Widget buildFilteredCategory(Office office) {
+    final filteredServices = office.services.where((service) {
+      return service.title.toLowerCase().contains(searchQuery);
     }).toList();
 
-    final matchesTitle = title.toLowerCase().contains(searchQuery);
+    final matchesOfficeTitle = office.officeName.toLowerCase().contains(searchQuery);
 
-    if (searchQuery.isNotEmpty && filtered.isEmpty && !matchesTitle) {
-      return const SizedBox.shrink(); // hide category
+    if (searchQuery.isNotEmpty && filteredServices.isEmpty && !matchesOfficeTitle) {
+      return const SizedBox.shrink();
     }
 
     return Column(
       children: [
         ServiceCategory(
-          title: title,
-          items: filtered.isNotEmpty ? filtered : items,
+          title: office.officeName,
+          services: filteredServices.isNotEmpty ? filteredServices : office.services,
           onTitleChange: widget.onTitleChange,
         ),
         const SizedBox(height: 30),
@@ -104,6 +73,7 @@ class _ServicesContent extends State<Services> {
           children: [
             CustomScrollView(
               slivers: [
+                // 1. Render the Search Bar Instantly
                 SliverPersistentHeader(
                   pinned: true,
                   delegate: _SearchBarDelegate(
@@ -111,42 +81,47 @@ class _ServicesContent extends State<Services> {
                     controller: _searchController,
                     hasFocus: _searchFocusNode.hasFocus,
                     onChanged: (value) => setState(() => searchQuery = value.toLowerCase()),
+                    brightness: Theme.of(context).brightness,
                   ),
                 ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 15, 20, 20),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      buildFilteredCategory(title: 'Business Permit and Licensing', dataList: ServiceLists.officeBusinessLicensing),
-                      buildFilteredCategory(title: 'Office of the Building Official', dataList: ServiceLists.officeBuildingOfficial),
-                      buildFilteredCategory(title: 'Office of the City Engineer', dataList: ServiceLists.officeCityEngineer),
-                      buildFilteredCategory(title: 'Office of the City Assessor', dataList: ServiceLists.officeCityAssessor),
-                      buildFilteredCategory(title: 'Office of the City Civil Registrar', dataList: ServiceLists.officeCivilRegistry),
-                      buildFilteredCategory(title: 'Office of the City Treasurer', dataList: ServiceLists.officeCityTreasurer),
-                      buildFilteredCategory(title: 'Office of the City Mayor', dataList: ServiceLists.officeCityMayor),
-                      buildFilteredCategory(title: 'Office of the City Vice Mayor/ SP & Secretary to the Sanggunian', dataList: ServiceLists.officeCityVmSpSecretarySangunian),
-                      buildFilteredCategory(title: 'Information and Communications Technology Office', dataList: ServiceLists.officeICT),
-                      buildFilteredCategory(title: 'City Human Resources and Development Office', dataList: ServiceLists.officeCityHRDevelopment),
-                      buildFilteredCategory(title: 'Public Employment Services Office', dataList: ServiceLists.officePublicEmploymentServices),
-                      buildFilteredCategory(title: 'Office of the City Environmental and Natural Resources Officer', dataList: ServiceLists.officeCENR),
-                      buildFilteredCategory(title: 'Office of the City Population Officer', dataList: ServiceLists.officeCityPopulationOfficer),
-                      buildFilteredCategory(title: 'Office of the City Cooperatives Officer', dataList: ServiceLists.officeCityCooperativesOfficer),
-                      buildFilteredCategory(title: 'Office of the City Information Officer', dataList: ServiceLists.officeCityInformationOfficer),
-                      buildFilteredCategory(title: 'Office of the City Social Welfare and Development Officer', dataList: ServiceLists.officeCSWD),
-                      buildFilteredCategory(title: 'Office of the City Accountant', dataList: ServiceLists.officeCityAccount),
-                      buildFilteredCategory(title: 'Office of the City Legal Officer', dataList: ServiceLists.officeCityLegalOfficer),
-                      buildFilteredCategory(title: 'Office of the City Agriculturist', dataList: ServiceLists.officeCityAgriculturist),
-                      buildFilteredCategory(title: 'Office of the City Planning and Development Coordinator', dataList: ServiceLists.officeCityPlanningDevCoor),
-                      buildFilteredCategory(title: 'City Human Settlements and Livelihood Office', dataList: ServiceLists.officecCityHumanSettlementsLivelihood),
-                      buildFilteredCategory(title: 'Office of the City Budget Officer', dataList: ServiceLists.officeCityBudgetOfficer),
-                      buildFilteredCategory(title: 'Office of the City General Services Officer', dataList: ServiceLists.officeCityGeneralServicesOfficer),
-                      buildFilteredCategory(title: 'Office of the City Health Officer', dataList: ServiceLists.officeCityHealthOfficer),
-                      buildFilteredCategory(title: 'City Health Office II', dataList: ServiceLists.officeCityHealthOfficerII),
-                      buildFilteredCategory(title: 'City Health Office II- Biñan Birthing Home', dataList: ServiceLists.officeCityHealthOfficerIIBirthingHome),
-                      buildFilteredCategory(title: 'City Disaster Risk Reduction and Management Office', dataList: ServiceLists.officeCDRRM),
-                      buildFilteredCategory(title: 'Public Order and Safety Office', dataList: ServiceLists.officePublicOrderAndSafety),
-                    ]),
-                  ),
+
+                // 2. FutureBuilder handles the list below the search bar
+                FutureBuilder<List<Office>>(
+                  future: _officesFuture,
+                  builder: (context, snapshot) {
+                    // Loading State -> Show Skeletons
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 15, 20, 20),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) => const _SkeletonServiceCategory(),
+                            childCount: 4, // Show 4 fake categories while loading
+                          ),
+                        ),
+                      );
+                    } else if (snapshot.hasError) {
+                      return SliverToBoxAdapter(
+                        child: Center(child: Text("Error loading data: ${snapshot.error}")),
+                      );
+                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return const SliverToBoxAdapter(
+                        child: Center(child: Text("No services available.")),
+                      );
+                    }
+
+                    // Loaded State -> Show Actual Data
+                    final offices = snapshot.data!;
+                    return SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(20, 15, 20, 20),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => buildFilteredCategory(offices[index]),
+                          childCount: offices.length,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -179,17 +154,166 @@ class _ServicesContent extends State<Services> {
   }
 }
 
+// --- SKELETON WIDGETS FOR SERVICES --- //
+
+class _ShimmerEffect extends StatefulWidget {
+  final Widget child;
+  const _ShimmerEffect({required this.child});
+
+  @override
+  State<_ShimmerEffect> createState() => _ShimmerEffectState();
+}
+
+class _ShimmerEffectState extends State<_ShimmerEffect> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))
+      ..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.3, end: 0.8).animate(_controller),
+      child: widget.child,
+    );
+  }
+}
+
+class _SkeletonServiceCategory extends StatelessWidget {
+  const _SkeletonServiceCategory();
+
+  @override
+  Widget build(BuildContext context) {
+    return _ShimmerEffect(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 150,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              Container(
+                width: 50,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.tertiary,
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Column(
+              children: List.generate(3, (index) {
+                return Column(
+                  children: [
+                    Container(
+                      height: 78,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 35,
+                            height: 35,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: double.infinity,
+                                  height: 14,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade300,
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Container(
+                                  width: 100,
+                                  height: 14,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade300,
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            width: 18,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (index != 2) const SizedBox(height: 12),
+                  ],
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 30),
+        ],
+      ),
+    );
+  }
+}
+
+// --- EXISTING WIDGETS BELOW --- //
+
 class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
   final FocusNode focusNode;
   final TextEditingController controller;
   final bool hasFocus;
   final ValueChanged<String> onChanged;
+  final Brightness brightness;
 
   const _SearchBarDelegate({
     required this.focusNode,
     required this.controller,
     required this.hasFocus,
     required this.onChanged,
+    required this.brightness,
   });
 
   @override
@@ -199,30 +323,30 @@ class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(_SearchBarDelegate old) =>
-      old.hasFocus != hasFocus || old.controller != controller;
+      old.hasFocus != hasFocus || old.controller != controller || old.brightness != brightness; 
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
       child: GestureDetector(
         onTap: () => focusNode.requestFocus(),
         child: Container(
           height: 50,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: hasFocus
-                  ? const Color.fromRGBO(32, 87, 206, 1.0)
-                  : Colors.black.withOpacity(0.3),
+                  ? Theme.of(context).colorScheme.secondary
+                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
             ),
           ),
           child: Row(
             children: [
               const SizedBox(width: 18),
-              const Icon(Icons.search, color: Color.fromARGB(255, 0, 0, 0), size: 25),
+              Icon(Icons.search, color:Theme.of(context).colorScheme.onSurface, size: 25),
               const SizedBox(width: 20),
               Expanded(
                 child: TextField(
@@ -230,10 +354,10 @@ class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
                   focusNode: focusNode,
                   autofocus: false,
                   onChanged: onChanged,
-                  style: GoogleFonts.inter(fontSize: 15, color: Colors.black),
+                  style: GoogleFonts.inter(fontSize: 15, color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
-                    hintText: 'Search transaction...',
-                    hintStyle: GoogleFonts.inter(fontSize: 15, color: Colors.grey),
+                    hintText: 'Search service...',
+                    hintStyle: GoogleFonts.inter(fontSize: 15, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: EdgeInsets.zero,
@@ -251,19 +375,19 @@ class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
 
 class ServiceCategory extends StatelessWidget {
   final String title;
-  final List<ServiceItem> items;
+  final List<ServiceDetail> services;
   final Function(String) onTitleChange;
 
   const ServiceCategory({
     super.key,
     required this.title,
-    required this.items,
+    required this.services,
     required this.onTitleChange,
   });
 
   @override
   Widget build(BuildContext context) {
-    final displayedItems = items.take(3).toList();
+    final displayedItems = services.take(3).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,15 +401,14 @@ class ServiceCategory extends StatelessWidget {
                 style: GoogleFonts.inter(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
+                  color: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : Colors.black,
                 ),
                 softWrap: true,
               ),
             ),
-
             const SizedBox(width: 10),
-
-            // See all Button
             TextButton(
               onPressed: () {
                 onTitleChange(title);
@@ -294,7 +417,7 @@ class ServiceCategory extends StatelessWidget {
                   SlideRoute(
                     page: SeeAllScreen(
                       title: title,
-                      items: items,
+                      services: services,
                       onTitleChange: onTitleChange,
                     ),
                   ),
@@ -312,27 +435,29 @@ class ServiceCategory extends StatelessWidget {
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color: Theme.of(context).colorScheme.secondary,
+                  color: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : Theme.of(context).colorScheme.secondary,
                 ),
               ),
             ),
           ],
         ),
         const SizedBox(height: 10),
-
-        // Light blue wrapper container
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.tertiary,
+            color: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.tertiary,
             borderRadius: BorderRadius.circular(22),
           ),
           child: Column(
             children: List.generate(displayedItems.length, (index) {
               return Column(
                 children: [
-                  displayedItems[index],
+                  ServiceItem(detail: displayedItems[index], onTitleChange: onTitleChange),
                   if (index != displayedItems.length - 1) const SizedBox(height: 12),
                 ],
               );
@@ -345,21 +470,13 @@ class ServiceCategory extends StatelessWidget {
 }
 
 class ServiceItem extends StatelessWidget {
-  final String label;
-  final IconData iconData;
-  final Color iconBgColor;
-  final Color iconColor;
-  final ServiceData data;
+  final ServiceDetail detail;
   final Function(String) onTitleChange;
   final String returnTitle;
 
   const ServiceItem({
     super.key,
-    required this.data,
-    required this.label,
-    required this.iconData,
-    required this.iconBgColor,
-    required this.iconColor,
+    required this.detail,
     required this.onTitleChange,
     this.returnTitle = 'Services',
   });
@@ -367,7 +484,9 @@ class ServiceItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Theme.of(context).colorScheme.surface,
+      color: Theme.of(context).brightness == Brightness.dark
+      ? Theme.of(context).colorScheme.tertiary
+      : Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(20),
       elevation: 4,
       child: InkWell(
@@ -376,14 +495,10 @@ class ServiceItem extends StatelessWidget {
           FocusManager.instance.primaryFocus?.unfocus();
 
           onTitleChange('Information');
-          Navigator.push(
-            context,
-            SlideRoute(page: InformationScreen(title: label)),
-          ).then((_) {
+          Navigator.push(context, SlideRoute(page: InformationScreen(detail: detail))).then((_) {
             onTitleChange(returnTitle);
           });
         },
-
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
           decoration: BoxDecoration(
@@ -398,15 +513,19 @@ class ServiceItem extends StatelessWidget {
                 width: 35,
                 height: 35,
                 decoration: BoxDecoration(
-                  color: iconBgColor,
+                  color: UIHelper.getBgColorForService(detail.title),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(iconData, size: 18, color: iconColor),
+                child: Icon(
+                  UIHelper.getIconForService(detail.title),
+                  size: 18,
+                  color: Colors.black,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  label,
+                  detail.title,
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -415,7 +534,7 @@ class ServiceItem extends StatelessWidget {
                 ),
               ),
               ImageIcon(
-                AssetImage('assets/forward_icon.png'),
+                const AssetImage('assets/forward_icon.png'),
                 size: 18,
                 color: Theme.of(context).colorScheme.onSurface,
               ),
@@ -428,32 +547,19 @@ class ServiceItem extends StatelessWidget {
 }
 
 class SeeAllScreen extends StatelessWidget {
-  //Appbar here
   final String title;
-  final List<ServiceItem> items;
+  final List<ServiceDetail> services;
   final Function(String) onTitleChange;
 
   const SeeAllScreen({
     super.key,
     required this.title,
-    required this.items,
+    required this.services,
     required this.onTitleChange,
   });
 
   @override
   Widget build(BuildContext context) {
-    final dynamicItems = items.map((oldItem) {
-      return ServiceItem(
-        data: oldItem.data,
-        label: oldItem.label,
-        iconData: oldItem.iconData,
-        iconBgColor: oldItem.iconBgColor,
-        iconColor: oldItem.iconColor,
-        onTitleChange: onTitleChange,
-        returnTitle: title,
-      );
-    }).toList();
-
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SingleChildScrollView(
@@ -462,15 +568,21 @@ class SeeAllScreen extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.tertiary,
+            color: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.tertiary,
             borderRadius: BorderRadius.circular(22),
           ),
           child: Column(
-            children: List.generate(dynamicItems.length, (index) {
+            children: List.generate(services.length, (index) {
               return Column(
                 children: [
-                  dynamicItems[index],
-                  if (index != dynamicItems.length - 1) const SizedBox(height: 10),
+                  ServiceItem(
+                    detail: services[index],
+                    onTitleChange: onTitleChange,
+                    returnTitle: title,
+                  ),
+                  if (index != services.length - 1) const SizedBox(height: 10),
                 ],
               );
             }),

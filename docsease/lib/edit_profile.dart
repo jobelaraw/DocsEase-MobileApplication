@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:async';
+import 'package:docsease/app_modals.dart';
 
 class EditProfile extends StatefulWidget {
   const EditProfile({super.key});
@@ -26,8 +27,8 @@ class _EditProfileState extends State<EditProfile> {
   String passwordText = '';
   bool hasStrongPassword = false;
 
-  String currentEmail = '...';
-  String currentUsername = '...';
+  String currentEmail = 'Loading...';
+  String currentUsername = 'Loading...';
   String currentProfile = 'assets/default_profile.png';
 
   bool invalidInput = false;
@@ -134,7 +135,7 @@ class _EditProfileState extends State<EditProfile> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromRGBO(230, 246, 255, 1.0),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -145,7 +146,7 @@ class _EditProfileState extends State<EditProfile> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 20, vertical: 30),
                   width: double.infinity,
-                  color: const Color.fromRGBO(32, 87, 206, 1.0),
+                  color: Theme.of(context).colorScheme.primary,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
@@ -153,28 +154,28 @@ class _EditProfileState extends State<EditProfile> {
                         children: [
                           CircleAvatar(
                             radius: 50,
-                            backgroundColor: Colors.white,
+                            backgroundColor: Theme.of(context).colorScheme.primary,
                             child: ClipOval(
                               child: _selectedImage != null
                                   ? Image.file(
-                                _selectedImage!,
-                                width: 95,
-                                height: 95,
-                                fit: BoxFit.cover,
-                              )
+                                      _selectedImage!,
+                                      width: 95,
+                                      height: 95,
+                                      fit: BoxFit.cover,
+                                    )
                                   : currentProfile == 'assets/default_profile.png'
                                   ? Image.asset(
-                                currentProfile,
-                                width: 95,
-                                height: 95,
-                                fit: BoxFit.cover,
-                              )
+                                      currentProfile,
+                                      width: 95,
+                                      height: 95,
+                                      fit: BoxFit.cover,
+                                    )
                                   : Image.network(
-                                currentProfile,
-                                width: 95,
-                                height: 95,
-                                fit: BoxFit.cover,
-                              ),
+                                      currentProfile,
+                                      width: 95,
+                                      height: 95,
+                                      fit: BoxFit.cover,
+                                    ),
                             ),
                           ),
                           Positioned(
@@ -231,14 +232,16 @@ class _EditProfileState extends State<EditProfile> {
                 Container(
                   height: 50,
                   width: double.infinity,
-                  color: const Color.fromRGBO(32, 87, 206, 1.0),
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 20),
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).brightness == Brightness.dark
+                          ? Theme.of(context).colorScheme.tertiary
+                          : Colors.white,
                     borderRadius: BorderRadius.circular(25),
                     boxShadow: [
                       BoxShadow(
@@ -299,9 +302,9 @@ class _EditProfileState extends State<EditProfile> {
 
                           int score =
                               (hasLength ? 1 : 0) +
-                                  (hasSymbol ? 1 : 0) +
-                                  (hasUppercase ? 1 : 0) +
-                                  (hasNumber ? 1 : 0);
+                              (hasSymbol ? 1 : 0) +
+                              (hasUppercase ? 1 : 0) +
+                              (hasNumber ? 1 : 0);
 
                           if (score < 4) {
                             return 'Please meet all the password requirements.';
@@ -344,68 +347,91 @@ class _EditProfileState extends State<EditProfile> {
                         buttonText: 'Save Changes',
                         isLoading: isLoading,
                         isButtonEnabled:
-                        _usernameController.text.isNotEmpty ||
+                            _usernameController.text.isNotEmpty ||
                             _newPasswordController.text.isNotEmpty ||
                             _confirmPasswordController.text.isNotEmpty ||
                             _selectedImage != null,
                         btnElevation: 4,
                         btnRadius: 15,
                         onTapAction: () async {
-                          bool isUpdatingPassword =
-                              _newPasswordController.text.isNotEmpty ||
+                          
+                          //modal for confirm changes
+                          await ConfirmChangesModal.show(
+                            context,
+                            onPrimary: () async {
+                              Navigator.of(context, rootNavigator: true).pop();
+                              await Future.delayed(const Duration(milliseconds: 300));
+
+                              bool isUpdatingPassword =
+                                  _newPasswordController.text.isNotEmpty ||
                                   _confirmPasswordController.text.isNotEmpty;
 
-                          if (isUpdatingPassword) {
-                            bool isPasswordValid =
-                                _newPasswordController.text.isNotEmpty && hasStrongPassword;
-                            bool isConfirmValid =
-                                _confirmPasswordController.text.isNotEmpty &&
+                              if (isUpdatingPassword) {
+                                bool isPasswordValid =
+                                    _newPasswordController.text.isNotEmpty && hasStrongPassword;
+                                bool isConfirmValid =
+                                    _confirmPasswordController.text.isNotEmpty &&
                                     _confirmPasswordController.text == _newPasswordController.text;
 
-                            if (!isPasswordValid || !isConfirmValid) {
-                              setState(() => invalidInput = true);
-                              return;
-                            }
-                          }
-
-                          try {
-                            setState(() => isLoading = true);
-
-                            User? currentUser = FirebaseAuth.instance.currentUser;
-                            if (currentUser == null) throw Exception("User not logged in");
-
-                            String? newImageUrl;
-                            if (_selectedImage != null) {
-                              newImageUrl = await _editService.uploadProfileImage(
-                                _selectedImage!,
-                                currentUser.uid,
-                              );
-
-                              if (currentProfile != 'assets/default_profile.png' &&
-                                  currentProfile.isNotEmpty) {
-                                await _editService.deleteOldProfileImage(currentProfile);
+                                if (!isPasswordValid || !isConfirmValid) {
+                                  setState(() => invalidInput = true);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text("Please check your password details.")),
+                                  );
+                                  return;
+                                }
                               }
-                            }
 
-                            await _editService.updateUserProfile(
-                              newUsername: _usernameController.text.trim(),
-                              newPassword: _newPasswordController.text.trim(),
-                              newProfileImgUrl: newImageUrl,
-                            );
-                            if (mounted) {
-                              Navigator.pop(context);
-                            }
-                          } catch (e) {
-                            if (mounted) {
-                              setState(() {
-                                invalidInput = true;
-                                isLoading = false;
-                              });
-                              // ScaffoldMessenger.of(
-                              //   context,
-                              // ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
-                            }
-                          }
+                              try {
+                                setState(() => isLoading = true);
+
+                                User? currentUser = FirebaseAuth.instance.currentUser;
+                                if (currentUser == null) throw Exception("User not logged in");
+
+                                String? newImageUrl;
+                                if (_selectedImage != null) {
+                                  newImageUrl = await _editService.uploadProfileImage(
+                                    _selectedImage!,
+                                    currentUser.uid,
+                                  );
+
+                                  if (currentProfile != 'assets/default_profile.png' &&
+                                      currentProfile.isNotEmpty) {
+                                    await _editService.deleteOldProfileImage(currentProfile);
+                                  }
+                                }
+
+                                await _editService.updateUserProfile(
+                                  newUsername: _usernameController.text.trim(),
+                                  newPassword: _newPasswordController.text.trim(),
+                                  newProfileImgUrl: newImageUrl,
+                                );
+
+                                if (mounted) {
+                                  setState(() => isLoading = false);
+
+                                  // Show success modal 
+                                  ChangesSavedModal.show(
+                                    context,
+                                    onPrimary: () {
+                                      Navigator.of(context, rootNavigator: true).pop(); 
+                                      Navigator.of(context).pop(); 
+                                    },
+                                  );
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  setState(() {
+                                    invalidInput = true;
+                                    isLoading = false;
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text("Error: ${e.toString()}")),
+                                  );
+                                }
+                              }
+                            },
+                          );
                         },
                       ),
                     ],
