@@ -261,7 +261,9 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                             print("--- PRE-FLIGHT CHECK ---");
                                             print("Target Email: '${widget.targetEmail}'");
                                             print("Recovery Code: '${widget.recoveryCode}'");
-                                            print("New Password: '${_passwordController.text.trim()}'");
+                                            print(
+                                              "New Password: '${_passwordController.text.trim()}'",
+                                            );
                                             print("------------------------");
 
                                             HttpsCallable callable = FirebaseFunctions.instance
@@ -280,7 +282,7 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                                   Navigator.of(context).pop();
                                                   Navigator.of(context).pushAndRemoveUntil(
                                                     SlideRoute(page: const Authentication()),
-                                                    (route) => false,
+                                                    (route) => route.isFirst,
                                                   );
                                                 },
                                               );
@@ -291,7 +293,8 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                                 invalidInput = true;
                                                 isLoading = false;
                                               });
-                                            } print("Cloud Function Error: $e");
+                                            }
+                                            print("Cloud Function Error: $e");
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               SnackBar(
                                                 content: Text("Error: ${e.toString()}"),
