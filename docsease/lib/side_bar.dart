@@ -6,6 +6,7 @@ import 'package:docsease/profile.dart';
 import 'package:docsease/services.dart';
 import 'package:docsease/settings.dart';
 import 'package:docsease/settings_provider.dart';
+import 'package:docsease/app_localizations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -30,7 +31,7 @@ class _SideBarState extends State<SideBar> {
 
   // Tab History Stack and Titles
   final List<int> _tabHistory = [0];
-  final List<String> _tabTitles = ['Services', 'Profile', 'About', 'Settings'];
+  List<String> _tabTitles = ['Services', 'Profile', 'About', 'Settings'];
 
   final GlobalKey<NavigatorState> _servicesNavKey = GlobalKey<NavigatorState>();
   final GlobalKey<NavigatorState> _profileNavKey = GlobalKey<NavigatorState>();
@@ -284,7 +285,11 @@ class _SideBarState extends State<SideBar> {
                         CircleAvatar(
                           radius: 20,
                           child: ClipOval(
-                            child: Image.asset('assets/chatbot_icon.png', fit: BoxFit.contain),
+                              child: Image.asset(
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? 'assets/chatbot_darkmode.png'
+                                  : 'assets/chatbot_icon.png',
+                              fit: BoxFit.contain),
                           ),
                         ),
                         Positioned(
@@ -349,7 +354,9 @@ class _SideBarState extends State<SideBar> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          isOnline ? "Online Assistant" : "Offline - Waiting for network...",
+                          isOnline
+                              ? AppLocalizations.translate('Online Assistant', Provider.of<SettingsProvider>(context).language)
+                              : AppLocalizations.translate('Offline - Waiting for network...', Provider.of<SettingsProvider>(context).language),
                           style: GoogleFonts.inter(
                             color: Colors.white60,
                             fontSize: 11,
@@ -361,7 +368,7 @@ class _SideBarState extends State<SideBar> {
                   ],
                 )
               : Text(
-                  currentTitle,
+                  AppLocalizations.translate(currentTitle, Provider.of<SettingsProvider>(context).language),
                   style: GoogleFonts.inter(
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
@@ -484,7 +491,7 @@ class _SideBarState extends State<SideBar> {
                                       ),
                                     ),
                                     Text(
-                                      'Citizen User',
+                                      AppLocalizations.translate('Citizen User', Provider.of<SettingsProvider>(context).language),
                                       style: GoogleFonts.inter(
                                         fontSize: 11,
                                         fontWeight: FontWeight.normal,
@@ -505,7 +512,7 @@ class _SideBarState extends State<SideBar> {
                                 SideBarOption(
                                   selectedImage: 'assets/home_icon.png',
                                   unselectedImage: 'assets/home_outlined_icon.png',
-                                  optionName: 'Home',
+                                  optionName: AppLocalizations.translate('Home', Provider.of<SettingsProvider>(context).language),
                                   isSelected: selectedIndex == 0,
                                   onTapAction: () {
                                     Navigator.pop(context);
@@ -518,7 +525,7 @@ class _SideBarState extends State<SideBar> {
                                 SideBarOption(
                                   selectedImage: 'assets/profile_icon.png',
                                   unselectedImage: 'assets/profile_outlined_icon.png',
-                                  optionName: 'Profile',
+                                  optionName: AppLocalizations.translate('Profile', Provider.of<SettingsProvider>(context).language),
                                   isSelected: selectedIndex == 1,
                                   onTapAction: () {
                                     Navigator.pop(context);
@@ -531,7 +538,7 @@ class _SideBarState extends State<SideBar> {
                                 SideBarOption(
                                   selectedImage: 'assets/about_icon.png',
                                   unselectedImage: 'assets/about_outlined_icon.png',
-                                  optionName: 'About',
+                                  optionName: AppLocalizations.translate('About', Provider.of<SettingsProvider>(context).language),
                                   isSelected: selectedIndex == 2,
                                   onTapAction: () {
                                     Navigator.pop(context);
@@ -544,7 +551,7 @@ class _SideBarState extends State<SideBar> {
                                 SideBarOption(
                                   selectedImage: 'assets/settings_icon.png',
                                   unselectedImage: 'assets/settings_outlined_icon.png',
-                                  optionName: 'Settings',
+                                  optionName: AppLocalizations.translate('Settings', Provider.of<SettingsProvider>(context).language),
                                   isSelected: selectedIndex == 3,
                                   onTapAction: () {
                                     Navigator.pop(context);
@@ -603,7 +610,7 @@ class _SideBarState extends State<SideBar> {
                             color: const Color.fromRGBO(252, 64, 64, 1),
                           ),
                           label: Text(
-                            widget.isGuest ? "Exit" : "Logout",
+                            AppLocalizations.translate(widget.isGuest ? 'Exit' : 'Logout', Provider.of<SettingsProvider>(context).language),
                             style: GoogleFonts.inter(
                               fontSize: 17,
                               fontWeight: FontWeight.bold,

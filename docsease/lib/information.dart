@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:docsease/info_model.dart';
+import 'package:docsease/app_localizations.dart';
+import 'package:docsease/settings_provider.dart';
+import 'package:provider/provider.dart';
 
 class InformationScreen extends StatefulWidget {
   final ServiceDetail detail;
@@ -75,8 +78,9 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+    final lang = Provider.of<SettingsProvider>(context).language;
+    final tabs = widget.detail.getTabs(lang);
 
-    // Fallback if user is not logged in
     if (user == null) return const Scaffold(body: Center(child: Text("Please log in first.")));
 
     return Scaffold(
@@ -118,14 +122,14 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
 
           return Column(
             children: [
-              if (widget.detail.tabs.length > 1) _buildTabSwitcher(),
+              if (tabs.length > 1) _buildTabSwitcher(tabs),
               Expanded(
-                child: widget.detail.tabs.isEmpty
+                child: tabs.isEmpty
                     ? const Center(child: Text("No data available for this service."))
-                    : widget.detail.tabs.length > 1
+                    : tabs.length > 1
                     ? TabBarView(
                         controller: _tabController,
-                        children: widget.detail.tabs
+                        children: tabs
                             .map(
                               (tab) => _ContentList(
                                 tab: tab,
@@ -135,18 +139,20 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
                                 completedSteps: completedSteps,
                                 onToggleReq: handleToggleReq,
                                 onToggleStep: handleToggleStep,
+                                language: lang,
                               ),
                             )
                             .toList(),
                       )
                     : _ContentList(
-                        tab: widget.detail.tabs.first,
+                        tab: tabs.first,
                         detail: widget.detail,
                         accentColor: accentBlue,
                         checkedReqs: checkedReqs,
                         completedSteps: completedSteps,
                         onToggleReq: handleToggleReq,
                         onToggleStep: handleToggleStep,
+                        language: lang,
                       ),
               ),
             ],
@@ -156,8 +162,8 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
     );
   }
 
-  Widget _buildTabSwitcher() {
-    if (widget.detail.tabs.length <= 1) return const SizedBox.shrink();
+  Widget _buildTabSwitcher(List<ServiceTab> tabs) {
+    if (tabs.length <= 1) return const SizedBox.shrink();
 
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -197,7 +203,7 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
           fontSize: 13,
           height: 1.0,
         ),
-        tabs: widget.detail.tabs.map((tab) {
+        tabs: tabs.map((tab) {
           return Tab(
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -226,6 +232,7 @@ class _ContentList extends StatelessWidget {
   final List<String> completedSteps;
   final Function(String, bool) onToggleReq;
   final Function(String, bool) onToggleStep;
+  final String language;
 
   const _ContentList({
     required this.detail,
@@ -235,18 +242,21 @@ class _ContentList extends StatelessWidget {
     required this.completedSteps,
     required this.onToggleReq,
     required this.onToggleStep,
+    required this.language,
   });
 
   @override
   Widget build(BuildContext context) {
+    String tr(String key) => AppLocalizations.translate(key, language);
+
     return ListView(
       padding: const EdgeInsets.all(30),
       children: [
-        Text(detail.title, style: GoogleFonts.inter(fontSize: 25, fontWeight: FontWeight.bold)),
+        Text(detail.getTitle(language), style: GoogleFonts.inter(fontSize: 25, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
 
         Text(
-          detail.description.isNotEmpty ? detail.description : "No description available.",
+          detail.getDescription(language).isNotEmpty ? detail.getDescription(language) : tr("No description available."),
           style: GoogleFonts.inter(
             fontSize: 12,
             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
@@ -262,6 +272,7 @@ class _ContentList extends StatelessWidget {
             tabName: tab.name,
             checkedReqs: checkedReqs,
             onToggle: onToggleReq,
+            language: language,
           ),
           const SizedBox(height: 30),
         ],
@@ -274,14 +285,16 @@ class _ContentList extends StatelessWidget {
                 color: Theme.of(context).colorScheme.onSurface,
               ),
               const SizedBox(width: 8),
-              Text(
-                tab.steps.length != 1
-                    ? "Step-by-Step Guide (1-${tab.steps.length})"
-                    : "Step-by-Step Guide (1)",
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: Theme.of(context).colorScheme.onSurface,
+              Flexible(
+                child: Text(
+                  tab.steps.length != 1
+                      ? "${tr('Step-by-Step Guide')} (1-${tab.steps.length})"
+                      : "${tr('Step-by-Step Guide')} (1)",
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
               ),
             ],
@@ -295,14 +308,15 @@ class _ContentList extends StatelessWidget {
               tabName: tab.name,
               completedSteps: completedSteps,
               onToggle: onToggleStep,
+              language: language,
             ),
           ),
         ],
 
         const SizedBox(height: 10),
-        _InfoGrid(detail: detail, accentColor: accentColor),
+        _InfoGrid(detail: detail, accentColor: accentColor, language: language),
         const SizedBox(height: 30),
-        _ScheduleTile(),
+        _ScheduleTile(language: language),
       ],
     );
   }
@@ -315,6 +329,7 @@ class _RequirementsCard extends StatelessWidget {
   final String tabName;
   final List<String> checkedReqs;
   final Function(String, bool) onToggle;
+  final String language;
 
   const _RequirementsCard({
     required this.requirements,
@@ -323,6 +338,7 @@ class _RequirementsCard extends StatelessWidget {
     required this.tabName,
     required this.checkedReqs,
     required this.onToggle,
+    required this.language,
   });
 
   @override
@@ -334,12 +350,14 @@ class _RequirementsCard extends StatelessWidget {
           children: [
             Icon(Icons.assignment_outlined, color: Theme.of(context).colorScheme.onSurface),
             const SizedBox(width: 8),
-            Text(
-              "Requirements Checklist",
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Theme.of(context).colorScheme.onSurface,
+            Flexible(
+              child: Text(
+                AppLocalizations.translate("Requirements Checklist", language),
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
             ),
           ],
@@ -397,7 +415,7 @@ class _RequirementsCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         RichText(
                           text: TextSpan(
-                            text: "Secure at:  ",
+                            text: "${AppLocalizations.translate('Secure at', language)}:  ",
                             style: GoogleFonts.inter(
                               fontSize: 11,
                               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
@@ -438,6 +456,7 @@ class _StepItem extends StatelessWidget {
   final String tabName;
   final List<String> completedSteps;
   final Function(String, bool) onToggle;
+  final String language;
 
   const _StepItem({
     required this.num,
@@ -446,6 +465,7 @@ class _StepItem extends StatelessWidget {
     required this.tabName,
     required this.completedSteps,
     required this.onToggle,
+    required this.language,
   });
 
   @override
@@ -461,19 +481,26 @@ class _StepItem extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 22,
-              backgroundColor: isDone ? accentColor : Colors.white,
+              backgroundColor: isDone
+                  ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : accentColor)
+                  : (Theme.of(context).brightness == Brightness.dark ? Colors.transparent : Colors.white),
               child: Container(
                 decoration: isDone
                     ? null
                     : BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.black, width: 2),
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                          width: 2,
+                        ),
                       ),
                 alignment: Alignment.center,
                 child: Text(
                   "$num",
                   style: TextStyle(
-                    color: isDone ? Colors.white : Colors.black,
+                    color: isDone
+                        ? (Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white)
+                        : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                   ),
@@ -533,17 +560,17 @@ class _StepItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: _InfoBox(label: "Fee:", value: step.fee),
+                      child: _InfoBox(label: "${AppLocalizations.translate('Fee', language)}:", value: step.fee),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _InfoBox(label: "Processing Time:", value: step.processingTime),
+                      child: _InfoBox(label: "${AppLocalizations.translate('Processing Time', language)}:", value: step.processingTime),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 8),
-              _InfoBox(label: "Person In-charge:", value: step.personsInCharge.join('\n')),
+              _InfoBox(label: "${AppLocalizations.translate('Person In-charge', language)}:", value: step.personsInCharge.join('\n')),
             ],
           ),
         ),
@@ -587,10 +614,10 @@ class _StepItem extends StatelessWidget {
                       onPressed: () => onToggle(uniqueKey, false),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Theme.of(context).brightness == Brightness.dark
-                            ? Theme.of(context).colorScheme.tertiary
+                            ? Colors.white
                             : const Color(0xFF2057CE),
                         foregroundColor: Theme.of(context).brightness == Brightness.dark
-                            ? Theme.of(context).colorScheme.onPrimary
+                            ? Colors.black
                             : Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -602,11 +629,11 @@ class _StepItem extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         elevation: 0,
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
                           Icon(Icons.check, size: 18),
                           SizedBox(width: 8),
-                          Text("Completed", style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(AppLocalizations.translate("Completed", language), style: TextStyle(fontWeight: FontWeight.bold)),
                         ],
                       ),
                     )
@@ -625,9 +652,9 @@ class _StepItem extends StatelessWidget {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                       ),
-                      child: const Text(
-                        "Mark As Done",
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                      child: Text(
+                        AppLocalizations.translate("Mark As Done", language),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
             ),
@@ -695,20 +722,35 @@ class _InfoBox extends StatelessWidget {
 class _InfoGrid extends StatelessWidget {
   final ServiceDetail detail;
   final Color accentColor;
+  final String language;
 
-  const _InfoGrid({required this.detail, required this.accentColor});
+  const _InfoGrid({required this.detail, required this.accentColor, required this.language});
 
   @override
   Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(child: _buildCard(context, Icons.location_on, "LOCATION", detail.location)),
-          const SizedBox(width: 15),
-          Expanded(child: _buildContactCard(context)),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Stack vertically if width is too tight for side-by-side
+        if (constraints.maxWidth < 300 || MediaQuery.textScalerOf(context).scale(1) > 1.05) {
+          return Column(
+            children: [
+              _buildCard(context, Icons.location_on, AppLocalizations.translate("LOCATION", language), detail.location),
+              const SizedBox(height: 15),
+              _buildContactCard(context),
+            ],
+          );
+        }
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _buildCard(context, Icons.location_on, AppLocalizations.translate("LOCATION", language), detail.location)),
+              const SizedBox(width: 15),
+              Expanded(child: _buildContactCard(context)),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -734,19 +776,19 @@ class _InfoGrid extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(
-                  decoration: const BoxDecoration(shape: BoxShape.circle),
-                  child: Icon(icon, color: const Color(0xFF3B73E0), size: 18),
-                ),
+                Icon(icon, color: const Color(0xFF3B73E0), size: 18),
                 const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)
-                        : Colors.black45,
-                    fontWeight: FontWeight.w600,
+                Flexible(
+                  child: Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)
+                          : Colors.black45,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -791,19 +833,19 @@ class _InfoGrid extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(
-                  decoration: const BoxDecoration(shape: BoxShape.circle),
-                  child: const Icon(Icons.phone, color: Color(0xFF3B73E0), size: 18),
-                ),
+                const Icon(Icons.phone, color: Color(0xFF3B73E0), size: 18),
                 const SizedBox(width: 8),
-                Text(
-                  "CONTACT",
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.onSurface
-                        : Colors.black,
-                    fontWeight: FontWeight.w600,
+                Flexible(
+                  child: Text(
+                    AppLocalizations.translate("CONTACT", language),
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)
+                          : Colors.black45,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -829,6 +871,7 @@ class _InfoGrid extends StatelessWidget {
                     ? Theme.of(context).colorScheme.onSurface
                     : Colors.black,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -838,6 +881,9 @@ class _InfoGrid extends StatelessWidget {
 }
 
 class _ScheduleTile extends StatelessWidget {
+  final String language;
+  const _ScheduleTile({required this.language});
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -857,15 +903,17 @@ class _ScheduleTile extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  "OFFICE SCHEDULE",
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.onSurface
-                        : Colors.black,
-                    letterSpacing: 0.5,
+                Flexible(
+                  child: Text(
+                    AppLocalizations.translate("OFFICE SCHEDULE", language),
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Theme.of(context).colorScheme.onSurface
+                          : Colors.black,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
                 Container(
@@ -874,8 +922,8 @@ class _ScheduleTile extends StatelessWidget {
                     color: const Color(0xFF52EC44),
                     borderRadius: BorderRadius.circular(30),
                   ),
-                  child: const Text(
-                    "OPEN NOW",
+                  child: Text(
+                    AppLocalizations.translate("OPEN NOW", language),
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 10,
@@ -886,8 +934,9 @@ class _ScheduleTile extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 15),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
               children: [
                 Text(
                   "Monday - Friday",

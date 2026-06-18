@@ -5,6 +5,9 @@ import 'package:docsease/information.dart';
 import 'package:docsease/chatbot.dart';
 import 'package:docsease/navigator_transition.dart';
 import 'package:docsease/firebase_services.dart';
+import 'package:docsease/app_localizations.dart';
+import 'package:docsease/settings_provider.dart';
+import 'package:provider/provider.dart';
 
 class Services extends StatefulWidget {
   final Function(String) onTitleChange;
@@ -41,11 +44,12 @@ class _ServicesContent extends State<Services> {
   }
 
   Widget buildFilteredCategory(Office office) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
     final filteredServices = office.services.where((service) {
-      return service.title.toLowerCase().contains(searchQuery);
+      return service.getTitle(lang).toLowerCase().contains(searchQuery);
     }).toList();
 
-    final matchesOfficeTitle = office.officeName.toLowerCase().contains(searchQuery);
+    final matchesOfficeTitle = office.getOfficeName(lang).toLowerCase().contains(searchQuery);
 
     if (searchQuery.isNotEmpty && filteredServices.isEmpty && !matchesOfficeTitle) {
       return const SizedBox.shrink();
@@ -54,7 +58,7 @@ class _ServicesContent extends State<Services> {
     return Column(
       children: [
         ServiceCategory(
-          title: office.officeName,
+          title: office.getOfficeName(lang),
           services: filteredServices.isNotEmpty ? filteredServices : office.services,
           onTitleChange: widget.onTitleChange,
         ),
@@ -65,6 +69,9 @@ class _ServicesContent extends State<Services> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen to provider so UI rebuilds on language change
+    Provider.of<SettingsProvider>(context);
+
     return GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: Scaffold(
@@ -142,7 +149,11 @@ class _ServicesContent extends State<Services> {
                   borderRadius: BorderRadius.circular(40),
                   child: Padding(
                     padding: const EdgeInsets.all(2.0),
-                    child: Image.asset('assets/chatbot_icon.png', width: 70, height: 70),
+                    child: Image.asset(
+                      Theme.of(context).brightness == Brightness.dark
+                          ? 'assets/chatbot_darkmode.png'
+                          : 'assets/chatbot_icon.png',
+                      width: 70, height: 70),
                   ),
                 ),
               ),
@@ -356,7 +367,7 @@ class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
                   onChanged: onChanged,
                   style: GoogleFonts.inter(fontSize: 15, color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
-                    hintText: 'Search service...',
+                    hintText: AppLocalizations.translate('Search service...', Provider.of<SettingsProvider>(context, listen: false).language),
                     hintStyle: GoogleFonts.inter(fontSize: 15, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
                     border: InputBorder.none,
                     isDense: true,
@@ -431,7 +442,7 @@ class ServiceCategory extends StatelessWidget {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Text(
-                'See All',
+                AppLocalizations.translate('See All', Provider.of<SettingsProvider>(context).language),
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
@@ -483,6 +494,7 @@ class ServiceItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<SettingsProvider>(context).language;
     return Material(
       color: Theme.of(context).brightness == Brightness.dark
       ? Theme.of(context).colorScheme.tertiary
@@ -525,7 +537,7 @@ class ServiceItem extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  detail.title,
+                  detail.getTitle(lang),
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
