@@ -153,7 +153,9 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                                 ),
                                 const SizedBox(height: 15),
                                 Text(
-                                  tr('A mobile assistant designed to help citizens navigate government services more easily in Binan City Hall. It provides clear information, guided steps, and smart navigation to simplify document processing in government offices.'),
+                                  tr(
+                                    'A mobile assistant designed to help citizens navigate government services more easily in Binan City Hall. It provides clear information, guided steps, and smart navigation to simplify document processing in government offices.',
+                                  ),
                                   style: GoogleFonts.inter(
                                     color: Colors.white,
                                     fontSize: 16.5,
@@ -189,33 +191,37 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
 
                   // Stats Row
                   IntrinsicHeight(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _buildStatCard('15k +', tr('Active Users'), 
-                        Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.tertiary
-                        : const Color(0xFF2B6FD4), 
-                        Colors.white, 
-                        Colors.white70
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatCard(
+                            '15k +',
+                            tr('Active Users'),
+                            Theme.of(context).brightness == Brightness.dark
+                                ? Theme.of(context).colorScheme.tertiary
+                                : const Color(0xFF2B6FD4),
+                            Colors.white,
+                            Colors.white70,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildStatCard('4.9', tr('App Store Rating'), 
-                        Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.primary
-                        : const Color(0xFFADD0EC), 
-                        Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : Colors.black87,                        
-                        Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : Colors.black87,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildStatCard(
+                            '4.9',
+                            tr('App Store Rating'),
+                            Theme.of(context).brightness == Brightness.dark
+                                ? Theme.of(context).colorScheme.primary
+                                : const Color(0xFFADD0EC),
+                            Theme.of(context).brightness == Brightness.dark
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Colors.black87,
+                            Theme.of(context).brightness == Brightness.dark
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Colors.black87,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
                   ),
 
                   const SizedBox(height: 45),
@@ -230,16 +236,16 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : Colors.black87,
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : Colors.black87,
                         ),
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                         decoration: BoxDecoration(
                           color: Theme.of(context).brightness == Brightness.dark
-                                  ? Theme.of(context).colorScheme.primary
-                                  : const Color(0xFFADD0EC),
+                              ? Theme.of(context).colorScheme.primary
+                              : const Color(0xFFADD0EC),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -247,8 +253,8 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             color: Theme.of(context).brightness == Brightness.dark
-                                  ? Theme.of(context).colorScheme.onPrimary
-                                  : Colors.white,
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Colors.white,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -270,8 +276,8 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : Colors.black87,
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : Colors.black87,
                     ),
                   ),
 
@@ -280,7 +286,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                   _ContactTile(
                     iconAsset: 'assets/email_icon.png',
                     fallbackIcon: Icons.mail_outline,
-                    label: 'docsease@gmail.com',
+                    label: 'docsease.noreply@gmail.com',
                     fontSize: 16,
                   ),
                   const SizedBox(height: 10),
@@ -295,23 +301,23 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                   const SizedBox(height: 24),
 
                   // Social Icons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _SocialCircle(iconAsset: 'assets/fb_icon.png', fallbackIcon: Icons.facebook),
-                      const SizedBox(width: 12),
-                      _SocialCircle(
-                        iconAsset: 'assets/share_icon.png',
-                        fallbackIcon: Icons.share_outlined,
-                      ),
-                      const SizedBox(width: 12),
-                      _SocialCircle(
-                        iconAsset: 'assets/connect_icon.png',
-                        fallbackIcon: Icons.chat_bubble_outline,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
+                  // Row(
+                  //   mainAxisAlignment: MainAxisAlignment.center,
+                  //   children: [
+                  //     _SocialCircle(iconAsset: 'assets/fb_icon.png', fallbackIcon: Icons.facebook),
+                  //     const SizedBox(width: 12),
+                  //     _SocialCircle(
+                  //       iconAsset: 'assets/share_icon.png',
+                  //       fallbackIcon: Icons.share_outlined,
+                  //     ),
+                  //     const SizedBox(width: 12),
+                  //     _SocialCircle(
+                  //       iconAsset: 'assets/connect_icon.png',
+                  //       fallbackIcon: Icons.chat_bubble_outline,
+                  //     ),
+                  //   ],
+                  // ),
+                  // const SizedBox(height: 30),
                 ],
               ),
             ),
@@ -356,13 +362,13 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
         color: Theme.of(context).brightness == Brightness.dark
-                ? Theme.of(context).colorScheme.primary
-                : Colors.white,
+            ? Theme.of(context).colorScheme.primary
+            : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-        color: Theme.of(context).brightness == Brightness.dark
-                ? Theme.of(context).colorScheme.surface 
-                : const Color(0xFFCDD8E3),
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Theme.of(context).colorScheme.surface
+              : const Color(0xFFCDD8E3),
           width: 1.0,
         ),
         boxShadow: [
@@ -385,9 +391,9 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
               border: Border.all(
                 color: Theme.of(context).brightness == Brightness.dark
                     ? Theme.of(context).colorScheme.onPrimary
-                    :Colors.grey.shade300, 
-                width: 1.5
-                ),
+                    : Colors.grey.shade300,
+                width: 1.5,
+              ),
             ),
             child: ClipOval(
               child: Image.asset(
@@ -410,8 +416,8 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : Colors.black87,
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -420,8 +426,8 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     color: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.onSurface
-                    : Colors.black54,
+                        ? Theme.of(context).colorScheme.onSurface
+                        : Colors.black54,
                   ),
                 ),
               ],
@@ -463,14 +469,14 @@ class _ContactTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
         color: Theme.of(context).brightness == Brightness.dark
-                ? Theme.of(context).colorScheme.primary
-                : const Color(0xFFF0F4F8),
+            ? Theme.of(context).colorScheme.primary
+            : const Color(0xFFF0F4F8),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-        color: Theme.of(context).brightness == Brightness.dark
-                ? Theme.of(context).colorScheme.surface 
-                : const Color(0xFFCDD8E3),
-        width: 1.0
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Theme.of(context).colorScheme.surface
+              : const Color(0xFFCDD8E3),
+          width: 1.0,
         ),
       ),
       child: Row(
@@ -480,8 +486,8 @@ class _ContactTile extends StatelessWidget {
             height: 42,
             decoration: BoxDecoration(
               color: Theme.of(context).brightness == Brightness.dark
-                ? Theme.of(context).colorScheme.tertiary
-                : const Color(0xFFDEEAF4),
+                  ? Theme.of(context).colorScheme.tertiary
+                  : const Color(0xFFDEEAF4),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Padding(
@@ -500,8 +506,8 @@ class _ContactTile extends StatelessWidget {
             style: GoogleFonts.inter(
               fontSize: fontSize,
               color: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : const Color(0xFF2B6FD4),
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : const Color(0xFF2B6FD4),
               fontWeight: FontWeight.w500,
             ),
           ),
