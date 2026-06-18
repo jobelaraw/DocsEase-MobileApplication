@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 class Office {
   final String officeId;
   final String officeName;
+  final String officeNameFil;
   final String location;
   final String schedule;
   final String contactPhone;
@@ -12,6 +13,7 @@ class Office {
   Office({
     required this.officeId,
     required this.officeName,
+    required this.officeNameFil,
     required this.location,
     required this.schedule,
     required this.contactPhone,
@@ -19,10 +21,16 @@ class Office {
     required this.services,
   });
 
+  String getOfficeName(String language) {
+    if (language == 'Filipino' && officeNameFil.isNotEmpty) return officeNameFil;
+    return officeName;
+  }
+
   factory Office.fromJson(Map<String, dynamic> json) {
     return Office(
       officeId: json['office_id'] ?? '',
       officeName: json['office_name'] ?? '',
+      officeNameFil: json['office_name_fil'] ?? '',
       location: json['location'] ?? 'City Hall',
       schedule: json['schedule'] ?? '',
       contactPhone: json['contact_phone'] ?? '',
@@ -39,8 +47,11 @@ class Office {
 class ServiceDetail {
   final String serviceId;
   final String title;
+  final String titleFil;
   final String description;
+  final String descriptionFil;
   final List<ServiceTab> tabs;
+  final List<ServiceTab> tabsFil;
   final String location;
   final String duration;
   final String contactPhone;
@@ -50,8 +61,11 @@ class ServiceDetail {
   ServiceDetail({
     required this.serviceId,
     required this.title,
+    required this.titleFil,
     required this.description,
+    required this.descriptionFil,
     required this.tabs,
+    required this.tabsFil,
     required this.location,
     required this.duration,
     required this.contactPhone,
@@ -59,11 +73,28 @@ class ServiceDetail {
     required this.cost,
   });
 
+  String getTitle(String language) {
+    if (language == 'Filipino' && titleFil.isNotEmpty) return titleFil;
+    return title;
+  }
+
+  String getDescription(String language) {
+    if (language == 'Filipino' && descriptionFil.isNotEmpty) return descriptionFil;
+    return description;
+  }
+
+  List<ServiceTab> getTabs(String language) {
+    if (language == 'Filipino' && tabsFil.isNotEmpty) return tabsFil;
+    return tabs;
+  }
+
   factory ServiceDetail.fromJson(Map<String, dynamic> json, Map<String, dynamic> officeJson) {
     return ServiceDetail(
       serviceId: json['service_id'] ?? '',
       title: json['service_name'] ?? '',
+      titleFil: json['service_name_fil'] ?? '',
       description: json['description'] ?? '',
+      descriptionFil: json['description_fil'] ?? '',
       tabs:
           (json['tabs'] as List<dynamic>?)
               ?.map(
@@ -72,8 +103,16 @@ class ServiceDetail {
               )
               .toList() ??
           [],
+      tabsFil:
+          (json['tabs_fil'] as List<dynamic>?)
+              ?.map(
+                (e) =>
+                    ServiceTab.fromFilJson(e as Map<String, dynamic>, officeJson['office_name_fil'] ?? officeJson['office_name'] ?? ''),
+              )
+              .toList() ??
+          [],
       location: officeJson['location'] ?? 'City Hall',
-      duration: '', // Can be aggregated from steps if needed
+      duration: '',
       contactPhone: officeJson['contact_phone'] ?? '',
       contactEmail: officeJson['contact_email'] ?? '',
       cost: '',
@@ -103,6 +142,60 @@ class ServiceTab {
           [],
     );
   }
+
+  factory ServiceTab.fromFilJson(Map<String, dynamic> json, String officeName) {
+    // Debug: check what's in the JSON
+    print('=== fromFilJson keys: ${json.keys.toList()}');
+    print('=== procedures_fil exists: ${json.containsKey('procedures_fil')}');
+    if (json['procedures_fil'] != null) {
+      final first = (json['procedures_fil'] as List).isNotEmpty ? (json['procedures_fil'] as List).first : null;
+      print('=== first procedures_fil item keys: ${first?.keys?.toList()}');
+      print('=== first procedures_fil item: $first');
+    }
+    // Build Filipino steps by merging translated text with original data
+    List<ServiceStep> filSteps = [];
+    final origProcedures = json['procedures'] as List<dynamic>? ?? [];
+    final filProcedures = json['procedures_fil'] as List<dynamic>? ?? [];
+
+    for (int i = 0; i < origProcedures.length; i++) {
+      final orig = origProcedures[i] as Map<String, dynamic>;
+      final fil = i < filProcedures.length ? filProcedures[i] as Map<String, dynamic> : {};
+      filSteps.add(ServiceStep(
+        title: fil['process_name_fil'] ?? orig['process_name'] ?? '',
+        office: officeName,
+        instruction: fil['process_description_fil'] ?? orig['process_description'] ?? '',
+        fee: orig['fee']?.toString() ?? 'None',
+        processingTime: fil['processing_time_fil'] ?? orig['processing_time'] ?? '',
+        personsInCharge:
+            (orig['person_in_charge'] as String?)
+                ?.split(',')
+                .map((e) => e.trim())
+                .where((e) => e.isNotEmpty)
+                .toList() ??
+            [],
+      ));
+    }
+
+    // Build Filipino requirements by merging
+    List<RequirementItem> filReqs = [];
+    final origReqs = json['requirements'] as List<dynamic>? ?? [];
+    final filReqsList = json['requirements_fil'] as List<dynamic>? ?? [];
+
+    for (int i = 0; i < origReqs.length; i++) {
+      final orig = origReqs[i] as Map<String, dynamic>;
+      final fil = i < filReqsList.length ? filReqsList[i] as Map<String, dynamic> : {};
+      filReqs.add(RequirementItem(
+        title: fil['requirement_name_fil'] ?? orig['requirement_name'] ?? '',
+        secureAt: fil['secure_at_fil'] ?? orig['secure_at'] ?? '',
+      ));
+    }
+
+    return ServiceTab(
+      name: json['tab_name_fil'] ?? json['tab_name'] ?? '',
+      requirements: filReqs,
+      steps: filSteps,
+    );
+  }
 }
 
 class ServiceStep {
@@ -123,7 +216,6 @@ class ServiceStep {
   });
 
   factory ServiceStep.fromJson(Map<String, dynamic> json, String officeName) {
-    // Firestore stores fee as either integer 0 or string. toString() handles both.
     String feeStr = json['fee']?.toString() ?? 'None';
     if (feeStr == '0') feeStr = 'None';
 
@@ -132,6 +224,23 @@ class ServiceStep {
       office: officeName,
       instruction: json['process_description'] ?? '',
       fee: json['fee'],
+      processingTime: json['processing_time'] ?? '',
+      personsInCharge:
+          (json['person_in_charge'] as String?)
+              ?.split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          [],
+    );
+  }
+
+  factory ServiceStep.fromFilJson(Map<String, dynamic> json, String officeName) {
+    return ServiceStep(
+      title: json['process_name_fil'] ?? json['process_name'] ?? '',
+      office: officeName,
+      instruction: json['process_description_fil'] ?? json['process_description'] ?? '',
+      fee: json['fee']?.toString() ?? 'None',
       processingTime: json['processing_time'] ?? '',
       personsInCharge:
           (json['person_in_charge'] as String?)
@@ -154,6 +263,13 @@ class RequirementItem {
     return RequirementItem(
       title: json['requirement_name'] ?? '',
       secureAt: json['secure_at'] ?? '',
+    );
+  }
+
+  factory RequirementItem.fromFilJson(Map<String, dynamic> json) {
+    return RequirementItem(
+      title: json['requirement_name_fil'] ?? json['requirement_name'] ?? '',
+      secureAt: json['secure_at_fil'] ?? json['secure_at'] ?? '',
     );
   }
 }

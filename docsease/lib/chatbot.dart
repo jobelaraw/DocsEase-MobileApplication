@@ -7,9 +7,15 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'tts_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:docsease/app_localizations.dart';
+import 'package:docsease/settings_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'chat_service.dart';
 
 class ChatBotScreen extends StatefulWidget {
-  const ChatBotScreen({super.key});
+  final String? conversationId;
+  const ChatBotScreen({super.key, this.conversationId});
 
   @override
   State<ChatBotScreen> createState() => _ChatBotScreenState();
@@ -26,16 +32,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final TtsService _tts = TtsService();
+  final ChatService _chatService = ChatService();
   int? _speakingIndex;
-  final List<_ChatMessage> _messages = [
-    _ChatMessage(
-      text:
-          "Hi! Ako si DocsEase Bot at Nandito ako para tulungan ka sa mga dokumento, permit, at anumang prosesong kailangan mo. Ano ang gusto mong gawin ngayon?",
-      isUser: false,
-      time: _formatTime(DateTime.now()),
-    ),
-  ];
+  String? _conversationId;
+  final List<_ChatMessage> _messages = [];
   bool _isLoading = false;
+  bool _isLoadingHistory = true;
 
   bool isOnline = true;
   late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
@@ -43,7 +45,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   @override
   void initState() {
     super.initState();
-
+    _conversationId = widget.conversationId;
+    _initMessages();
     _checkInitialConnection();
 
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
@@ -51,11 +54,51 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     ) {
       if (mounted) {
         setState(() {
-          // If the result contains 'none', the user has no internet!
           isOnline = !results.contains(ConnectivityResult.none);
         });
       }
     });
+  }
+
+  Future<void> _initMessages() async {
+    if (_conversationId != null) {
+      await _loadConversation(_conversationId!);
+    } else if (_chatService.isLoggedIn) {
+      final convoId = await _chatService.getMostRecentConversationId();
+      if (convoId != null && mounted) {
+        _conversationId = convoId;
+        await _loadConversation(convoId);
+      }
+    }
+
+    // If no history was loaded, show default welcome message
+    if (_messages.isEmpty) {
+      _messages.add(_ChatMessage(
+        text: "Hi! Ako si DocsEase Bot at Nandito ako para tulungan ka sa mga dokumento, permit, at anumang prosesong kailangan mo. Ano ang gusto mong gawin ngayon?",
+        isUser: false,
+        time: _formatTime(DateTime.now()),
+      ));
+    }
+
+    if (mounted) {
+      setState(() => _isLoadingHistory = false);
+    }
+  }
+
+  Future<void> _loadConversation(String convoId) async {
+    final messages = await _chatService.getMessages(convoId);
+    if (mounted && messages.isNotEmpty) {
+      _messages.clear();
+      for (var msg in messages) {
+        _messages.add(_ChatMessage(
+          text: msg['text'] ?? '',
+          isUser: msg['isUser'] ?? false,
+          time: _formatTime(
+            (msg['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          ),
+        ));
+      }
+    }
   }
 
   Future<void> _checkInitialConnection() async {
@@ -113,6 +156,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     _controller.clear();
     _scrollToBottom();
 
+    // Save to Firestore in background (don't block the AI call)
+    if (_chatService.isLoggedIn) {
+      _saveUserMessage(text);
+    }
+
     try {
       final apiKey = dotenv.env['GROQ_API'];
       if (apiKey == null || apiKey.isEmpty) {
@@ -159,6 +207,10 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               _ChatMessage(text: reply.trim(), isUser: false, time: _formatTime(DateTime.now())),
             );
           });
+          // Save bot reply to Firestore in background
+          if (_chatService.isLoggedIn && _conversationId != null) {
+            _chatService.saveMessage(_conversationId!, reply.trim(), false);
+          }
         }
       } else {
         debugPrint('Groq error: ${response.statusCode} ${response.body}');
@@ -173,6 +225,15 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     }
   }
 
+  void _saveUserMessage(String text) async {
+    if (_conversationId == null) {
+      _conversationId = await _chatService.createConversation(text);
+    }
+    if (_conversationId != null) {
+      _chatService.saveMessage(_conversationId!, text, true);
+    }
+  }
+
   void _addError(String msg) {
     setState(() {
       _messages.add(_ChatMessage(text: msg, isUser: false, time: _formatTime(DateTime.now())));
@@ -182,13 +243,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
-        Future.delayed(const Duration(milliseconds: 300), () {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        });
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
       }
     });
   }
@@ -208,21 +267,25 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       backgroundColor: Theme.of(context).brightness == Brightness.dark
                   ? Theme.of(context).colorScheme.surface
                   : Theme.of(context).colorScheme.tertiary,
-      body: Column(
+      body: _isLoadingHistory
+        ? const Center(child: CircularProgressIndicator())
+        : Column(
         children: [
-          // --- SCROLLABLE CHAT AREA ---
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
               physics: const BouncingScrollPhysics(),
+              reverse: true,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
               itemCount: _messages.length + (_isLoading ? 1 : 0),
               itemBuilder: (context, index) {
-                if (index == _messages.length) return _buildTypingIndicator();
-                final msg = _messages[index];
+                // Reverse the index since list is reversed
+                final reversedIndex = _messages.length + (_isLoading ? 1 : 0) - 1 - index;
+                if (reversedIndex == _messages.length) return _buildTypingIndicator();
+                final msg = _messages[reversedIndex];
                 return msg.isUser
                     ? _buildUserMessage(msg.text, msg.time)
-                    : _buildBotMessage(msg.text, msg.time, index);
+                    : _buildBotMessage(msg.text, msg.time, reversedIndex);
               },
             ),
           ),
@@ -254,7 +317,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                       controller: _controller,
                       onSubmitted: (_) => _sendMessage(),
                       decoration: InputDecoration(
-                        hintText: "Ask about your transaction...",
+                        hintText: AppLocalizations.translate('Ask about your transaction...', Provider.of<SettingsProvider>(context).language),
                         hintStyle: GoogleFonts.inter(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 14),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -299,7 +362,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             backgroundColor: Theme.of(context).colorScheme.primary,
             child: ClipOval(
               child: Image.asset(
-                'assets/chatbot_icon.png',
+                Theme.of(context).brightness == Brightness.dark
+                    ? 'assets/chatbot_darkmode.png'
+                    : 'assets/chatbot_icon.png',
                 width: 200,
                 height: 200,
                 fit: BoxFit.contain,
@@ -338,7 +403,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 radius: 18,
                 child: ClipOval(
                   child: Image.asset(
-                    'assets/chatbot_icon.png',
+                    Theme.of(context).brightness == Brightness.dark
+                        ? 'assets/chatbot_darkmode.png'
+                        : 'assets/chatbot_icon.png',
                     width: 200,
                     height: 200,
                     fit: BoxFit.contain,

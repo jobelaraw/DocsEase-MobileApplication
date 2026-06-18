@@ -7,6 +7,9 @@ import 'package:docsease/navigator_transition.dart';
 import 'package:docsease/info_model.dart';
 import 'package:docsease/information.dart';
 import 'package:docsease/firebase_services.dart';
+import 'package:docsease/app_localizations.dart';
+import 'package:docsease/settings_provider.dart';
+import 'package:provider/provider.dart';
 
 class Profile extends StatefulWidget {
   final Function(String) onTitleChange;
@@ -99,8 +102,15 @@ class _ProfileState extends State<Profile> {
     }
   }
 
+  String _tr(String key) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    return AppLocalizations.translate(key, lang);
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Listen to provider so UI rebuilds on language change
+    Provider.of<SettingsProvider>(context);
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
@@ -211,7 +221,7 @@ class _ProfileState extends State<Profile> {
                           ),
                         ),
                         Text(
-                          'Citizen User',
+                          _tr('Citizen User'),
                           style: GoogleFonts.inter(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -258,7 +268,7 @@ class _ProfileState extends State<Profile> {
                       mainAxisSize: MainAxisSize.min, // Allows the card to shrink-wrap its contents
                       children: [
                         Text(
-                          "Service History",
+                          _tr('Service History'),
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.w800,
                             fontSize: 16,
@@ -306,7 +316,7 @@ class _ProfileState extends State<Profile> {
             width: double.infinity,
             padding: const EdgeInsets.only(top: 20, bottom: 30),
             child: Text(
-              "No service history yet.\nStart a service to track your progress!",
+              _tr('No service history yet.\nStart a service to track your progress!'),
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontSize: 13,

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:docsease/app_localizations.dart';
+import 'package:docsease/settings_provider.dart';
+import 'package:provider/provider.dart';
 
 Future<T?> _showAppModal<T>({
   required BuildContext context,
@@ -190,20 +193,22 @@ class ExitConfirmationModal {
     BuildContext context, {
     VoidCallback? onPrimary,
     VoidCallback? onSecondary,
-    // remove all the saved/pending parameters too
   }) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
         iconData: Icons.warning_amber_rounded,
         iconColor: _kRed,
         iconBgColor: _kIconBgRed,
-        title: 'Are you sure you want to exit?',
-        subtitle: 'Changes will not be saved if you leave this page.',
-        // no extraContent here
-        primaryLabel: 'Yes',
+        title: tr('Are you sure you want to exit?'),
+        subtitle: tr('Changes will not be saved if you leave this page.'),
+        primaryLabel: tr('Yes'),
         primaryColor: _kRed,
         onPrimary: onPrimary ?? () => Navigator.of(context).pop(),
+        secondaryLabel: tr('Cancel'),
         onSecondary: onSecondary ?? () => Navigator.of(context).pop(),
       ),
     );
@@ -213,15 +218,18 @@ class ExitConfirmationModal {
 //Changes saved modal
 class ChangesSavedModal {
   static Future<void> show(BuildContext context, {required VoidCallback onPrimary, String? subtitle}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
         iconData: Icons.check_circle_outline_rounded,
         iconColor: _kGreen,
         iconBgColor: _kIconBgGreen,
-        title: 'Changes Saved!',
-        subtitle: 'Updated successfully. Please click to continue.',
-        primaryLabel: 'Got it',
+        title: tr('Changes Saved!'),
+        subtitle: tr('Updated successfully. Please click to continue.'),
+        primaryLabel: tr('Got it'),
         singleAction: true,
         onPrimary: onPrimary,
       ),
@@ -232,19 +240,22 @@ class ChangesSavedModal {
 //Confirm changes modal
 class ConfirmChangesModal {
   static Future<void> show(BuildContext context, {required VoidCallback onPrimary, VoidCallback? onSecondary}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
         iconData: Icons.info_outline_rounded,
         iconColor: const Color(0xFF3B82F6),
         iconBgColor: _kIconBgBlue,
-        title: 'Confirm Changes',
-        subtitle: 'Are you sure you want to save changes?',
-        primaryLabel: 'Yes',
+        title: tr('Confirm Changes'),
+        subtitle: tr('Are you sure you want to save changes?'),
+        primaryLabel: tr('Yes'),
         primaryColor: const Color(0xFF3B82F6),
         onPrimary: onPrimary,
-        secondaryLabel: 'Cancel',
-        onSecondary: onSecondary ?? () => Navigator.of(context, rootNavigator: true).pop(), // ← key fix
+        secondaryLabel: tr('Cancel'),
+        onSecondary: onSecondary ?? () => Navigator.of(context, rootNavigator: true).pop(),
       ),
     );
   }
@@ -253,16 +264,18 @@ class ConfirmChangesModal {
 //Check email modal
 class CheckEmailModal {
   static Future<void> show(BuildContext context, {required VoidCallback onPrimary}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
         iconData: Icons.check_circle_outline_rounded,
         iconColor: _kGreen,
         iconBgColor: _kIconBgGreen,
-        title: 'Check your Email',
-        subtitle: 'A recovery code has been sent to your email. Please check your inbox.',
-        primaryLabel: 'Got it',
-  
+        title: tr('Check your Email'),
+        subtitle: tr('A recovery code has been sent to your email. Please check your inbox.'),
+        primaryLabel: tr('Got it'),
         singleAction: true,
         onPrimary: onPrimary,
       ),
@@ -273,15 +286,18 @@ class CheckEmailModal {
 //Profile sign in modal
 class ProfileSignInModal {
   static Future<void> show(BuildContext context) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
         iconData: Icons.person_rounded,
         iconColor: const Color(0xFF3B82F6),
         iconBgColor: _kIconBgBlue,
-        title: 'Profile Requires Sign in',
-        subtitle: "You'll be directed to sign in screen. Are you sure you want to continue?",
-        primaryLabel: 'Yes',
+        title: tr('Profile Requires Sign in'),
+        subtitle: tr("You'll be directed to sign in screen. Are you sure you want to continue?"),
+        primaryLabel: tr('Yes'),
         primaryColor: const Color(0xFF3B82F6),
         onPrimary: () => Navigator.of(context).pop(),
       ),
@@ -292,16 +308,18 @@ class ProfileSignInModal {
 //Verified modal
 class VerifiedModal {
   static Future<void> show(BuildContext context, {required VoidCallback onPrimary}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
         iconData: Icons.check_circle_outline_rounded,
         iconColor: _kGreen,
         iconBgColor: _kIconBgGreen,
-        title: 'Verified',
-        subtitle: 'Code verified successfully. You may now change your password.',
-        primaryLabel: 'Got it',
-  
+        title: tr('Verified'),
+        subtitle: tr('Code verified successfully. You may now change your password.'),
+        primaryLabel: tr('Got it'),
         singleAction: true,
         onPrimary: onPrimary,
       ),
@@ -312,16 +330,18 @@ class VerifiedModal {
 //Resend Recovery Code Modal
 class ResendCodeModal {
   static Future<void> show(BuildContext context, {required VoidCallback onPrimary}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
         iconData: Icons.check_circle_outline_rounded,
         iconColor: _kGreen,
         iconBgColor: _kIconBgGreen,
-        title: 'New Code Sent',
-        subtitle: 'We’ve sent a new recovery code. Please check your inbox for the updated 6-digit recovery code.',
-        primaryLabel: 'Got it',
-
+        title: tr('New Code Sent'),
+        subtitle: tr("We've sent a new recovery code. Please check your inbox for the updated 6-digit recovery code."),
+        primaryLabel: tr('Got it'),
         singleAction: true,
         onPrimary: onPrimary,
       ),
@@ -336,19 +356,22 @@ class LogoutModal {
     VoidCallback? onPrimary,
     bool hasUnsavedChanges = false,
   }) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
         iconData: Icons.logout_rounded,
         iconColor: _kRed,
         iconBgColor: _kIconBgRed,
-        title: 'Are you sure you want to logout?',
+        title: tr('Are you sure you want to logout?'),
         subtitle: hasUnsavedChanges
-            ? 'You have unsaved Settings changes that will be lost.'
+            ? tr('You have unsaved Settings changes that will be lost.')
             : null,
-        primaryLabel: 'Yes',
+        primaryLabel: tr('Yes'),
         primaryColor: _kRed,
-        secondaryLabel: 'Cancel',
+        secondaryLabel: tr('Cancel'),
         onPrimary: onPrimary ?? () => Navigator.of(context, rootNavigator: true).pop(),
         onSecondary: () => Navigator.of(context, rootNavigator: true).pop(),
       ),

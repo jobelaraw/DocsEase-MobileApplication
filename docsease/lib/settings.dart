@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:docsease/app_modals.dart';
 import 'package:docsease/custom_button.dart';
+import 'package:docsease/app_localizations.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -88,7 +89,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Select Language',
+                AppLocalizations.translate('Select Language', _settingsProvider.pendingLanguage),
                 style: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -140,7 +141,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // APPEARANCE Section
-                        _sectionLabel('APPEARANCE'),
+                        _sectionLabel(AppLocalizations.translate('APPEARANCE', settingsProvider.pendingLanguage)),
                         const SizedBox(height: 8),
                         Container(
                           decoration: BoxDecoration(
@@ -167,7 +168,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
-                                        'Dark Mode',
+                                        AppLocalizations.translate('Dark Mode', settingsProvider.pendingLanguage),
                                         style: GoogleFonts.inter(
                                           fontSize: 15,
                                           fontWeight: FontWeight.w500,
@@ -215,7 +216,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Text(
-                                          'Language',
+                                          AppLocalizations.translate('Language', settingsProvider.pendingLanguage),
                                           style: GoogleFonts.inter(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w500,
@@ -241,7 +242,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 24),
 
                         // ACCESSIBILITY Section
-                        _sectionLabel('ACCESSIBILITY'),
+                        _sectionLabel(AppLocalizations.translate('ACCESSIBILITY', settingsProvider.pendingLanguage)),
                         const SizedBox(height: 8),
                         Container(
                           decoration: BoxDecoration(
@@ -256,7 +257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Font Size',
+                                AppLocalizations.translate('Font Size', settingsProvider.pendingLanguage),
                                 style: GoogleFonts.inter(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
@@ -322,7 +323,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                         // Save Changes Button
                         CustomButton(
-                          buttonText: 'Save Changes',
+                          buttonText: AppLocalizations.translate('Save Changes', settingsProvider.pendingLanguage),
                           btnElevation: 4,
                           btnRadius: 15,
                           onTapAction: _saveChanges,

@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'package:docsease/app_localizations.dart';
+import 'package:docsease/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class AboutUsScreen extends StatefulWidget {
   const AboutUsScreen({super.key});
@@ -62,6 +65,9 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<SettingsProvider>(context).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: Column(
@@ -147,7 +153,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                                 ),
                                 const SizedBox(height: 15),
                                 Text(
-                                  'A mobile assistant designed to help citizens navigate government services more easily in Binan City Hall. It provides clear information, guided steps, and smart navigation to simplify document processing in government offices.',
+                                  tr('A mobile assistant designed to help citizens navigate government services more easily in Binan City Hall. It provides clear information, guided steps, and smart navigation to simplify document processing in government offices.'),
                                   style: GoogleFonts.inter(
                                     color: Colors.white,
                                     fontSize: 16.5,
@@ -182,10 +188,11 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                   const SizedBox(height: 40),
 
                   // Stats Row
-                  Row(
+                  IntrinsicHeight(
+                  child: Row(
                     children: [
                       Expanded(
-                        child: _buildStatCard('15k +', 'Active Users', 
+                        child: _buildStatCard('15k +', tr('Active Users'), 
                         Theme.of(context).brightness == Brightness.dark
                         ? Theme.of(context).colorScheme.tertiary
                         : const Color(0xFF2B6FD4), 
@@ -195,7 +202,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _buildStatCard('4.9', 'App Store Rating', 
+                        child: _buildStatCard('4.9', tr('App Store Rating'), 
                         Theme.of(context).brightness == Brightness.dark
                         ? Theme.of(context).colorScheme.primary
                         : const Color(0xFFADD0EC), 
@@ -209,6 +216,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                       ),
                     ],
                   ),
+                  ),
 
                   const SizedBox(height: 45),
 
@@ -217,7 +225,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'The Team',
+                        tr('The Team'),
                         style: GoogleFonts.inter(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -235,7 +243,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          'Creators',
+                          tr('Creators'),
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             color: Theme.of(context).brightness == Brightness.dark
@@ -257,7 +265,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
 
                   // Contact Section
                   Text(
-                    'Connect With Us',
+                    tr('Connect With Us'),
                     style: GoogleFonts.inter(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,

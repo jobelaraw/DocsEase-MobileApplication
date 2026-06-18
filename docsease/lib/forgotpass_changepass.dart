@@ -258,6 +258,12 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                           try {
                                             setState(() => isLoading = true);
 
+                                            print("--- PRE-FLIGHT CHECK ---");
+                                            print("Target Email: '${widget.targetEmail}'");
+                                            print("Recovery Code: '${widget.recoveryCode}'");
+                                            print("New Password: '${_passwordController.text.trim()}'");
+                                            print("------------------------");
+
                                             HttpsCallable callable = FirebaseFunctions.instance
                                                 .httpsCallable('resetUserPassword');
                                             await callable.call({
@@ -285,7 +291,14 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                                 invalidInput = true;
                                                 isLoading = false;
                                               });
-                                            }
+                                            } print("Cloud Function Error: $e");
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text("Error: ${e.toString()}"),
+                                                backgroundColor: Colors.red,
+                                                duration: const Duration(seconds: 5),
+                                              ),
+                                            );
                                           }
                                         },
                                       );
