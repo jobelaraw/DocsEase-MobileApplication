@@ -51,10 +51,11 @@ class _AuthenticationState extends State<Authentication> with SingleTickerProvid
     super.dispose();
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color.fromRGBO(32, 87, 206, 1.0),
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Stack(
           children: [

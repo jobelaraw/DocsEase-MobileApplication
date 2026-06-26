@@ -589,6 +589,9 @@ class _SideBarState extends State<SideBar> {
                                 settingsProvider.revertDarkModePreview();
                                 nav.pop();
                                 if (widget.isGuest) {
+                                  if (context.mounted) {
+                                    await settingsProvider.saveSettings(false, settingsProvider.language, 0.5);
+                                  }
                                   Navigator.pushAndRemoveUntil(
                                     context,
                                     MaterialPageRoute(
@@ -598,10 +601,13 @@ class _SideBarState extends State<SideBar> {
                                   );
                                 } else {
                                   await FirebaseServices().signOutUser();
+                                if (context.mounted) {
+                                  await Provider.of<SettingsProvider>(context, listen: false).loadSettings();
                                 }
-                              },
-                            );
-                          },
+                              }
+                            }, 
+                          ); 
+                        },
                           icon: ImageIcon(
                             AssetImage(
                               widget.isGuest ? "assets/logout_icon.png" : "assets/logout_icon.png",
