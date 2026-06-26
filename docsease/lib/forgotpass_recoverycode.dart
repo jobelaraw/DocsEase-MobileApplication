@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:docsease/custom_button.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +31,10 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
   bool isLoading = false;
   bool _isResending = false;
 
+  static const int _resendCooldown = 60;
+  int _resendSecondsLeft = _resendCooldown;
+  Timer? _resendTimer;
+
   @override
   void initState() {
     super.initState();
@@ -39,7 +44,27 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
         setState(() {});
       });
     }
+    _startResendTimer();
   }
+
+  void _startResendTimer() {
+  setState(() => _resendSecondsLeft = _resendCooldown);
+  _resendTimer?.cancel();
+  _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    if (_resendSecondsLeft <= 1) {
+      timer.cancel();
+      if (mounted) setState(() => _resendSecondsLeft = 0);
+    } else {
+      if (mounted) setState(() => _resendSecondsLeft--);
+    }
+  });
+}
+
+String _formatResendTime(int seconds) {
+  final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
+  final secs = (seconds % 60).toString().padLeft(2, '0');
+  return '$minutes:$secs seconds';
+}
 
   String _generateRecoveryCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -71,6 +96,7 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
           _isComplete = false;
         });
         await ResendCodeModal.show(context, onPrimary: () => Navigator.of(context).pop());
+        _startResendTimer();
       }
     } finally {
       if (mounted) setState(() => _isResending = false);
@@ -89,6 +115,7 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     for (var c in _controllers) c.dispose();
     for (var f in _focusNodes) f.dispose();
     super.dispose();
@@ -158,10 +185,11 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
     );
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF2B6FD4),
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Stack(
           children: [
@@ -385,6 +413,12 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                             context,
                                             onPrimary: () {
                                               Navigator.of(context).pop();
+                                              for (var c in _controllers) c.clear();  
+                                                setState(() {                           
+                                                  _isComplete = false;                   
+                                                  _hasError = false; 
+                                                  isLoading = false;
+                                                });   
                                               Navigator.push(
                                                 context,
                                                 SlideRoute(
@@ -410,7 +444,9 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                   ),
                                   const SizedBox(height: 16),
                                   Center(
-                                    child: GestureDetector(
+                                    child: Column(
+                                    children: [
+                                      GestureDetector(
                                       onTap: _isResending ? null : _resendCode,
                                       child: _isResending
                                           ? const SizedBox(
@@ -431,14 +467,31 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                                     style: GoogleFonts.inter(
                                                       fontSize: 12,
                                                       fontWeight: FontWeight.bold,
-                                                      color: const Color(0xFF2B6FD4),
+                                                      color: _resendSecondsLeft > 0
+                                                          ? const Color(0xFF2B6FD4).withOpacity(0.4)
+                                                          : const Color(0xFF2B6FD4),
                                                       decoration: TextDecoration.underline,
-                                                      decorationColor: const Color(0xFF2B6FD4),
+                                                      decorationColor: _resendSecondsLeft > 0
+                                                          ? const Color(0xFF2B6FD4).withOpacity(0.4)
+                                                          : const Color(0xFF2B6FD4),
                                                     ),
                                                   ),
                                                 ],
                                               ),
                                             ),
+                                    ),
+                                    if (_resendSecondsLeft > 0) ...[
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        _formatResendTime(_resendSecondsLeft),
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black54,
+                                          ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   ),
                                   const SizedBox(height: 30),
@@ -453,17 +506,18 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                 ],
               ),
             ),
+                  
             Positioned(
               top: 8,
               left: 8,
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-              ),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () {
+              Navigator.pop(context);
+              },
             ),
-          ],
+           ),
+         ],
         ),
       ),
     );

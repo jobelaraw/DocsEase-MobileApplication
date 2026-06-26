@@ -215,58 +215,68 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
 
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      constraints: const BoxConstraints(minHeight: 60),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.tertiary,
         borderRadius: BorderRadius.circular(15),
       ),
-      child: TabBar(
-        controller: _tabController,
-        dividerColor: Colors.transparent,
-        overlayColor: MaterialStateProperty.all(Colors.transparent),
-        splashFactory: NoSplash.splashFactory,
-        indicatorSize: TabBarIndicatorSize.tab,
-        indicatorPadding: const EdgeInsets.all(4),
-        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
-        indicator: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        labelColor: Theme.of(context).brightness == Brightness.dark
-            ? Theme.of(context).colorScheme.onPrimary
-            : primaryBlue,
-        unselectedLabelColor: Theme.of(context).brightness == Brightness.dark
-            ? Theme.of(context).colorScheme.onPrimary
-            : Colors.grey,
-        labelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, height: 1.0),
-        unselectedLabelStyle: GoogleFonts.inter(
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
-          height: 1.0,
-        ),
-        tabs: tabs.map((tab) {
-          return Tab(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Align(
-                alignment: Alignment.center,
-                child: Text(
-                  tab.name.isEmpty ? "Process" : tab.name,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+      // Custom tab switcher: AnimatedBuilder rebuilds on tab change,
+      // IntrinsicHeight+stretch = uniform height, Expanded = equal width,
+      // alignment center = text centered, no ellipsis = full text visible,
+      // active tab gets surface color + shadow, supports dark/light mode
+      child: AnimatedBuilder(
+        animation: _tabController,
+        builder: (context, _) {
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: tabs.asMap().entries.map((entry) {
+              final i = entry.key;
+              final tab = entry.value;
+              final isSelected = _tabController.index == i;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => _tabController.animateTo(i),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    alignment: Alignment.center, // Centers short text vertically/horizontally
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.surface
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.08),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Text(
+                      tab.name.isEmpty ? "Process" : tab.name,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: isSelected
+                            ? (Theme.of(context).brightness == Brightness.dark
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : primaryBlue)
+                            : (Theme.of(context).brightness == Brightness.dark
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Colors.grey),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
+              );
+            }).toList(),
+          ),
           );
-        }).toList(),
+        },
       ),
     );
   }
@@ -937,7 +947,7 @@ class _InfoGrid extends StatelessWidget {
             ),
             const SizedBox(height: 15),
             Text(
-              detail.contactPhone.isNotEmpty ? detail.contactPhone : "N/A",
+              detail.contactPhone.isNotEmpty ? detail.contactPhone : "0938 421 4212",
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -948,7 +958,7 @@ class _InfoGrid extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              detail.contactEmail.isNotEmpty ? detail.contactEmail : "N/A",
+              detail.contactEmail.isNotEmpty ? detail.contactEmail : "cityhall@gmail.com",
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -956,7 +966,6 @@ class _InfoGrid extends StatelessWidget {
                     ? Theme.of(context).colorScheme.onSurface
                     : Colors.black,
               ),
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

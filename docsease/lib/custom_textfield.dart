@@ -58,7 +58,17 @@ class _CustomTextFieldState extends State<CustomTextField> {
         });
       }
     });
+    widget.controller.addListener(_handleExternalClear);
   }
+
+  void _handleExternalClear() {
+  if (widget.controller.text.isEmpty && (isSuccess || errorText != null)) {
+    setState(() {
+      isSuccess = false;
+      errorText = null;
+    });
+  }
+}
 
   @override
   void didUpdateWidget(CustomTextField oldWidget) {
@@ -76,6 +86,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
   @override
   void dispose() {
     focusNode.dispose();
+    widget.controller.removeListener(_handleExternalClear);
     super.dispose();
   }
 
@@ -142,6 +153,23 @@ class _CustomTextFieldState extends State<CustomTextField> {
             obscureText: widget.isPassword ? hidePassword : false,
             keyboardType: widget.inputType,
             style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.normal),
+            enableInteractiveSelection: true,
+            
+            onTapOutside: (event) {
+              focusNode.unfocus();
+            },
+            onTap: () {
+              Future.delayed(Duration.zero, () {
+                if (mounted) {
+                  final selection = widget.controller.selection;
+                  if (!selection.isCollapsed) {
+                    widget.controller.selection = TextSelection.collapsed(
+                      offset: selection.extentOffset,
+                    );
+                  }
+                }
+              });
+            },
             onChanged: (value) {
               if (widget.onChanged != null) {
                 widget.onChanged!(value);
@@ -381,3 +409,4 @@ class _CustomTextFieldState extends State<CustomTextField> {
     );
   }
 }
+

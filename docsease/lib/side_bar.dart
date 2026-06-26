@@ -73,10 +73,21 @@ class _SideBarState extends State<SideBar> {
         navigatorKey: _servicesNavKey,
         onTitleChange: (newTitle) {
           if (mounted) {
-            setState(() {
-              _tabTitles[0] = newTitle;
-              if (selectedIndex == 0) currentTitle = newTitle;
-            });
+            // Handle tab switch signal from chatbot navigation chips
+            // When user taps "Go to Profile/Settings/About" chip in chatbot,
+            // it pops back and sends '__switch_tab_X' to switch sidebar tab
+            if (newTitle.startsWith('__switch_tab_')) {
+              final tabIndex = int.tryParse(newTitle.replaceFirst('__switch_tab_', '')) ?? 0;
+              setState(() {
+                _tabTitles[0] = 'Services';
+              });
+              _executeDrawerSwitch(tabIndex);
+            } else {
+              setState(() {
+                _tabTitles[0] = newTitle;
+                if (selectedIndex == 0) currentTitle = newTitle;
+              });
+            }
           }
         },
       ),
@@ -705,6 +716,12 @@ class _SideBarState extends State<SideBar> {
                                   Hive.box('auth_box').put('continueGuest', false);
                                 } else {
                                   await FirebaseServices().signOutUser();
+                                if (context.mounted) {
+                                  await Provider.of<SettingsProvider>(context, listen: false).loadSettings();
+                                }
+                                  
+                                if (context.mounted) {
+                                  await settingsProvider.saveSettings(false, settingsProvider.language, 0.5);
                                 }
 
                                 nav.pushAndRemoveUntil(
