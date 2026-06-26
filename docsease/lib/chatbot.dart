@@ -222,7 +222,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               'Ikaw si DocsEase Bot. Tagapayo sa government documents sa Pilipinas.'
               'RULES:'
               '1. If user greets (hi, hello, kamusta, etc): respond with a SHORT friendly greeting and ask how you can help with their document needs.'
-              '2. If user asks GENERALLY about a service (how to get, pano kumuha, etc): respond with ONLY 1 SHORT sentence. A shortcut button is shown below for full details.'
+              '2. If user asks GENERALLY about a service (how to get, pano kumuha, etc): respond with ONLY 1 SHORT sentence description. Do NOT mention any button or shortcut.'
               '3. If user asks SPECIFICALLY about requirements: list ONLY requirements.'
               '4. If user asks SPECIFICALLY about procedure/steps: list ONLY the steps.'
               '5. If user asks SPECIFICALLY about cost/fee/bayad: answer ONLY the cost.'
@@ -237,7 +237,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             .skip(1)
             .toList()
             .reversed
-            .take(20)
+            .take(4)
             .toList()
             .reversed
             .map((m) => {'role': m.isUser ? 'user' : 'assistant', 'content': m.text}),
@@ -251,6 +251,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               'model': 'llama-3.1-8b-instant',
               'messages': messages,
               'temperature': 0.0,
+              'max_tokens': 150,
             }),
           )
           .timeout(const Duration(seconds: 30));
