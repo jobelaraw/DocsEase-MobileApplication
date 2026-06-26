@@ -33,7 +33,7 @@ class _CustomButtonState extends State<CustomButton> {
       width: double.infinity,
       height: 50,
       child: widget.isGoogle
-          ? OutlinedButton.icon(
+          ? OutlinedButton(
               onPressed: widget.isLoading ? null : widget.onTapAction,
               style: OutlinedButton.styleFrom(
                 backgroundColor: Colors.white,
@@ -42,28 +42,32 @@ class _CustomButtonState extends State<CustomButton> {
                   borderRadius: BorderRadius.circular(widget.btnRadius),
                 ),
               ),
-              label: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Image.asset('assets/google_icon.png', height: 35, width: 35),
-                  Text(
-                    widget.buttonText,
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
+              child: widget.isLoading
+                  ? SizedBox(
+                      height: 40,
+                      child: Transform.scale(
+                        scale: 1.5,
+                        child: Transform.translate(
+                          offset: const Offset(0, -7),
+                          child: Lottie.asset('assets/Loading.json'),
+                        ),
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset('assets/google_icon.png', height: 35, width: 35),
+                        const SizedBox(width: 8),
+                        Text(
+                          widget.buttonText,
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  if (widget.isLoading) ...[
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 30, //28
-                      height: 30,
-                      child: Lottie.asset('assets/Loading.json', fit: BoxFit.contain),
-                    ),
-                  ],
-                ],
-              ),
             )
           : ElevatedButton(
               onPressed: widget.isButtonEnabled
@@ -73,34 +77,32 @@ class _CustomButtonState extends State<CustomButton> {
                   : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Theme.of(context).colorScheme.tertiary
-                  : const Color.fromRGBO(59, 115, 224, 1.0),
+                    ? Theme.of(context).colorScheme.tertiary
+                    : const Color.fromRGBO(59, 115, 224, 1.0),
                 foregroundColor: Colors.white,
                 elevation: widget.btnElevation,
                 shadowColor: Theme.of(context).brightness == Brightness.dark
-                  ? Theme.of(context).colorScheme.tertiary
-                  : const Color.fromRGBO(59, 115, 224, 1.0),
+                    ? Theme.of(context).colorScheme.tertiary
+                    : const Color.fromRGBO(59, 115, 224, 1.0),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(widget.btnRadius),
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    widget.buttonText,
-                    style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  if (widget.isLoading) ...[
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 30, //28
-                      height: 30,
-                      child: Lottie.asset('assets/Loading.json', fit: BoxFit.contain),
+              child: widget.isLoading
+                  ? SizedBox(
+                      height: 40,
+                      child: Transform.scale(
+                        scale: 1.5,
+                        child: Transform.translate(
+                          offset: const Offset(0, -7),
+                          child: Lottie.asset('assets/Loading.json'),
+                        ),
+                      ),
+                    )
+                  : Text(
+                      widget.buttonText,
+                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
-                  ],
-                ],
-              ),
             ),
     );
   }

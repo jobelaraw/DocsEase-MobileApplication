@@ -1,3 +1,7 @@
+import 'package:docsease/app_modals.dart';
+import 'package:docsease/authentication.dart';
+import 'package:docsease/main.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:docsease/info_model.dart';
@@ -7,6 +11,7 @@ import 'package:docsease/navigator_transition.dart';
 import 'package:docsease/firebase_services.dart';
 import 'package:docsease/app_localizations.dart';
 import 'package:docsease/settings_provider.dart';
+import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 
 class Services extends StatefulWidget {
@@ -47,6 +52,16 @@ class _ServicesContent extends State<Services> {
     super.dispose();
   }
 
+  Future<void> _handleRefresh() async {
+    setState(() {
+      // Re-fetch the data. This automatically forces the FutureBuilder
+      _officesFuture = _getService.getOffices();
+    });
+
+    // Return immediately instead of awaiting the full Firebase fetch.
+    return Future.delayed(const Duration(milliseconds: 100));
+  }
+
   Widget buildFilteredCategory(Office office) {
     final lang = Provider.of<SettingsProvider>(context, listen: false).language;
     final filteredServices = office.services.where((service) {
@@ -73,7 +88,8 @@ class _ServicesContent extends State<Services> {
 
   @override
   Widget build(BuildContext context) {
-    // Listen to provider so UI rebuilds on language change
+    final user = FirebaseAuth.instance.currentUser;
+
     Provider.of<SettingsProvider>(context);
 
     return GestureDetector(
@@ -82,59 +98,64 @@ class _ServicesContent extends State<Services> {
         backgroundColor: Theme.of(context).colorScheme.surface,
         body: Stack(
           children: [
-            CustomScrollView(
-              slivers: [
-                // 1. Render the Search Bar Instantly
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _SearchBarDelegate(
-                    focusNode: _searchFocusNode,
-                    controller: _searchController,
-                    hasFocus: _searchFocusNode.hasFocus,
-                    onChanged: (value) => setState(() => searchQuery = value.toLowerCase()),
-                    brightness: Theme.of(context).brightness,
+            RefreshIndicator(
+              onRefresh: _handleRefresh,
+              color: Theme.of(context).colorScheme.primary,
+              backgroundColor: Theme.of(context).colorScheme.onPrimary,
+              elevation: 0,
+              displacement: 20,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  // --- UPDATED SEARCH BAR DELEGATE ---
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _SearchBarDelegate(
+                      focusNode: _searchFocusNode,
+                      controller: _searchController,
+                      hasFocus: _searchFocusNode.hasFocus,
+                      onChanged: (value) => setState(() => searchQuery = value.toLowerCase()),
+                    ),
                   ),
-                ),
 
-                // 2. FutureBuilder handles the list below the search bar
-                FutureBuilder<List<Office>>(
-                  future: _officesFuture,
-                  builder: (context, snapshot) {
-                    // Loading State -> Show Skeletons
-                    if (snapshot.connectionState == ConnectionState.waiting) {
+                  // FutureBuilder handles the list below the search bar
+                  FutureBuilder<List<Office>>(
+                    future: _officesFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(20, 15, 20, 20),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => const _SkeletonServiceCategory(),
+                              childCount: 4,
+                            ),
+                          ),
+                        );
+                      } else if (snapshot.hasError) {
+                        return SliverToBoxAdapter(
+                          child: Center(child: Text("Error loading data: ${snapshot.error}")),
+                        );
+                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const SliverToBoxAdapter(
+                          child: Center(child: Text("No services available.")),
+                        );
+                      }
+
+                      final offices = snapshot.data!;
                       return SliverPadding(
                         padding: const EdgeInsets.fromLTRB(20, 15, 20, 20),
                         sliver: SliverList(
                           delegate: SliverChildBuilderDelegate(
-                            (context, index) => const _SkeletonServiceCategory(),
-                            childCount: 4, // Show 4 fake categories while loading
+                            (context, index) => buildFilteredCategory(offices[index]),
+                            childCount: offices.length,
                           ),
                         ),
                       );
-                    } else if (snapshot.hasError) {
-                      return SliverToBoxAdapter(
-                        child: Center(child: Text("Error loading data: ${snapshot.error}")),
-                      );
-                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const SliverToBoxAdapter(
-                        child: Center(child: Text("No services available.")),
-                      );
-                    }
-
-                    // Loaded State -> Show Actual Data
-                    final offices = snapshot.data!;
-                    return SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(20, 15, 20, 20),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) => buildFilteredCategory(offices[index]),
-                          childCount: offices.length,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+                    },
+                  ),
+                ],
+              ),
             ),
             // Floating Chatbot Button
             Positioned(
@@ -144,6 +165,28 @@ class _ServicesContent extends State<Services> {
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
+                    if (user == null) {
+                      RequireSignInModal.show(
+                        context,
+                        title: 'Chatbot',
+                        onPrimary: () async {
+                          final rootNav = Navigator.of(context, rootNavigator: true);
+
+                          Hive.box('auth_box').put('continueGuest', false);
+
+                          rootNav.pop();
+
+                          rootNav.pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (context) => const AuthWrapper()),
+                            (route) => false,
+                          );
+                          rootNav.push(
+                            MaterialPageRoute(builder: (context) => const Authentication()),
+                          );
+                        },
+                      );
+                      return;
+                    }
                     widget.onTitleChange('Chatbot');
                     Navigator.push(
                       context,
@@ -166,7 +209,9 @@ class _ServicesContent extends State<Services> {
                       Theme.of(context).brightness == Brightness.dark
                           ? 'assets/chatbot_darkmode.png'
                           : 'assets/chatbot_icon.png',
-                      width: 70, height: 70),
+                      width: 70,
+                      height: 70,
+                    ),
                   ),
                 ),
               ),
@@ -323,21 +368,17 @@ class _SkeletonServiceCategory extends StatelessWidget {
   }
 }
 
-// --- EXISTING WIDGETS BELOW --- //
-
 class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
   final FocusNode focusNode;
   final TextEditingController controller;
   final bool hasFocus;
   final ValueChanged<String> onChanged;
-  final Brightness brightness;
 
   const _SearchBarDelegate({
     required this.focusNode,
     required this.controller,
     required this.hasFocus,
     required this.onChanged,
-    required this.brightness,
   });
 
   @override
@@ -347,52 +388,66 @@ class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(_SearchBarDelegate old) =>
-      old.hasFocus != hasFocus || old.controller != controller || old.brightness != brightness; 
+      old.hasFocus != hasFocus || old.controller != controller;
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: Theme.of(context).colorScheme.surface,
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
-      child: GestureDetector(
-        onTap: () => focusNode.requestFocus(),
-        child: Container(
-          height: 50,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: hasFocus
-                  ? Theme.of(context).colorScheme.secondary
-                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
-            ),
-          ),
-          child: Row(
-            children: [
-              const SizedBox(width: 18),
-              Icon(Icons.search, color:Theme.of(context).colorScheme.onSurface, size: 25),
-              const SizedBox(width: 20),
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  autofocus: false,
-                  onChanged: onChanged,
-                  style: GoogleFonts.inter(fontSize: 15, color: Theme.of(context).colorScheme.onSurface),
-                  decoration: InputDecoration(
-                    hintText: AppLocalizations.translate('Search service...', Provider.of<SettingsProvider>(context, listen: false).language),
-                    hintStyle: GoogleFonts.inter(fontSize: 15, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
-                  ),
+    return Consumer<SettingsProvider>(
+      builder: (context, settings, child) {
+        return Container(
+          color: Theme.of(context).colorScheme.surface,
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+          child: GestureDetector(
+            onTap: () => focusNode.requestFocus(),
+            child: Container(
+              height: 50,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: hasFocus
+                      ? Theme.of(context).colorScheme.secondary
+                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
                 ),
               ),
-              const SizedBox(width: 18),
-            ],
+              child: Row(
+                children: [
+                  const SizedBox(width: 18),
+                  Icon(Icons.search, color: Theme.of(context).colorScheme.onSurface, size: 25),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      autofocus: false,
+                      onChanged: onChanged,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      decoration: InputDecoration(
+                        // Seamlessly updates translation without scrolling
+                        hintText: AppLocalizations.translate(
+                          'Search service...',
+                          settings.language,
+                        ),
+                        hintStyle: GoogleFonts.inter(
+                          fontSize: 15,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 18),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -426,8 +481,8 @@ class ServiceCategory extends StatelessWidget {
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).brightness == Brightness.dark
-                  ? Theme.of(context).colorScheme.onPrimary
-                  : Colors.black,
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : Colors.black,
                 ),
                 softWrap: true,
               ),
@@ -455,13 +510,16 @@ class ServiceCategory extends StatelessWidget {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Text(
-                AppLocalizations.translate('See All', Provider.of<SettingsProvider>(context).language),
+                AppLocalizations.translate(
+                  'See All',
+                  Provider.of<SettingsProvider>(context).language,
+                ),
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
                   color: Theme.of(context).brightness == Brightness.dark
-                  ? Theme.of(context).colorScheme.onPrimary
-                  : Theme.of(context).colorScheme.secondary,
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : Theme.of(context).colorScheme.secondary,
                 ),
               ),
             ),
@@ -473,8 +531,8 @@ class ServiceCategory extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           decoration: BoxDecoration(
             color: Theme.of(context).brightness == Brightness.dark
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.tertiary,
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.tertiary,
             borderRadius: BorderRadius.circular(22),
           ),
           child: Column(
@@ -510,8 +568,8 @@ class ServiceItem extends StatelessWidget {
     final lang = Provider.of<SettingsProvider>(context).language;
     return Material(
       color: Theme.of(context).brightness == Brightness.dark
-      ? Theme.of(context).colorScheme.tertiary
-      : Theme.of(context).colorScheme.surface,
+          ? Theme.of(context).colorScheme.tertiary
+          : Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(20),
       elevation: 4,
       child: InkWell(
@@ -594,8 +652,8 @@ class SeeAllScreen extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           decoration: BoxDecoration(
             color: Theme.of(context).brightness == Brightness.dark
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.tertiary,
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.tertiary,
             borderRadius: BorderRadius.circular(22),
           ),
           child: Column(

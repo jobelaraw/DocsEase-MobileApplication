@@ -1,7 +1,8 @@
 import 'package:docsease/about_us.dart';
 import 'package:docsease/app_modals.dart';
-import 'package:docsease/app_start.dart';
+import 'package:docsease/authentication.dart';
 import 'package:docsease/firebase_services.dart';
+import 'package:docsease/main.dart';
 import 'package:docsease/profile.dart';
 import 'package:docsease/services.dart';
 import 'package:docsease/settings.dart';
@@ -12,6 +13,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:hive/hive.dart';
 import 'dart:async';
 
 import 'package:provider/provider.dart';
@@ -26,6 +28,7 @@ class SideBar extends StatefulWidget {
 
 class _SideBarState extends State<SideBar> {
   int selectedIndex = 0;
+  // ignore: unused_field
   int _previousIndex = 0;
   String currentTitle = 'Services';
 
@@ -296,11 +299,12 @@ class _SideBarState extends State<SideBar> {
                         CircleAvatar(
                           radius: 20,
                           child: ClipOval(
-                              child: Image.asset(
+                            child: Image.asset(
                               Theme.of(context).brightness == Brightness.dark
                                   ? 'assets/chatbot_darkmode.png'
                                   : 'assets/chatbot_icon.png',
-                              fit: BoxFit.contain),
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ),
                         Positioned(
@@ -366,8 +370,14 @@ class _SideBarState extends State<SideBar> {
                         const SizedBox(height: 2),
                         Text(
                           isOnline
-                              ? AppLocalizations.translate('Online Assistant', Provider.of<SettingsProvider>(context).language)
-                              : AppLocalizations.translate('Offline - Waiting for network...', Provider.of<SettingsProvider>(context).language),
+                              ? AppLocalizations.translate(
+                                  'Online Assistant',
+                                  Provider.of<SettingsProvider>(context).language,
+                                )
+                              : AppLocalizations.translate(
+                                  'Offline - Waiting for network...',
+                                  Provider.of<SettingsProvider>(context).language,
+                                ),
                           style: GoogleFonts.inter(
                             color: Colors.white60,
                             fontSize: 11,
@@ -379,7 +389,10 @@ class _SideBarState extends State<SideBar> {
                   ],
                 )
               : Text(
-                  AppLocalizations.translate(currentTitle, Provider.of<SettingsProvider>(context).language),
+                  AppLocalizations.translate(
+                    currentTitle,
+                    Provider.of<SettingsProvider>(context).language,
+                  ),
                   style: GoogleFonts.inter(
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
@@ -450,22 +463,62 @@ class _SideBarState extends State<SideBar> {
                                         .snapshots()
                                   : null,
                               builder: (context, snapshot) {
-                                if (snapshot.connectionState == ConnectionState.waiting) {
-                                  return _SkeletonProfileHeader();
+                                // Quick bypass for Guests
+                                if (widget.isGuest) {
+                                  return Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 40,
+                                        backgroundColor: Theme.of(context).colorScheme.primary,
+                                        child: ClipOval(
+                                          child: Image.asset(
+                                            'assets/default_profile.png',
+                                            width: 75,
+                                            height: 75,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        'Guest Account',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(context).colorScheme.onPrimary,
+                                        ),
+                                      ),
+                                      Text(
+                                        AppLocalizations.translate(
+                                          'Citizen User',
+                                          Provider.of<SettingsProvider>(context).language,
+                                        ),
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.normal,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary.withValues(alpha: 0.7),
+                                        ),
+                                      ),
+                                    ],
+                                  );
                                 }
 
-                                String currentUsername = widget.isGuest
-                                    ? 'Guest Account'
-                                    : 'Loading...';
-                                String currentProfile = 'assets/default_profile.png';
-
-                                if (snapshot.hasData && snapshot.data!.exists) {
-                                  final data = snapshot.data!.data() as Map<String, dynamic>;
-                                  currentUsername = data['username'] ?? 'Guest Account';
-                                  currentProfile =
-                                      data['profile_img'] ?? 'assets/default_profile.png';
+                                // Force the skeleton if a Real User's data is missing, syncing, or waiting!
+                                if (snapshot.connectionState == ConnectionState.waiting ||
+                                    !snapshot.hasData ||
+                                    !snapshot.data!.exists) {
+                                  return const _SkeletonProfileHeader();
                                 }
 
+                                // Assign the data
+                                final data = snapshot.data!.data() as Map<String, dynamic>;
+                                String currentUsername = data['username'] ?? 'Unknown User';
+                                String currentProfile =
+                                    data['profile_img'] ?? 'assets/default_profile.png';
                                 bool hasDefaultProfile =
                                     currentProfile == 'assets/default_profile.png';
 
@@ -489,6 +542,23 @@ class _SideBarState extends State<SideBar> {
                                                 width: 75,
                                                 height: 75,
                                                 fit: BoxFit.cover,
+                                                // NEW: Make the image shimmer while downloading!
+                                                loadingBuilder: (context, child, loadingProgress) {
+                                                  if (loadingProgress == null) return child;
+                                                  return _ShimmerEffect(
+                                                    child: Container(
+                                                      width: 75,
+                                                      height: 75,
+                                                      color: Colors.white.withValues(alpha: 0.5),
+                                                    ),
+                                                  );
+                                                },
+                                                errorBuilder: (_, __, ___) => Image.asset(
+                                                  'assets/default_profile.png',
+                                                  width: 75,
+                                                  height: 75,
+                                                  fit: BoxFit.cover,
+                                                ),
                                               ),
                                       ),
                                     ),
@@ -502,7 +572,10 @@ class _SideBarState extends State<SideBar> {
                                       ),
                                     ),
                                     Text(
-                                      AppLocalizations.translate('Citizen User', Provider.of<SettingsProvider>(context).language),
+                                      AppLocalizations.translate(
+                                        'Citizen User',
+                                        Provider.of<SettingsProvider>(context).language,
+                                      ),
                                       style: GoogleFonts.inter(
                                         fontSize: 11,
                                         fontWeight: FontWeight.normal,
@@ -523,7 +596,10 @@ class _SideBarState extends State<SideBar> {
                                 SideBarOption(
                                   selectedImage: 'assets/home_icon.png',
                                   unselectedImage: 'assets/home_outlined_icon.png',
-                                  optionName: AppLocalizations.translate('Home', Provider.of<SettingsProvider>(context).language),
+                                  optionName: AppLocalizations.translate(
+                                    'Home',
+                                    Provider.of<SettingsProvider>(context).language,
+                                  ),
                                   isSelected: selectedIndex == 0,
                                   onTapAction: () {
                                     Navigator.pop(context);
@@ -536,9 +612,38 @@ class _SideBarState extends State<SideBar> {
                                 SideBarOption(
                                   selectedImage: 'assets/profile_icon.png',
                                   unselectedImage: 'assets/profile_outlined_icon.png',
-                                  optionName: AppLocalizations.translate('Profile', Provider.of<SettingsProvider>(context).language),
+                                  optionName: AppLocalizations.translate(
+                                    'Profile',
+                                    Provider.of<SettingsProvider>(context).language,
+                                  ),
                                   isSelected: selectedIndex == 1,
-                                  onTapAction: () {
+                                  onTapAction: () async {
+                                    if (widget.isGuest) {
+                                      Navigator.pop(context);
+                                      await Future.delayed(const Duration(milliseconds: 200));
+                                      RequireSignInModal.show(
+                                        context,
+                                        title: 'Profile',
+                                        onPrimary: () async {
+                                          Hive.box('auth_box').put('continueGuest', false);
+
+                                          Navigator.pop(context);
+
+                                          Navigator.of(context).pushAndRemoveUntil(
+                                            MaterialPageRoute(
+                                              builder: (context) => const AuthWrapper(),
+                                            ),
+                                            (route) => false,
+                                          );
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (context) => const Authentication(),
+                                            ),
+                                          );
+                                        },
+                                      );
+                                      return;
+                                    }
                                     Navigator.pop(context);
                                     Future.delayed(const Duration(milliseconds: 50), () {
                                       if (mounted) _handleDrawerNavigation(1);
@@ -549,7 +654,10 @@ class _SideBarState extends State<SideBar> {
                                 SideBarOption(
                                   selectedImage: 'assets/about_icon.png',
                                   unselectedImage: 'assets/about_outlined_icon.png',
-                                  optionName: AppLocalizations.translate('About', Provider.of<SettingsProvider>(context).language),
+                                  optionName: AppLocalizations.translate(
+                                    'About',
+                                    Provider.of<SettingsProvider>(context).language,
+                                  ),
                                   isSelected: selectedIndex == 2,
                                   onTapAction: () {
                                     Navigator.pop(context);
@@ -562,7 +670,10 @@ class _SideBarState extends State<SideBar> {
                                 SideBarOption(
                                   selectedImage: 'assets/settings_icon.png',
                                   unselectedImage: 'assets/settings_outlined_icon.png',
-                                  optionName: AppLocalizations.translate('Settings', Provider.of<SettingsProvider>(context).language),
+                                  optionName: AppLocalizations.translate(
+                                    'Settings',
+                                    Provider.of<SettingsProvider>(context).language,
+                                  ),
                                   isSelected: selectedIndex == 3,
                                   onTapAction: () {
                                     Navigator.pop(context);
@@ -580,7 +691,7 @@ class _SideBarState extends State<SideBar> {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Padding(
-                        padding: const EdgeInsets.only(left: 10, bottom: 20),
+                        padding: const EdgeInsets.only(left: 20, bottom: 20),
                         child: TextButton.icon(
                           onPressed: () async {
                             final settingsProvider = Provider.of<SettingsProvider>(
@@ -590,35 +701,39 @@ class _SideBarState extends State<SideBar> {
                             final nav = Navigator.of(context, rootNavigator: true);
 
                             Navigator.pop(context);
-                            await Future.delayed(const Duration(milliseconds: 300));
+                            await Future.delayed(const Duration(milliseconds: 200));
                             if (!mounted) return;
 
                             LogoutModal.show(
                               context,
                               hasUnsavedChanges: settingsProvider.hasUnsavedPreview,
+                              isGuest: widget.isGuest,
                               onPrimary: () async {
                                 settingsProvider.revertDarkModePreview();
-                                nav.pop();
+                                nav.pop(); // Close the logout modal
+
                                 if (widget.isGuest) {
-                                  if (context.mounted) {
-                                    await settingsProvider.saveSettings(false, settingsProvider.language, 0.5);
-                                  }
-                                  Navigator.pushAndRemoveUntil(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const AppStart(),
-                                    ), // Default push
-                                    (Route<dynamic> route) => false,
-                                  );
+                                  Hive.box('auth_box').put('continueGuest', false);
                                 } else {
                                   await FirebaseServices().signOutUser();
                                 if (context.mounted) {
                                   await Provider.of<SettingsProvider>(context, listen: false).loadSettings();
                                 }
-                              }
-                            }, 
-                          ); 
-                        },
+                                  
+                                if (context.mounted) {
+                                  await settingsProvider.saveSettings(false, settingsProvider.language, 0.5);
+                                }
+
+                                nav.pushAndRemoveUntil(
+                                  MaterialPageRoute(builder: (context) => const AuthWrapper()),
+                                  (route) => false,
+                                );
+                                nav.push(
+                                  MaterialPageRoute(builder: (context) => const Authentication()),
+                                );
+                              },
+                            );
+                          },
                           icon: ImageIcon(
                             AssetImage(
                               widget.isGuest ? "assets/logout_icon.png" : "assets/logout_icon.png",
@@ -627,7 +742,10 @@ class _SideBarState extends State<SideBar> {
                             color: const Color.fromRGBO(252, 64, 64, 1),
                           ),
                           label: Text(
-                            AppLocalizations.translate(widget.isGuest ? 'Exit' : 'Logout', Provider.of<SettingsProvider>(context).language),
+                            AppLocalizations.translate(
+                              widget.isGuest ? 'Exit' : 'Logout',
+                              Provider.of<SettingsProvider>(context).language,
+                            ),
                             style: GoogleFonts.inter(
                               fontSize: 17,
                               fontWeight: FontWeight.bold,
@@ -692,7 +810,9 @@ class SideBarOption extends StatelessWidget {
         : Theme.of(context).colorScheme.onSurface;
 
     return Material(
-      color: Theme.of(context).colorScheme.surface,
+      color: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(context).colorScheme.tertiary
+          : Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
         side: BorderSide(color: Colors.black.withValues(alpha: 0.2)),
@@ -804,32 +924,36 @@ class _SkeletonProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Read the app's dynamic text scale factor from your SettingsProvider
+    final textScaler = MediaQuery.textScalerOf(context);
+
     return _ShimmerEffect(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Container(
-            width: 80,
-            height: 80,
+            width: 78,
+            height: 78,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.5),
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 17),
           Container(
             width: 120,
-            height: 16,
+            height: textScaler.scale(12),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(3),
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: textScaler.scale(5)),
           Container(
             width: 80,
-            height: 12,
+            height: textScaler.scale(10.5),
+            margin: EdgeInsets.only(top: textScaler.scale(3)),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(3),

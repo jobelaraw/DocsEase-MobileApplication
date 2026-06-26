@@ -33,6 +33,7 @@ class _EditProfileState extends State<EditProfile> {
 
   bool invalidInput = false;
   bool isLoading = false;
+  bool _isSaved = false; // NEW: Tracks if the user just successfully saved
 
   Timer? _debounce;
   bool _isUsernameTaken = false;
@@ -134,312 +135,345 @@ class _EditProfileState extends State<EditProfile> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Blue Header Section
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-                  width: double.infinity,
-                  color: Theme.of(context).colorScheme.primary,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            child: ClipOval(
-                              child: _selectedImage != null
-                                  ? Image.file(
-                                      _selectedImage!,
-                                      width: 95,
-                                      height: 95,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : currentProfile == 'assets/default_profile.png'
-                                  ? Image.asset(
-                                      currentProfile,
-                                      width: 95,
-                                      height: 95,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : Image.network(
-                                      currentProfile,
-                                      width: 95,
-                                      height: 95,
-                                      fit: BoxFit.cover,
-                                    ),
+    // NEW: Check if the user has typed anything new or selected an image!
+    bool hasChanges =
+        (_usernameController.text.isNotEmpty && _usernameController.text != currentUsername) ||
+        _newPasswordController.text.isNotEmpty ||
+        _confirmPasswordController.text.isNotEmpty ||
+        _selectedImage != null;
+
+    // Wrap the Scaffold in a WillPopScope to catch the back button!
+    return WillPopScope(
+      onWillPop: () async {
+        // If there are unsaved changes (and we aren't in the middle of a successful save)
+        if (hasChanges && !_isSaved) {
+          bool shouldLeave = false;
+
+          await ProfileChangesModal.show(
+            context,
+            onPrimary: () {
+              shouldLeave = true; // Tell WillPopScope it's okay to exit
+              Navigator.of(context, rootNavigator: true).pop(); // Close the modal itself
+            },
+          );
+
+          return shouldLeave;
+        }
+        return true; // If no changes, exit normally
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              // Blue Header Section
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+                    width: double.infinity,
+                    color: Theme.of(context).colorScheme.primary,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 50,
+                              backgroundColor: Theme.of(context).colorScheme.primary,
+                              child: ClipOval(
+                                child: _selectedImage != null
+                                    ? Image.file(
+                                        _selectedImage!,
+                                        width: 95,
+                                        height: 95,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : currentProfile == 'assets/default_profile.png'
+                                    ? Image.asset(
+                                        currentProfile,
+                                        width: 95,
+                                        height: 95,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Image.network(
+                                        currentProfile,
+                                        width: 95,
+                                        height: 95,
+                                        fit: BoxFit.cover,
+                                      ),
+                              ),
                             ),
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: GestureDetector(
-                              onTap: () {
-                                _showImagePickerOptions();
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: const BoxDecoration(
-                                  // color: Color.fromRGBO(99, 136, 224, 1),
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black12,
-                                      blurRadius: 4,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Image.asset(
-                                  'assets/camera_icon.png',
-                                  width: 20,
-                                  height: 20,
-                                  color: Colors.black,
-                                  fit: BoxFit.contain,
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: GestureDetector(
+                                onTap: () {
+                                  _showImagePickerOptions();
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(
+                                    // color: Color.fromRGBO(99, 136, 224, 1),
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black12,
+                                        blurRadius: 4,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Image.asset(
+                                    'assets/camera_icon.png',
+                                    width: 20,
+                                    height: 20,
+                                    color: Colors.black,
+                                    fit: BoxFit.contain,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 15),
-                      Text(
-                        currentEmail,
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                          ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 15),
+                        Text(
+                          currentEmail,
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
 
-            // Edit Form Card
-            Stack(
-              children: [
-                Container(
-                  height: 50,
-                  width: double.infinity,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark
+              // Edit Form Card
+              Stack(
+                children: [
+                  Container(
+                    height: 50,
+                    width: double.infinity,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
                           ? Theme.of(context).colorScheme.tertiary
                           : Colors.white,
-                    borderRadius: BorderRadius.circular(25),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CustomTextField(
-                        inputLabel: 'USERNAME',
-                        inputHint: currentUsername,
-                        inputType: TextInputType.text,
-                        isLoginPass: false,
-                        isPassword: false,
-                        controller: _usernameController,
-                        validator: (value) {
-                          if (value.isNotEmpty && value.trim().length < 8) {
-                            return 'Username must be at least 8 characters.';
-                          }
-                          if (_isUsernameTaken && value.isNotEmpty) {
-                            return 'This username is already taken.';
-                          }
-                          return null;
-                        },
-                        onChanged: (value) {
-                          setState(() => invalidInput = false);
-
-                          if (_debounce?.isActive ?? false) _debounce!.cancel();
-                          _debounce = Timer(const Duration(milliseconds: 300), () async {
-                            if (value.trim().length >= 8) {
-                              bool taken = await _editService.isUsernameTaken(value.trim());
-                              setState(() => _isUsernameTaken = taken);
+                      borderRadius: BorderRadius.circular(25),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CustomTextField(
+                          inputLabel: 'USERNAME',
+                          inputHint: currentUsername,
+                          inputType: TextInputType.text,
+                          isLoginPass: false,
+                          isPassword: false,
+                          controller: _usernameController,
+                          validator: (value) {
+                            if (value.isNotEmpty && value.trim().length < 8) {
+                              return 'Username must be at least 8 characters.';
                             }
-                          });
-                        },
-                        forceValidate: invalidInput || _isUsernameTaken,
-                      ),
-                      const SizedBox(height: 20),
-                      CustomTextField(
-                        inputLabel: 'PASSWORD',
-                        inputHint: 'Enter your password',
-                        inputType: TextInputType.visiblePassword,
-                        isPassword: true,
-                        isLoginPass: false,
-                        controller: _newPasswordController,
-                        validator: (value) {
-                          if (value.isEmpty) return null;
+                            if (_isUsernameTaken && value.isNotEmpty) {
+                              return 'This username is already taken.';
+                            }
+                            return null;
+                          },
+                          onChanged: (value) {
+                            setState(() => invalidInput = false);
 
-                          bool hasLength = value.length >= 8;
-                          bool hasSymbol = RegExp(r'[^a-zA-Z0-9\s]').hasMatch(value);
-                          bool hasUppercase = RegExp(r'[A-Z]').hasMatch(value);
-                          bool hasNumber = RegExp(r'[0-9]').hasMatch(value);
-
-                          int score =
-                              (hasLength ? 1 : 0) +
-                              (hasSymbol ? 1 : 0) +
-                              (hasUppercase ? 1 : 0) +
-                              (hasNumber ? 1 : 0);
-
-                          if (score < 4) {
-                            return 'Please meet all the password requirements.';
-                          }
-                          hasStrongPassword = true;
-                          return null;
-                        },
-                        onChanged: (value) {
-                          setState(() {
-                            passwordText = value;
-                            invalidInput = false;
-                          });
-                        },
-                        forceValidate: invalidInput,
-                        receivedPassword: passwordText,
-                      ),
-                      const SizedBox(height: 20),
-                      CustomTextField(
-                        inputLabel: 'CONFIRM PASSWORD',
-                        inputHint: 'Confirm your password',
-                        inputType: TextInputType.visiblePassword,
-                        isPassword: true,
-                        isLoginPass: false,
-                        controller: _confirmPasswordController,
-                        validator: (value) {
-                          if (value != _newPasswordController.text) {
-                            return 'Passwords do not match. Please try again.';
-                          }
-                          return null;
-                        },
-                        onChanged: (value) {
-                          setState(() {
-                            invalidInput = false;
-                          });
-                        },
-                        forceValidate: invalidInput,
-                      ),
-                      const SizedBox(height: 30),
-                      CustomButton(
-                        buttonText: 'Save Changes',
-                        isLoading: isLoading,
-                        isButtonEnabled:
-                            _usernameController.text.isNotEmpty ||
-                            _newPasswordController.text.isNotEmpty ||
-                            _confirmPasswordController.text.isNotEmpty ||
-                            _selectedImage != null,
-                        btnElevation: 4,
-                        btnRadius: 15,
-                        onTapAction: () async {
-                          
-                          //modal for confirm changes
-                          await ConfirmChangesModal.show(
-                            context,
-                            onPrimary: () async {
-                              Navigator.of(context, rootNavigator: true).pop();
-                              await Future.delayed(const Duration(milliseconds: 300));
-
-                              bool isUpdatingPassword =
-                                  _newPasswordController.text.isNotEmpty ||
-                                  _confirmPasswordController.text.isNotEmpty;
-
-                              if (isUpdatingPassword) {
-                                bool isPasswordValid =
-                                    _newPasswordController.text.isNotEmpty && hasStrongPassword;
-                                bool isConfirmValid =
-                                    _confirmPasswordController.text.isNotEmpty &&
-                                    _confirmPasswordController.text == _newPasswordController.text;
-
-                                if (!isPasswordValid || !isConfirmValid) {
-                                  setState(() => invalidInput = true);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text("Please check your password details.")),
-                                  );
-                                  return;
-                                }
+                            if (_debounce?.isActive ?? false) _debounce!.cancel();
+                            _debounce = Timer(const Duration(milliseconds: 300), () async {
+                              if (value.trim().length >= 8) {
+                                bool taken = await _editService.isUsernameTaken(value.trim());
+                                setState(() => _isUsernameTaken = taken);
                               }
+                            });
+                          },
+                          forceValidate: invalidInput || _isUsernameTaken,
+                        ),
+                        const SizedBox(height: 20),
+                        CustomTextField(
+                          inputLabel: 'PASSWORD',
+                          inputHint: 'Enter your password',
+                          inputType: TextInputType.visiblePassword,
+                          isPassword: true,
+                          isLoginPass: false,
+                          controller: _newPasswordController,
+                          validator: (value) {
+                            if (value.isEmpty) return null;
 
-                              try {
-                                setState(() => isLoading = true);
+                            bool hasLength = value.length >= 8;
+                            bool hasSymbol = RegExp(r'[^a-zA-Z0-9\s]').hasMatch(value);
+                            bool hasUppercase = RegExp(r'[A-Z]').hasMatch(value);
+                            bool hasNumber = RegExp(r'[0-9]').hasMatch(value);
 
-                                User? currentUser = FirebaseAuth.instance.currentUser;
-                                if (currentUser == null) throw Exception("User not logged in");
+                            int score =
+                                (hasLength ? 1 : 0) +
+                                (hasSymbol ? 1 : 0) +
+                                (hasUppercase ? 1 : 0) +
+                                (hasNumber ? 1 : 0);
 
-                                String? newImageUrl;
-                                if (_selectedImage != null) {
-                                  newImageUrl = await _editService.uploadProfileImage(
-                                    _selectedImage!,
-                                    currentUser.uid,
-                                  );
+                            if (score < 4) {
+                              return 'Please meet all the password requirements.';
+                            }
+                            hasStrongPassword = true;
+                            return null;
+                          },
+                          onChanged: (value) {
+                            setState(() {
+                              passwordText = value;
+                              invalidInput = false;
+                            });
+                          },
+                          forceValidate: invalidInput,
+                          receivedPassword: passwordText,
+                        ),
+                        const SizedBox(height: 20),
+                        CustomTextField(
+                          inputLabel: 'CONFIRM PASSWORD',
+                          inputHint: 'Confirm your password',
+                          inputType: TextInputType.visiblePassword,
+                          isPassword: true,
+                          isLoginPass: false,
+                          controller: _confirmPasswordController,
+                          validator: (value) {
+                            if (value != _newPasswordController.text) {
+                              return 'Passwords do not match. Please try again.';
+                            }
+                            return null;
+                          },
+                          onChanged: (value) {
+                            setState(() {
+                              invalidInput = false;
+                            });
+                          },
+                          forceValidate: invalidInput,
+                        ),
+                        const SizedBox(height: 30),
+                        CustomButton(
+                          buttonText: 'Save Changes',
+                          isLoading: isLoading,
+                          isButtonEnabled:
+                              _usernameController.text.isNotEmpty ||
+                              (_newPasswordController.text.isNotEmpty &&
+                                  _confirmPasswordController.text.isNotEmpty) ||
+                              _selectedImage != null,
+                          btnElevation: 4,
+                          btnRadius: 15,
+                          onTapAction: () async {
+                            //modal for confirm changes
+                            await ConfirmChangesModal.show(
+                              context,
+                              onPrimary: () async {
+                                Navigator.of(context, rootNavigator: true).pop();
+                                await Future.delayed(const Duration(milliseconds: 300));
 
-                                  if (currentProfile != 'assets/default_profile.png' &&
-                                      currentProfile.isNotEmpty) {
-                                    await _editService.deleteOldProfileImage(currentProfile);
+                                bool isUpdatingPassword =
+                                    _newPasswordController.text.isNotEmpty ||
+                                    _confirmPasswordController.text.isNotEmpty;
+
+                                if (isUpdatingPassword) {
+                                  bool isPasswordValid =
+                                      _newPasswordController.text.isNotEmpty && hasStrongPassword;
+                                  bool isConfirmValid =
+                                      _confirmPasswordController.text.isNotEmpty &&
+                                      _confirmPasswordController.text ==
+                                          _newPasswordController.text;
+
+                                  if (!isPasswordValid || !isConfirmValid) {
+                                    setState(() => invalidInput = true);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text("Please check your password details."),
+                                      ),
+                                    );
+                                    return;
                                   }
                                 }
 
-                                await _editService.updateUserProfile(
-                                  newUsername: _usernameController.text.trim(),
-                                  newPassword: _newPasswordController.text.trim(),
-                                  newProfileImgUrl: newImageUrl,
-                                );
+                                try {
+                                  setState(() => isLoading = true);
 
-                                if (mounted) {
-                                  setState(() => isLoading = false);
+                                  User? currentUser = FirebaseAuth.instance.currentUser;
+                                  if (currentUser == null) throw Exception("User not logged in");
 
-                                  // Show success modal 
-                                  ChangesSavedModal.show(
-                                    context,
-                                    onPrimary: () {
-                                      Navigator.of(context, rootNavigator: true).pop(); 
-                                      Navigator.of(context).pop(); 
-                                    },
+                                  String? newImageUrl;
+                                  if (_selectedImage != null) {
+                                    newImageUrl = await _editService.uploadProfileImage(
+                                      _selectedImage!,
+                                      currentUser.uid,
+                                    );
+
+                                    if (currentProfile != 'assets/default_profile.png' &&
+                                        currentProfile.isNotEmpty) {
+                                      await _editService.deleteOldProfileImage(currentProfile);
+                                    }
+                                  }
+
+                                  await _editService.updateUserProfile(
+                                    newUsername: _usernameController.text.trim(),
+                                    newPassword: _newPasswordController.text.trim(),
+                                    newProfileImgUrl: newImageUrl,
                                   );
+
+                                  if (mounted) {
+                                    setState(() {
+                                      isLoading = false;
+                                      _isSaved =
+                                          true; // NEW: Tell WillPopScope the changes are safely saved!
+                                    });
+
+                                    // Show success modal
+                                    ChangesSavedModal.show(
+                                      context,
+                                      onPrimary: () {
+                                        Navigator.of(context, rootNavigator: true).pop();
+                                        Navigator.of(context).pop();
+                                      },
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    setState(() {
+                                      invalidInput = true;
+                                      isLoading = false;
+                                    });
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text("Error: ${e.toString()}")),
+                                    );
+                                  }
                                 }
-                              } catch (e) {
-                                if (mounted) {
-                                  setState(() {
-                                    invalidInput = true;
-                                    isLoading = false;
-                                  });
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text("Error: ${e.toString()}")),
-                                  );
-                                }
-                              }
-                            },
-                          );
-                        },
-                      ),
-                    ],
+                              },
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

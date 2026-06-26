@@ -1,10 +1,16 @@
+import 'dart:math';
+
 import 'package:docsease/custom_button.dart';
+import 'package:docsease/main.dart';
+import 'package:docsease/navigator_transition.dart';
 import 'package:docsease/side_bar.dart';
 import 'package:docsease/firebase_services.dart';
 import 'package:docsease/custom_textfield.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
+
+import 'package:hive/hive.dart';
 
 class Authentication extends StatefulWidget {
   const Authentication({super.key});
@@ -333,11 +339,8 @@ class _SignInState extends State<SignIn> {
         CustomTextButton(
           inkwellText: 'Continue as Guest',
           onTapAction: () {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => SideBar(isGuest: true)),
-              (Route<dynamic> route) => false,
-            );
+            Hive.box('auth_box').put('triggerGuestAnimation', true);
+            Navigator.pop(context);
           },
         ),
       ],
@@ -593,10 +596,32 @@ class _SignUpState extends State<SignUp> {
         CustomTextButton(
           inkwellText: 'Continue as Guest',
           onTapAction: () {
+            Hive.box('auth_box').put('triggerGuestAnimation', true);
             Navigator.pushAndRemoveUntil(
               context,
-              MaterialPageRoute(builder: (context) => SideBar(isGuest: true)),
-              (Route<dynamic> route) => false,
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) => const AuthWrapper(),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  return SlideTransition(
+                    position: animation.drive(
+                      Tween(
+                        begin: const Offset(1.0, 0.0),
+                        end: Offset.zero,
+                      ).chain(CurveTween(curve: Curves.easeInOutQuint)),
+                    ),
+                    child: SlideTransition(
+                      position: secondaryAnimation.drive(
+                        Tween(
+                          begin: Offset.zero,
+                          end: const Offset(-0.3, 0.0),
+                        ).chain(CurveTween(curve: Curves.easeInOutQuint)),
+                      ),
+                      child: child,
+                    ),
+                  );
+                },
+              ),
+              (route) => false,
             );
           },
         ),

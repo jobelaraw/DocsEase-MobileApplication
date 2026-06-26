@@ -1,3 +1,6 @@
+import 'package:docsease/app_modals.dart';
+import 'package:docsease/authentication.dart';
+import 'package:docsease/main.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -5,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:docsease/info_model.dart';
 import 'package:docsease/app_localizations.dart';
 import 'package:docsease/settings_provider.dart';
+import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 
 class InformationScreen extends StatefulWidget {
@@ -81,42 +85,86 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
     final lang = Provider.of<SettingsProvider>(context).language;
     final tabs = widget.detail.getTabs(lang);
 
-    if (user == null) return const Scaffold(body: Center(child: Text("Please log in first.")));
+    final Stream<DocumentSnapshot>? historyStream = user != null
+        ? FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('service_history')
+              .doc(widget.detail.serviceId)
+              .snapshots()
+        : null;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .collection('service_history')
-            .doc(widget.detail.serviceId)
-            .snapshots(),
+        stream: historyStream,
         builder: (context, snapshot) {
           List<String> checkedReqs = [];
           List<String> completedSteps = [];
 
-          if (snapshot.hasData && snapshot.data!.exists) {
+          if (user != null && snapshot.hasData && snapshot.data!.exists) {
             var data = snapshot.data!.data() as Map<String, dynamic>;
             checkedReqs = List<String>.from(data['checked_requirements'] ?? []);
             completedSteps = List<String>.from(data['completed_steps'] ?? []);
           }
 
           void handleToggleReq(String uniqueId, bool isChecked) {
+            if (user == null) {
+              RequireSignInModal.show(
+                context,
+                title: 'Information',
+                onPrimary: () async {
+                  final rootNav = Navigator.of(context, rootNavigator: true);
+
+                  Hive.box('auth_box').put('continueGuest', false);
+
+                  rootNav.pop();
+
+                  rootNav.pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const AuthWrapper()),
+                    (route) => false,
+                  );
+                  rootNav.push(MaterialPageRoute(builder: (context) => const Authentication()));
+                },
+              );
+              return;
+            }
             List<String> newReqs = List.from(checkedReqs);
-            if (isChecked)
+            if (isChecked) {
               newReqs.add(uniqueId);
-            else
+            } else {
               newReqs.remove(uniqueId);
+            }
             _updateProgress(newReqs, completedSteps);
           }
 
           void handleToggleStep(String uniqueId, bool isDone) {
+            if (user == null) {
+              RequireSignInModal.show(
+                context,
+                title: 'Information',
+                onPrimary: () async {
+                  final rootNav = Navigator.of(context, rootNavigator: true);
+
+                  Hive.box('auth_box').put('continueGuest', false);
+
+                  rootNav.pop();
+
+                  rootNav.pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const AuthWrapper()),
+                    (route) => false,
+                  );
+                  rootNav.push(MaterialPageRoute(builder: (context) => const Authentication()));
+                },
+              );
+              return;
+            }
             List<String> newSteps = List.from(completedSteps);
-            if (isDone)
+            if (isDone) {
               newSteps.add(uniqueId);
-            else
+            } else {
               newSteps.remove(uniqueId);
+            }
             _updateProgress(checkedReqs, newSteps);
           }
 
@@ -262,11 +310,16 @@ class _ContentList extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(30),
       children: [
-        Text(detail.getTitle(language), style: GoogleFonts.inter(fontSize: 25, fontWeight: FontWeight.bold)),
+        Text(
+          detail.getTitle(language),
+          style: GoogleFonts.inter(fontSize: 25, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
 
         Text(
-          detail.getDescription(language).isNotEmpty ? detail.getDescription(language) : tr("No description available."),
+          detail.getDescription(language).isNotEmpty
+              ? detail.getDescription(language)
+              : tr("No description available."),
           style: GoogleFonts.inter(
             fontSize: 12,
             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
@@ -493,14 +546,18 @@ class _StepItem extends StatelessWidget {
               radius: 22,
               backgroundColor: isDone
                   ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : accentColor)
-                  : (Theme.of(context).brightness == Brightness.dark ? Colors.transparent : Colors.white),
+                  : (Theme.of(context).brightness == Brightness.dark
+                        ? Colors.transparent
+                        : Colors.white),
               child: Container(
                 decoration: isDone
                     ? null
                     : BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : Colors.black,
                           width: 2,
                         ),
                       ),
@@ -509,8 +566,12 @@ class _StepItem extends StatelessWidget {
                   "$num",
                   style: TextStyle(
                     color: isDone
-                        ? (Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white)
-                        : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
+                        ? (Theme.of(context).brightness == Brightness.dark
+                              ? Colors.black
+                              : Colors.white)
+                        : (Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : Colors.black),
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                   ),
@@ -570,17 +631,26 @@ class _StepItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: _InfoBox(label: "${AppLocalizations.translate('Fee', language)}:", value: step.fee),
+                      child: _InfoBox(
+                        label: "${AppLocalizations.translate('Fee', language)}:",
+                        value: step.fee,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _InfoBox(label: "${AppLocalizations.translate('Processing Time', language)}:", value: step.processingTime),
+                      child: _InfoBox(
+                        label: "${AppLocalizations.translate('Processing Time', language)}:",
+                        value: step.processingTime,
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 8),
-              _InfoBox(label: "${AppLocalizations.translate('Person In-charge', language)}:", value: step.personsInCharge.join('\n')),
+              _InfoBox(
+                label: "${AppLocalizations.translate('Person In-charge', language)}:",
+                value: step.personsInCharge.join('\n'),
+              ),
             ],
           ),
         ),
@@ -643,7 +713,10 @@ class _StepItem extends StatelessWidget {
                         children: [
                           Icon(Icons.check, size: 18),
                           SizedBox(width: 8),
-                          Text(AppLocalizations.translate("Completed", language), style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(
+                            AppLocalizations.translate("Completed", language),
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ],
                       ),
                     )
@@ -744,7 +817,12 @@ class _InfoGrid extends StatelessWidget {
         if (constraints.maxWidth < 300 || MediaQuery.textScalerOf(context).scale(1) > 1.05) {
           return Column(
             children: [
-              _buildCard(context, Icons.location_on, AppLocalizations.translate("LOCATION", language), detail.location),
+              _buildCard(
+                context,
+                Icons.location_on,
+                AppLocalizations.translate("LOCATION", language),
+                detail.location,
+              ),
               const SizedBox(height: 15),
               _buildContactCard(context),
             ],
@@ -754,7 +832,14 @@ class _InfoGrid extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: _buildCard(context, Icons.location_on, AppLocalizations.translate("LOCATION", language), detail.location)),
+              Expanded(
+                child: _buildCard(
+                  context,
+                  Icons.location_on,
+                  AppLocalizations.translate("LOCATION", language),
+                  detail.location,
+                ),
+              ),
               const SizedBox(width: 15),
               Expanded(child: _buildContactCard(context)),
             ],
