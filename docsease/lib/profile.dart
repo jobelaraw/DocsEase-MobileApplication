@@ -404,11 +404,10 @@ class _ProfileState extends State<Profile> {
                           fontSize: 15,
                           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
-                      Row(
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
                             status,
@@ -451,21 +450,24 @@ class _ProfileState extends State<Profile> {
                         size: 28,
                       ),
 
-                    if (showProgress)
-                      Text(
-                        "${(progress * 100).toInt()}%",
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                        ),
-                      ),
                   ],
                 ),
               ],
             ),
             if (showProgress) ...[
               const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  "${(progress * 100).toInt()}%",
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: LinearProgressIndicator(
