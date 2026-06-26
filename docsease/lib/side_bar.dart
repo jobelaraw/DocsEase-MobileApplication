@@ -716,12 +716,18 @@ class _SideBarState extends State<SideBar> {
                                   Hive.box('auth_box').put('continueGuest', false);
                                 } else {
                                   await FirebaseServices().signOutUser();
-                                if (context.mounted) {
-                                  await Provider.of<SettingsProvider>(context, listen: false).loadSettings();
                                 }
-                                  
+
                                 if (context.mounted) {
-                                  await settingsProvider.saveSettings(false, settingsProvider.language, 0.5);
+                                  await Provider.of<SettingsProvider>(
+                                    context,
+                                    listen: false,
+                                  ).loadSettings();
+                                  await settingsProvider.saveSettings(
+                                    false,
+                                    settingsProvider.language,
+                                    0.5,
+                                  );
                                 }
 
                                 nav.pushAndRemoveUntil(
