@@ -146,10 +146,10 @@ class FirebaseServices {
     }
   }
 
-Future<void> signOutUser() async {
+  Future<void> signOutUser() async {
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn();
-      
+
       if (await googleSignIn.isSignedIn()) {
         await googleSignIn.signOut();
       }
@@ -273,6 +273,7 @@ Future<void> signOutUser() async {
           var serviceData = sDoc.data() as Map<String, dynamic>;
           serviceData['service_id'] = sDoc.id;
 
+          // ignore: unnecessary_cast
           var officeData = office.data() as Map<String, dynamic>;
           officeData['office_name'] = officeData['office_name'] ?? 'Unknown Office';
           officeData['location'] = officeData['location'] ?? 'City Hall';

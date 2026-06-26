@@ -162,7 +162,7 @@ class _EditProfileState extends State<EditProfile> {
         return true; // If no changes, exit normally
       },
       child: Scaffold(
-        backgroundColor: Theme.of(context).colorScheme.surface,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: SingleChildScrollView(
           child: Column(
             children: [

@@ -430,6 +430,8 @@ class _ProfileState extends State<Profile> {
                           fontSize: 15,
                           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Wrap(
@@ -475,13 +477,11 @@ class _ProfileState extends State<Profile> {
                         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                         size: 28,
                       ),
-
                   ],
                 ),
               ],
             ),
             if (showProgress) ...[
-              const SizedBox(height: 10),
               Align(
                 alignment: Alignment.centerRight,
                 child: Text(

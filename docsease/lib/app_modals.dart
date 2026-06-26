@@ -27,6 +27,7 @@ class _AppModalBase extends StatefulWidget {
     required this.onPrimary,
     this.onSecondary,
     this.singleAction = false,
+    // ignore: unused_element_parameter
     this.extraContent,
   });
 
