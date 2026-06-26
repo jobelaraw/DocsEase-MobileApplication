@@ -11,7 +11,7 @@ class SettingsProvider extends ChangeNotifier {
   bool _savedIsDarkMode = false;
   String _savedLanguage = 'English';
   double _savedFontSize = 0.5;
-  
+
   bool _hasUnsavedPreview = false;
 
   // Getters so the rest of the app can read the current settings
@@ -30,9 +30,7 @@ class SettingsProvider extends ChangeNotifier {
 
   // Load settings when the app starts or when a user logs in
   Future<void> loadSettings() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    String boxName = user != null ? 'settings_${user.uid}' : 'settings_guest';
-
+    String boxName = await _getBoxName();
     Box box = await Hive.openBox(boxName);
 
     _isDarkMode = box.get('isDarkMode', defaultValue: false);
@@ -69,15 +67,13 @@ class SettingsProvider extends ChangeNotifier {
     _fontSize = _savedFontSize;
     _hasUnsavedPreview = false;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-    notifyListeners();
-  });
-}
+      notifyListeners();
+    });
+  }
 
   // Save settings and instantly update the UI
   Future<void> saveSettings(bool isDark, String lang, double size) async {
-    User? user = FirebaseAuth.instance.currentUser;
-    String boxName = user != null ? 'settings_${user.uid}' : 'settings_guest';
-
+    String boxName = await _getBoxName();
     Box box = await Hive.openBox(boxName);
 
     await box.put('isDarkMode', isDark);
@@ -94,5 +90,17 @@ class SettingsProvider extends ChangeNotifier {
 
     // broadcast the new settings to instantly change the screens
     notifyListeners();
+  }
+
+  Future<String> _getBoxName() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      return 'settings_${user.uid}'; // Logged-in user
+    } else {
+      var authBox = Hive.box('auth_box');
+      String? guestId = authBox.get('guestId');
+      // If a guestId exists, use it! Otherwise, fallback to a generic name
+      return guestId != null ? 'settings_$guestId' : 'settings_guest';
+    }
   }
 }

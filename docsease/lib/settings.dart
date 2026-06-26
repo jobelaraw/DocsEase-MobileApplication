@@ -17,6 +17,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final List<String> _languages = ['English', 'Filipino'];
 
   bool _isLoading = true;
+  bool isChangesLoading = false;
   bool _savedBeforeLeaving = false;
 
   late SettingsProvider _settingsProvider;
@@ -43,26 +44,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _saveChanges() async {
-    // We can just use the cached provider here too!
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    // if (_settingsProvider.pendingDarkMode == _settingsProvider.savedDarkMode &&
+    //     _settingsProvider.pendingLanguage == _settingsProvider.savedLanguage &&
+    //     (_settingsProvider.pendingFontSize - _settingsProvider.savedFontSize).abs() < 0.001) {
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     SnackBar(
+    //       content: Text(
+    //         AppLocalizations.translate('No changes made.', _settingsProvider.pendingLanguage),
+    //       ),
+    //     ),
+    //   );
+    //   return;
+    // }
+
     await ConfirmChangesModal.show(
       context,
-      onPrimary: () {
-        Navigator.of(context).pop(); // close confirm modal
-        ChangesSavedModal.show(
-          context,
-          onPrimary: () {
-            Navigator.of(context).pop();
-            _savedBeforeLeaving = true;
-            _settingsProvider.saveSettings(
-              _settingsProvider.pendingDarkMode,
-              _settingsProvider.pendingLanguage,
-              _settingsProvider.pendingFontSize,
+      onPrimary: () async {
+        Navigator.of(context, rootNavigator: true).pop();
+
+        setState(() {
+          isChangesLoading = true;
+        });
+
+        await Future.delayed(const Duration(milliseconds: 1000));
+
+        try {
+          await _settingsProvider.saveSettings(
+            _settingsProvider.pendingDarkMode,
+            _settingsProvider.pendingLanguage,
+            _settingsProvider.pendingFontSize,
+          );
+
+          if (mounted) {
+            setState(() {
+              _savedBeforeLeaving = true;
+            });
+
+            // Show success modal and wait for it to close
+            await ChangesSavedModal.show(
+              context,
+              onPrimary: () {
+                Navigator.of(context, rootNavigator: true).pop();
+              },
             );
-          },
-        );
-      },
-      onSecondary: () {
-        Navigator.of(context).pop();
+            if (mounted) {
+              setState(() {
+                isChangesLoading = false;
+              });
+            }
+          }
+        } catch (e) {
+          if (mounted) {
+            setState(() {
+              isChangesLoading = false;
+            });
+            // ScaffoldMessenger.of(context).showSnackBar(
+            //   SnackBar(
+            //     content: Text(
+            //       "${AppLocalizations.translate('Failed to save settings:', _settingsProvider.pendingLanguage)} $e",
+            //     ),
+            //   ),
+            // );
+          }
+        }
       },
     );
   }
@@ -141,7 +187,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // APPEARANCE Section
-                        _sectionLabel(AppLocalizations.translate('APPEARANCE', settingsProvider.pendingLanguage)),
+                        _sectionLabel(
+                          AppLocalizations.translate(
+                            'APPEARANCE',
+                            settingsProvider.pendingLanguage,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         Container(
                           decoration: BoxDecoration(
@@ -168,7 +219,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
-                                        AppLocalizations.translate('Dark Mode', settingsProvider.pendingLanguage),
+                                        AppLocalizations.translate(
+                                          'Dark Mode',
+                                          settingsProvider.pendingLanguage,
+                                        ),
                                         style: GoogleFonts.inter(
                                           fontSize: 15,
                                           fontWeight: FontWeight.w500,
@@ -216,7 +270,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Text(
-                                          AppLocalizations.translate('Language', settingsProvider.pendingLanguage),
+                                          AppLocalizations.translate(
+                                            'Language',
+                                            settingsProvider.pendingLanguage,
+                                          ),
                                           style: GoogleFonts.inter(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w500,
@@ -242,7 +299,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 24),
 
                         // ACCESSIBILITY Section
-                        _sectionLabel(AppLocalizations.translate('ACCESSIBILITY', settingsProvider.pendingLanguage)),
+                        _sectionLabel(
+                          AppLocalizations.translate(
+                            'ACCESSIBILITY',
+                            settingsProvider.pendingLanguage,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         Container(
                           decoration: BoxDecoration(
@@ -257,7 +319,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                AppLocalizations.translate('Font Size', settingsProvider.pendingLanguage),
+                                AppLocalizations.translate(
+                                  'Font Size',
+                                  settingsProvider.pendingLanguage,
+                                ),
                                 style: GoogleFonts.inter(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
@@ -323,9 +388,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                         // Save Changes Button
                         CustomButton(
-                          buttonText: AppLocalizations.translate('Save Changes', settingsProvider.pendingLanguage),
+                          buttonText: AppLocalizations.translate(
+                            'Save Changes',
+                            settingsProvider.pendingLanguage,
+                          ),
                           btnElevation: 4,
                           btnRadius: 15,
+                          isLoading: isChangesLoading,
                           onTapAction: _saveChanges,
                         ),
                       ],

@@ -43,6 +43,7 @@ class _ProfileState extends State<Profile> {
           .collection('service_history')
           .orderBy('last_updated', descending: true)
           .snapshots();
+      ;
     }
   }
 
@@ -72,6 +73,7 @@ class _ProfileState extends State<Profile> {
     setState(() {
       _loadingServiceId = serviceId;
     });
+    await Future.delayed(const Duration(milliseconds: 600));
 
     try {
       final getService = FirebaseServices();
@@ -125,16 +127,23 @@ class _ProfileState extends State<Profile> {
                 child: StreamBuilder<DocumentSnapshot>(
                   stream: _userDataStream,
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
+                    bool isGuest = FirebaseAuth.instance.currentUser == null;
+
+                    // Force the skeleton if data is missing, syncing, or waiting!
+                    if (!isGuest &&
+                        (snapshot.connectionState == ConnectionState.waiting ||
+                            !snapshot.hasData ||
+                            !snapshot.data!.exists)) {
                       return const _SkeletonProfileHeader();
                     }
 
-                    String currentUsername = 'Loading...';
+                    // Assign the data
+                    String currentUsername = 'Guest Account';
                     String currentProfile = 'assets/default_profile.png';
 
-                    if (snapshot.hasData && snapshot.data!.exists) {
+                    if (!isGuest) {
                       final data = snapshot.data!.data() as Map<String, dynamic>;
-                      currentUsername = data['username'] ?? 'Guest Account';
+                      currentUsername = data['username'] ?? 'Unknown User';
                       currentProfile = data['profile_img'] ?? 'assets/default_profile.png';
                     }
 
@@ -161,6 +170,23 @@ class _ProfileState extends State<Profile> {
                                         width: 95,
                                         height: 95,
                                         fit: BoxFit.cover,
+                                        // NEW: Make the image shimmer while downloading!
+                                        loadingBuilder: (context, child, loadingProgress) {
+                                          if (loadingProgress == null) return child;
+                                          return _ShimmerEffect(
+                                            child: Container(
+                                              width: 95,
+                                              height: 95,
+                                              color: Colors.white.withValues(alpha: 0.5),
+                                            ),
+                                          );
+                                        },
+                                        errorBuilder: (_, __, ___) => Image.asset(
+                                          'assets/default_profile.png',
+                                          width: 95,
+                                          height: 95,
+                                          fit: BoxFit.cover,
+                                        ),
                                       ),
                               ),
                             ),
@@ -305,7 +331,7 @@ class _ProfileState extends State<Profile> {
             // Restored scrolling capabilities to the inner lists
             physics: const BouncingScrollPhysics(),
             padding: EdgeInsets.zero,
-            itemCount: 4,
+            itemCount: 3,
             separatorBuilder: (context, index) => const SizedBox(height: 35),
             itemBuilder: (context, index) => const _SkeletonHistoryItem(),
           );
@@ -525,6 +551,8 @@ class _SkeletonHistoryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textScaler = MediaQuery.textScalerOf(context);
+
     return _ShimmerEffect(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 10),
@@ -545,9 +573,17 @@ class _SkeletonHistoryItem extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(width: double.infinity, height: 16, color: Colors.grey.shade300),
+                      Container(
+                        width: double.infinity,
+                        height: textScaler.scale(15),
+                        color: Colors.grey.shade300,
+                      ),
                       const SizedBox(height: 6),
-                      Container(width: 120, height: 12, color: Colors.grey.shade300),
+                      Container(
+                        width: 120,
+                        height: textScaler.scale(12),
+                        color: Colors.grey.shade300,
+                      ),
                     ],
                   ),
                 ),
@@ -576,34 +612,34 @@ class _SkeletonProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textScaler = MediaQuery.textScalerOf(context);
+
     return _ShimmerEffect(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          // Fake Avatar
           Container(
-            width: 100,
-            height: 100,
+            width: 98,
+            height: 98,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.5),
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(height: 20),
-          // Fake Username
+          SizedBox(height: 28),
           Container(
             width: 160,
-            height: 24,
+            height: textScaler.scale(17),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(3),
             ),
           ),
-          const SizedBox(height: 8),
-          // Fake Subtitle
+          SizedBox(height: textScaler.scale(5)),
           Container(
             width: 90,
-            height: 16,
+            height: textScaler.scale(15),
+            margin: EdgeInsets.only(top: textScaler.scale(4)),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(3),

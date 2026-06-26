@@ -30,10 +30,11 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
   bool invalidInput = false;
   bool isLoading = false;
 
-  @override
+@override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF2B6FD4),
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Stack(
           children: [
