@@ -48,23 +48,23 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
   }
 
   void _startResendTimer() {
-  setState(() => _resendSecondsLeft = _resendCooldown);
-  _resendTimer?.cancel();
-  _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-    if (_resendSecondsLeft <= 1) {
-      timer.cancel();
-      if (mounted) setState(() => _resendSecondsLeft = 0);
-    } else {
-      if (mounted) setState(() => _resendSecondsLeft--);
-    }
-  });
-}
+    setState(() => _resendSecondsLeft = _resendCooldown);
+    _resendTimer?.cancel();
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_resendSecondsLeft <= 1) {
+        timer.cancel();
+        if (mounted) setState(() => _resendSecondsLeft = 0);
+      } else {
+        if (mounted) setState(() => _resendSecondsLeft--);
+      }
+    });
+  }
 
-String _formatResendTime(int seconds) {
-  final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
-  final secs = (seconds % 60).toString().padLeft(2, '0');
-  return '$minutes:$secs seconds';
-}
+  String _formatResendTime(int seconds) {
+    final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
+    final secs = (seconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$secs seconds';
+  }
 
   String _generateRecoveryCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -185,340 +185,366 @@ String _formatResendTime(int seconds) {
     );
   }
 
-@override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF2B6FD4),
-      resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        Container(
-                          height: 150,
-                          width: 150,
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: const Color.fromRGBO(10, 49, 104, 1),
-                              width: 1.0,
-                            ),
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Image.asset(
-                              "assets/docsease_logo.png",
-                              height: 105,
-                              width: 105,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => const Icon(
-                                Icons.description_outlined,
-                                size: 40,
-                                color: Color(0xFF2B6FD4),
+      backgroundColor: const Color.fromRGBO(251, 243, 243, 1),
+      body: Stack(
+        children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: Container(color: const Color.fromRGBO(32, 87, 206, 1.0)),
+          ),
+          SafeArea(
+            bottom: false,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            Container(
+                              height: 150,
+                              width: 150,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: const Color.fromRGBO(10, 49, 104, 1),
+                                  width: 1.0,
+                                ),
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Image.asset(
+                                  "assets/docsease_logo.png",
+                                  height: 105,
+                                  width: 105,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.description_outlined,
+                                    size: 40,
+                                    color: Color(0xFF2B6FD4),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          'DocsEase',
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Smart Assisstant for\ngovernment procedures.',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
-                            color: Colors.white.withOpacity(0.88),
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w500,
-                            height: 1.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF7EEF0),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(32),
-                          topRight: Radius.circular(32),
+                            const SizedBox(height: 14),
+                            Text(
+                              'DocsEase',
+                              style: GoogleFonts.inter(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Smart Assisstant for\ngovernment procedures.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                color: Colors.white.withOpacity(0.88),
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w500,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                            child: Center(
-                              child: Column(
-                                children: [
-                                  Text(
-                                    'Forgot Password',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF2B6FD4),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 11),
-                                  Container(
-                                    height: 1.5,
-                                    width: 250,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF2B6FD4),
-                                      borderRadius: BorderRadius.circular(2),
-                                    ),
-                                  ),
-                                ],
-                              ),
+
+                      Expanded(
+                        child: Container(
+                          width: double.infinity,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF7EEF0),
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(32),
+                              topRight: Radius.circular(32),
                             ),
                           ),
-
-                          Expanded(
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(26, 0, 26, 20),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 12),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                                    child: Center(
-                                      child: Text(
-                                        'Enter OTP to Verify Your Identity',
-                                        textAlign: TextAlign.center,
+                          child: Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 18),
+                                child: Center(
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        'Forgot Password',
                                         style: GoogleFonts.inter(
+                                          fontSize: 17,
                                           fontWeight: FontWeight.bold,
-                                          fontSize: 20,
-                                          color: Colors.black87,
+                                          color: const Color(0xFF2B6FD4),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                                    child: Center(
-                                      child: Text(
-                                        'Please type the 6-digit verification code sent to your registered email address.',
-                                        textAlign: TextAlign.center,
-                                        style: GoogleFonts.inter(
-                                          fontWeight: FontWeight.w400,
-                                          fontSize: 13,
-                                          color: Colors.black54,
+                                      const SizedBox(height: 11),
+                                      Container(
+                                        height: 1.5,
+                                        width: 250,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF2B6FD4),
+                                          borderRadius: BorderRadius.circular(2),
                                         ),
                                       ),
-                                    ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 50),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: List.generate(6, (index) => _buildCodeBox(index)),
-                                  ),
-                                  AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 500),
-                                    switchInCurve: Curves.easeOutBack,
-                                    switchOutCurve: Curves.easeIn,
-                                    transitionBuilder: (Widget child, Animation<double> animation) {
-                                      return SizeTransition(
-                                        sizeFactor: animation,
-                                        axisAlignment: -1.0,
-                                        child: SlideTransition(
-                                          position: Tween<Offset>(
-                                            begin: const Offset(0, 0.5),
-                                            end: Offset.zero,
-                                          ).animate(animation),
-                                          child: FadeTransition(opacity: animation, child: child),
+                                ),
+                              ),
+
+                              Expanded(
+                                child: SingleChildScrollView(
+                                  padding: const EdgeInsets.fromLTRB(26, 0, 26, 20),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 12),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                                        child: Center(
+                                          child: Text(
+                                            'Enter OTP to Verify Your Identity',
+                                            textAlign: TextAlign.center,
+                                            style: GoogleFonts.inter(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 20,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
                                         ),
-                                      );
-                                    },
-                                    child: _hasError
-                                        ? Padding(
-                                            key: const ValueKey('error'),
-                                            padding: const EdgeInsets.only(top: 5),
-                                            child: Center(
-                                              child: Text(
-                                                'Invalid code. Please try again.',
-                                                style: GoogleFonts.inter(
-                                                  color: const Color.fromRGBO(255, 100, 100, 1),
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                                        child: Center(
+                                          child: Text(
+                                            'Please type the 6-digit verification code sent to your registered email address.',
+                                            textAlign: TextAlign.center,
+                                            style: GoogleFonts.inter(
+                                              fontWeight: FontWeight.w400,
+                                              fontSize: 13,
+                                              color: Colors.black54,
                                             ),
-                                          )
-                                        : _isComplete
-                                        ? Padding(
-                                            key: const ValueKey('complete'),
-                                            padding: const EdgeInsets.only(top: 5),
-                                            child: Center(
-                                              child: Text(
-                                                'Valid recovery code.',
-                                                style: GoogleFonts.inter(
-                                                  color: Colors.green,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                          )
-                                        : const SizedBox.shrink(key: ValueKey('empty')),
-                                  ),
-                                  const SizedBox(height: 40),
-                                  CustomButton(
-                                    buttonText: 'Verify',
-                                    isLoading: isLoading,
-                                    isButtonEnabled: _isComplete,
-                                    onTapAction: () async {
-                                      String enteredCode = _controllers.map((c) => c.text).join();
-
-                                      if (!_isComplete) {
-                                        setState(() => _isComplete = false);
-                                        return;
-                                      }
-
-                                      try {
-                                        setState(() => isLoading = true);
-
-                                        var docSnapshot = await FirebaseFirestore.instance
-                                            .collection('recovery_codes')
-                                            .doc(widget.targetEmail)
-                                            .get();
-
-                                        if (!docSnapshot.exists ||
-                                            docSnapshot.data()?['code'] != enteredCode) {
-                                          setState(() {
-                                            _hasError = true;
-                                            isLoading = false;
-                                          });
-                                          return;
-                                        }
-
-                                        if (mounted) {
-                                          await VerifiedModal.show(
-                                            context,
-                                            onPrimary: () {
-                                              Navigator.of(context).pop();
-                                              for (var c in _controllers) c.clear();  
-                                                setState(() {                           
-                                                  _isComplete = false;                   
-                                                  _hasError = false; 
-                                                  isLoading = false;
-                                                });   
-                                              Navigator.push(
-                                                context,
-                                                SlideRoute(
-                                                  page: ForgotPassChangePassScreen(
-                                                    targetEmail: widget.targetEmail,
-                                                    recoveryCode: enteredCode,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 50),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: List.generate(6, (index) => _buildCodeBox(index)),
+                                      ),
+                                      AnimatedSwitcher(
+                                        duration: const Duration(milliseconds: 500),
+                                        switchInCurve: Curves.easeOutBack,
+                                        switchOutCurve: Curves.easeIn,
+                                        transitionBuilder:
+                                            (Widget child, Animation<double> animation) {
+                                              return SizeTransition(
+                                                sizeFactor: animation,
+                                                axisAlignment: -1.0,
+                                                child: SlideTransition(
+                                                  position: Tween<Offset>(
+                                                    begin: const Offset(0, 0.5),
+                                                    end: Offset.zero,
+                                                  ).animate(animation),
+                                                  child: FadeTransition(
+                                                    opacity: animation,
+                                                    child: child,
                                                   ),
                                                 ),
                                               );
                                             },
-                                          );
-                                        }
-                                      } catch (e) {
-                                        if (mounted) {
-                                          setState(() {
-                                            _isComplete = false;
-                                            isLoading = false;
-                                            _hasError = true;
-                                          });
-                                        }
-                                      }
-                                    },
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Center(
-                                    child: Column(
-                                    children: [
-                                      GestureDetector(
-                                      onTap: _isResending ? null : _resendCode,
-                                      child: _isResending
-                                          ? const SizedBox(
-                                              height: 16,
-                                              width: 16,
-                                              child: CircularProgressIndicator(strokeWidth: 2),
-                                            )
-                                          : RichText(
-                                              text: TextSpan(
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 12,
-                                                  color: Colors.black54,
-                                                ),
-                                                children: [
-                                                  const TextSpan(text: "Didn't receive a code? "),
-                                                  TextSpan(
-                                                    text: 'Resend code',
+                                        child: _hasError
+                                            ? Padding(
+                                                key: const ValueKey('error'),
+                                                padding: const EdgeInsets.only(top: 5),
+                                                child: Center(
+                                                  child: Text(
+                                                    'Invalid code. Please try again.',
                                                     style: GoogleFonts.inter(
+                                                      color: const Color.fromRGBO(255, 100, 100, 1),
                                                       fontSize: 12,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: _resendSecondsLeft > 0
-                                                          ? const Color(0xFF2B6FD4).withOpacity(0.4)
-                                                          : const Color(0xFF2B6FD4),
-                                                      decoration: TextDecoration.underline,
-                                                      decorationColor: _resendSecondsLeft > 0
-                                                          ? const Color(0xFF2B6FD4).withOpacity(0.4)
-                                                          : const Color(0xFF2B6FD4),
+                                                      fontWeight: FontWeight.w500,
                                                     ),
                                                   ),
-                                                ],
-                                              ),
+                                                ),
+                                              )
+                                            : _isComplete
+                                            ? Padding(
+                                                key: const ValueKey('complete'),
+                                                padding: const EdgeInsets.only(top: 5),
+                                                child: Center(
+                                                  child: Text(
+                                                    'Valid recovery code.',
+                                                    style: GoogleFonts.inter(
+                                                      color: Colors.green,
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ),
+                                              )
+                                            : const SizedBox.shrink(key: ValueKey('empty')),
+                                      ),
+                                      const SizedBox(height: 40),
+                                      CustomButton(
+                                        buttonText: 'Verify',
+                                        isLoading: isLoading,
+                                        isButtonEnabled: _isComplete,
+                                        onTapAction: () async {
+                                          String enteredCode = _controllers
+                                              .map((c) => c.text)
+                                              .join();
+
+                                          if (!_isComplete) {
+                                            setState(() => _isComplete = false);
+                                            return;
+                                          }
+
+                                          try {
+                                            setState(() => isLoading = true);
+
+                                            var docSnapshot = await FirebaseFirestore.instance
+                                                .collection('recovery_codes')
+                                                .doc(widget.targetEmail)
+                                                .get();
+
+                                            if (!docSnapshot.exists ||
+                                                docSnapshot.data()?['code'] != enteredCode) {
+                                              setState(() {
+                                                _hasError = true;
+                                                isLoading = false;
+                                              });
+                                              return;
+                                            }
+
+                                            if (mounted) {
+                                              await VerifiedModal.show(
+                                                context,
+                                                onPrimary: () {
+                                                  Navigator.of(context).pop();
+                                                  for (var c in _controllers) c.clear();
+                                                  setState(() {
+                                                    _isComplete = false;
+                                                    _hasError = false;
+                                                    isLoading = false;
+                                                  });
+                                                  Navigator.push(
+                                                    context,
+                                                    SlideRoute(
+                                                      page: ForgotPassChangePassScreen(
+                                                        targetEmail: widget.targetEmail,
+                                                        recoveryCode: enteredCode,
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              );
+                                            }
+                                          } catch (e) {
+                                            if (mounted) {
+                                              setState(() {
+                                                _isComplete = false;
+                                                isLoading = false;
+                                                _hasError = true;
+                                              });
+                                            }
+                                          }
+                                        },
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Center(
+                                        child: Column(
+                                          children: [
+                                            GestureDetector(
+                                              onTap: _isResending ? null : _resendCode,
+                                              child: _isResending
+                                                  ? const SizedBox(
+                                                      height: 16,
+                                                      width: 16,
+                                                      child: CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                      ),
+                                                    )
+                                                  : RichText(
+                                                      text: TextSpan(
+                                                        style: GoogleFonts.inter(
+                                                          fontSize: 12,
+                                                          color: Colors.black54,
+                                                        ),
+                                                        children: [
+                                                          const TextSpan(
+                                                            text: "Didn't receive a code? ",
+                                                          ),
+                                                          TextSpan(
+                                                            text: 'Resend code',
+                                                            style: GoogleFonts.inter(
+                                                              fontSize: 12,
+                                                              fontWeight: FontWeight.bold,
+                                                              color: _resendSecondsLeft > 0
+                                                                  ? const Color(
+                                                                      0xFF2B6FD4,
+                                                                    ).withOpacity(0.4)
+                                                                  : const Color(0xFF2B6FD4),
+                                                              decoration: TextDecoration.underline,
+                                                              decorationColor:
+                                                                  _resendSecondsLeft > 0
+                                                                  ? const Color(
+                                                                      0xFF2B6FD4,
+                                                                    ).withOpacity(0.4)
+                                                                  : const Color(0xFF2B6FD4),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
                                             ),
-                                    ),
-                                    if (_resendSecondsLeft > 0) ...[
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        _formatResendTime(_resendSecondsLeft),
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.black54,
-                                          ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
+                                            if (_resendSecondsLeft > 0) ...[
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                _formatResendTime(_resendSecondsLeft),
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.black54,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 30),
+                                    ],
                                   ),
-                                  const SizedBox(height: 30),
-                                ],
+                                ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+              ],
             ),
-                  
-            Positioned(
-              top: 8,
-              left: 8,
-              child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () {
-              Navigator.pop(context);
-              },
-            ),
-           ),
-         ],
-        ),
+          ),
+        ],
       ),
     );
   }
