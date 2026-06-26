@@ -146,16 +146,17 @@ class FirebaseServices {
     }
   }
 
-  Future<void> signOutUser() async {
+Future<void> signOutUser() async {
     try {
-      // Wipe the Google Sign-In cache so the account picker shows up next time!
-      await GoogleSignIn().signOut();
-
-      // Sign out of Firebase
-      await _auth.signOut();
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      
+      if (await googleSignIn.isSignedIn()) {
+        await googleSignIn.signOut();
+      }
     } catch (e) {
       print("Sign Out Error: $e");
-      rethrow;
+    } finally {
+      await _auth.signOut();
     }
   }
 

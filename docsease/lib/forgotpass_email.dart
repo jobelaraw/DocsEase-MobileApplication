@@ -61,11 +61,11 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
       return false;
     }
   }
-
-  @override
+@override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF2B6FD4),
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Stack(
           children: [
@@ -296,6 +296,11 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                               context,
                                               onPrimary: () {
                                                 Navigator.of(context).pop();
+                                                 _emailController.clear();             
+                                                setState(() {
+                                                  invalidInput = false;      
+                                                  _emailNotFound = false;
+                                                });
                                                 Navigator.push(
                                                   context,
                                                   SlideRoute(
