@@ -30,7 +30,11 @@ class _ServicesContent extends State<Services> {
   @override
   void initState() {
     super.initState();
-    _officesFuture = _getService.getOffices();
+    // Preload offices and share with ChatBot so related services load instantly
+    _officesFuture = _getService.getOffices().then((offices) {
+      ChatBotScreen.setCachedOffices(offices);
+      return offices;
+    });
     _searchFocusNode.addListener(() {
       setState(() {});
     });
@@ -144,7 +148,16 @@ class _ServicesContent extends State<Services> {
                     Navigator.push(
                       context,
                       SlideRoute(page: const ChatBotScreen()),
-                    ).then((_) => widget.onTitleChange('Services'));
+                    ).then((result) {
+                      // Handle chatbot navigation chip result:
+                      // If user tapped "Go to Profile/Settings/About", switch sidebar tab
+                      // Otherwise just reset title back to 'Services'
+                      if (result != null && result is int && result != 0) {
+                        widget.onTitleChange('__switch_tab_$result');
+                      } else {
+                        widget.onTitleChange('Services');
+                      }
+                    });
                   },
                   borderRadius: BorderRadius.circular(40),
                   child: Padding(

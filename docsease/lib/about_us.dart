@@ -501,14 +501,16 @@ class _ContactTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 14),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: fontSize,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Theme.of(context).colorScheme.onPrimary
-                  : const Color(0xFF2B6FD4),
-              fontWeight: FontWeight.w500,
+          Expanded(
+            child: Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: fontSize,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : const Color(0xFF2B6FD4),
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
