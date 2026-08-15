@@ -69,7 +69,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
     String tr(String key) => AppLocalizations.translate(key, lang);
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           Expanded(
@@ -470,7 +470,7 @@ class _ContactTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).brightness == Brightness.dark
             ? Theme.of(context).colorScheme.primary
-            : const Color(0xFFF0F4F8),
+            : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: Theme.of(context).brightness == Brightness.dark
@@ -520,6 +520,7 @@ class _ContactTile extends StatelessWidget {
 }
 
 // ─── Social Circle ───
+// ignore: unused_element
 class _SocialCircle extends StatelessWidget {
   final String iconAsset;
   final IconData fallbackIcon;

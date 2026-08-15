@@ -1,9 +1,5 @@
-import 'dart:math';
-
 import 'package:docsease/custom_button.dart';
 import 'package:docsease/main.dart';
-import 'package:docsease/navigator_transition.dart';
-import 'package:docsease/side_bar.dart';
 import 'package:docsease/firebase_services.dart';
 import 'package:docsease/custom_textfield.dart';
 import 'package:flutter/material.dart';
@@ -57,142 +53,156 @@ class _AuthenticationState extends State<Authentication> with SingleTickerProvid
     super.dispose();
   }
 
-@override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromRGBO(32, 87, 206, 1.0),
-      resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        Container(
-                          height: 100,
-                          width: 100,
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Color.fromRGBO(10, 49, 104, 1), width: 1.0),
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Image.asset(
-                              "assets/docsease_logo.png",
-                              height: 70,
-                              width: 70,
-                              fit: BoxFit.contain,
+      backgroundColor: const Color.fromRGBO(251, 243, 243, 1),
+      body: Stack(
+        children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: Container(color: const Color.fromRGBO(32, 87, 206, 1.0)),
+          ),
+          SafeArea(
+            bottom: false,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            Container(
+                              height: 100,
+                              width: 100,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Color.fromRGBO(10, 49, 104, 1),
+                                  width: 1.0,
+                                ),
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Image.asset(
+                                  "assets/docsease_logo.png",
+                                  height: 70,
+                                  width: 70,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          'DocsEase',
-                          style: GoogleFonts.inter(
-                            fontSize: 25,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          'Smart Assistant for\ngovernment procedures.',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white.withOpacity(0.7),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Color.fromRGBO(251, 243, 243, 1),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(25.0),
-                          topRight: Radius.circular(25.0),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: EdgeInsets.symmetric(vertical: 5, horizontal: 20),
-                            child: TabBar(
-                              controller: _tabController,
-                              labelStyle: GoogleFonts.inter(
-                                fontSize: 16,
+                            const SizedBox(height: 7),
+                            Text(
+                              'DocsEase',
+                              style: GoogleFonts.inter(
+                                fontSize: 25,
                                 fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
-                              overlayColor: MaterialStateProperty.all(Colors.transparent),
-                              labelColor: Color.fromRGBO(59, 115, 224, 1.0),
-                              unselectedLabelColor: Colors.grey,
-                              indicatorSize: TabBarIndicatorSize.tab,
-                              indicator: UnderlineTabIndicator(
-                                borderSide: BorderSide(
-                                  color: Color.fromRGBO(32, 87, 206, 1.0),
-                                  width: 1.5,
-                                ),
+                            ),
+                            const SizedBox(height: 7),
+                            Text(
+                              'Smart Assistant for\ngovernment procedures.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white.withOpacity(0.7),
                               ),
-                              tabs: const [
-                                Tab(text: 'Sign In'),
-                                Tab(text: 'Sign Up'),
-                              ],
                             ),
-                          ),
-                          Expanded(
-                            child: TabBarView(
-                              controller: _tabController,
-                              children: [
-                                SingleChildScrollView(
-                                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-                                  child: SignIn(
-                                    emailController: _signInEmailController,
-                                    passwordController: _signInPasswordController,
-                                  ),
-                                ),
-                                // This is the first tab, which is the Sign Up
-                                SingleChildScrollView(
-                                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-                                  child: SignUp(
-                                    usernameController: _signUpUsernameController,
-                                    emailController: _signUpEmailController,
-                                    passwordController: _signUpPasswordController,
-                                    confirmController: _signUpConfirmController,
-                                    onTapAction: () {
-                                      _tabController.animateTo(0);
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+                      Expanded(
+                        child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Color.fromRGBO(251, 243, 243, 1),
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(25.0),
+                              topRight: Radius.circular(25.0),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.symmetric(vertical: 5, horizontal: 20),
+                                child: TabBar(
+                                  controller: _tabController,
+                                  labelStyle: GoogleFonts.inter(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overlayColor: MaterialStateProperty.all(Colors.transparent),
+                                  labelColor: Color.fromRGBO(59, 115, 224, 1.0),
+                                  unselectedLabelColor: Colors.grey,
+                                  indicatorSize: TabBarIndicatorSize.tab,
+                                  indicator: UnderlineTabIndicator(
+                                    borderSide: BorderSide(
+                                      color: Color.fromRGBO(32, 87, 206, 1.0),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  tabs: const [
+                                    Tab(text: 'Sign In'),
+                                    Tab(text: 'Sign Up'),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                child: TabBarView(
+                                  controller: _tabController,
+                                  children: [
+                                    SingleChildScrollView(
+                                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                                      child: SignIn(
+                                        emailController: _signInEmailController,
+                                        passwordController: _signInPasswordController,
+                                      ),
+                                    ),
+                                    // This is the first tab, which is the Sign Up
+                                    SingleChildScrollView(
+                                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                                      child: SignUp(
+                                        usernameController: _signUpUsernameController,
+                                        emailController: _signUpEmailController,
+                                        passwordController: _signUpPasswordController,
+                                        confirmController: _signUpConfirmController,
+                                        onTapAction: () {
+                                          _tabController.animateTo(0);
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+              ],
             ),
-            Positioned(
-              top: 8,
-              left: 8,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

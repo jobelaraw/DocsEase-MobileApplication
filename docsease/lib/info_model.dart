@@ -111,10 +111,10 @@ class ServiceDetail {
               )
               .toList() ??
           [],
-      location: officeJson['location'] ?? 'City Hall',
+      location: json['location'] ?? officeJson['location'] ?? 'City Hall',
       duration: '',
-      contactPhone: officeJson['contact_phone'] ?? '',
-      contactEmail: officeJson['contact_email'] ?? '',
+      contactPhone: json['contact_phone'] ?? officeJson['contact_phone'] ?? '',
+      contactEmail: json['contact_email'] ?? officeJson['contact_email'] ?? '',
       cost: '',
     );
   }
