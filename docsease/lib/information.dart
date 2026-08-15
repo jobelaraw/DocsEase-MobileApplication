@@ -807,45 +807,79 @@ class _InfoGrid extends StatelessWidget {
   final Color accentColor;
   final String language;
 
-  const _InfoGrid({required this.detail, required this.accentColor, required this.language});
+  const _InfoGrid({
+    required this.detail,
+    required this.accentColor,
+    required this.language,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Stack vertically if width is too tight for side-by-side
-        if (constraints.maxWidth < 300 || MediaQuery.textScalerOf(context).scale(1) > 1.05) {
-          return Column(
-            children: [
-              _buildCard(
-                context,
-                Icons.location_on,
-                AppLocalizations.translate("LOCATION", language),
-                detail.location,
+    final locationVal = detail.location.isNotEmpty ? detail.location : "N/A";
+    final contactVal = detail.contactPhone.isNotEmpty ? detail.contactPhone : "N/A";
+    final websiteVal = detail.contactEmail.isNotEmpty ? detail.contactEmail : "N/A";
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Row 1: LOCATION (Full Width)
+        _buildCard(
+          context,
+          Icons.location_on,
+          AppLocalizations.translate("LOCATION", language),
+          locationVal,
+        ),
+        const SizedBox(height: 15),
+
+        // Row 2: CONTACT NUMBER and WEBSITE (Side-by-Side)
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 300 || MediaQuery.textScalerOf(context).scale(1) > 1.05) {
+              return Column(
+                children: [
+                  _buildCard(
+                    context,
+                    Icons.phone,
+                    AppLocalizations.translate("CONTACT NUMBER", language),
+                    contactVal,
+                  ),
+                  const SizedBox(height: 15),
+                  _buildCard(
+                    context,
+                    Icons.language,
+                    AppLocalizations.translate("WEBSITE", language),
+                    websiteVal,
+                  ),
+                ],
+              );
+            }
+            return IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _buildCard(
+                      context,
+                      Icons.phone,
+                      AppLocalizations.translate("CONTACT NUMBER", language),
+                      contactVal,
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: _buildCard(
+                      context,
+                      Icons.language,
+                      AppLocalizations.translate("WEBSITE", language),
+                      websiteVal,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 15),
-              _buildContactCard(context),
-            ],
-          );
-        }
-        return IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _buildCard(
-                  context,
-                  Icons.location_on,
-                  AppLocalizations.translate("LOCATION", language),
-                  detail.location,
-                ),
-              ),
-              const SizedBox(width: 15),
-              Expanded(child: _buildContactCard(context)),
-            ],
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -905,75 +939,7 @@ class _InfoGrid extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildContactCard(BuildContext context) {
-    return Material(
-      borderRadius: BorderRadius.circular(25),
-      elevation: 4,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Theme.of(context).colorScheme.primary
-              : Colors.white,
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(
-            color: Theme.brightnessOf(context) == Brightness.dark
-                ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1)
-                : Colors.grey.shade100,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.phone, color: Color(0xFF3B73E0), size: 18),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    AppLocalizations.translate("CONTACT", language),
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)
-                          : Colors.black45,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 15),
-            Text(
-              detail.contactPhone.isNotEmpty ? detail.contactPhone : "0938 421 4212",
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.onSurface
-                    : Colors.black,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              detail.contactEmail.isNotEmpty ? detail.contactEmail : "cityhall@gmail.com",
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.onSurface
-                    : Colors.black,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
-
 class _ScheduleTile extends StatelessWidget {
   final String language;
   const _ScheduleTile({required this.language});
