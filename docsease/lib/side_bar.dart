@@ -8,6 +8,9 @@ import 'package:docsease/services.dart';
 import 'package:docsease/settings.dart';
 import 'package:docsease/settings_provider.dart';
 import 'package:docsease/app_localizations.dart';
+import 'package:docsease/navigator_transition.dart';
+import 'package:docsease/info_model.dart';
+import 'package:docsease/information.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -28,13 +31,11 @@ class SideBar extends StatefulWidget {
 
 class _SideBarState extends State<SideBar> {
   int selectedIndex = 0;
-  // ignore: unused_field
   int _previousIndex = 0;
   String currentTitle = 'Services';
 
-  // Tab History Stack and Titles
   final List<int> _tabHistory = [0];
-  List<String> _tabTitles = ['Services', 'Profile', 'About', 'Settings'];
+  final List<String> _tabTitles = ['Services', 'Profile', 'About', 'Settings'];
 
   final GlobalKey<NavigatorState> _servicesNavKey = GlobalKey<NavigatorState>();
   final GlobalKey<NavigatorState> _profileNavKey = GlobalKey<NavigatorState>();
@@ -62,7 +63,6 @@ class _SideBarState extends State<SideBar> {
     ) {
       if (mounted) {
         setState(() {
-          // If the result contains 'none', the user has no internet!
           isOnline = !results.contains(ConnectivityResult.none);
         });
       }
@@ -73,9 +73,6 @@ class _SideBarState extends State<SideBar> {
         navigatorKey: _servicesNavKey,
         onTitleChange: (newTitle) {
           if (mounted) {
-            // Handle tab switch signal from chatbot navigation chips
-            // When user taps "Go to Profile/Settings/About" chip in chatbot,
-            // it pops back and sends '__switch_tab_X' to switch sidebar tab
             if (newTitle.startsWith('__switch_tab_')) {
               final tabIndex = int.tryParse(newTitle.replaceFirst('__switch_tab_', '')) ?? 0;
               setState(() {
@@ -156,7 +153,6 @@ class _SideBarState extends State<SideBar> {
     super.dispose();
   }
 
-  // --- NEW: Universal wrapper for Drawer Navigation ---
   void _handleDrawerNavigation(int targetIndex) {
     if (selectedIndex == 3 && targetIndex != 3) {
       final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
@@ -165,23 +161,22 @@ class _SideBarState extends State<SideBar> {
         ExitConfirmationModal.show(
           context,
           onPrimary: () {
-            Navigator.of(context).pop(); // Close modal
+            Navigator.of(context).pop();
             settingsProvider.revertDarkModePreview();
             _executeDrawerSwitch(targetIndex);
           },
           onSecondary: () {
-            Navigator.of(context).pop(); // Close modal, abort switch
+            Navigator.of(context).pop(); 
           },
         );
-        return; // Pause execution here until user picks an option
+        return; 
       }
-      settingsProvider.revertDarkModePreview(); // Clean up if no changes
+      settingsProvider.revertDarkModePreview(); 
     }
 
     _executeDrawerSwitch(targetIndex);
   }
 
-  // Uses YOUR original logic so deep navigation state is perfectly preserved
   void _executeDrawerSwitch(int targetIndex) {
     if (selectedIndex == targetIndex) {
       if (targetIndex == 0) {
@@ -208,23 +203,60 @@ class _SideBarState extends State<SideBar> {
     }
   }
 
-  // Smart back navigation that handles nested screens and the tab history stack
+  void _handleNotificationDeepLink(AppNotification notif) async {
+    FirebaseServices().markNotificationAsRead(notif.id);
+    
+    if (notif.serviceId.isEmpty) {
+      OfficeNotificationModal.show(
+        context,
+        title: notif.title,
+        body: notif.body,
+      );
+      return;
+    }
+
+    _executeDrawerSwitch(0);
+    _servicesNavKey.currentState?.popUntil((route) => route.isFirst);
+
+    LoadingModal.show(context, title: "Loading Service...");
+    ServiceDetail? service = await FirebaseServices().getServiceById(notif.serviceId);
+    if (!mounted) return;
+    LoadingModal.hide(context);
+
+    if (service != null) {
+      setState(() {
+        _tabTitles[0] = 'Information';
+        if (selectedIndex == 0) currentTitle = 'Information';
+      });
+
+      _servicesNavKey.currentState?.push(SlideRoute(page: InformationScreen(detail: service))).then((_) {
+        if (mounted) {
+          setState(() {
+            _tabTitles[0] = 'Services';
+            if (selectedIndex == 0) currentTitle = 'Services';
+          });
+        }
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Service not found or no longer available.')),
+      );
+    }
+  }
+
   Future<bool> _handleBackNavigation() async {
     bool handledByNested = false;
 
-    // 1. Give priority to nested navigators (e.g., InformationScreen, EditProfile)
     if (selectedIndex == 0) {
       handledByNested = await _servicesNavKey.currentState?.maybePop() ?? false;
     } else if (selectedIndex == 1) {
       handledByNested = await _profileNavKey.currentState?.maybePop() ?? false;
     }
 
-    // 2. If a nested page was popped, we're done here.
     if (handledByNested) {
-      return false; // Tells WillPopScope not to exit the app
+      return false; 
     }
 
-    // 3. If we are at the root of a tab, pop the History Stack instead!
     if (_tabHistory.length > 1) {
       if (selectedIndex == 3) {
         final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
@@ -237,10 +269,8 @@ class _SideBarState extends State<SideBar> {
               settingsProvider.revertDarkModePreview();
               setState(() {
                 _previousIndex = selectedIndex;
-                _tabHistory.removeLast(); // Remove current tab
-                selectedIndex = _tabHistory.last; // Navigate to the previous tab
-
-                // Restore exactly the title we left off on for this specific tab
+                _tabHistory.removeLast(); 
+                selectedIndex = _tabHistory.last; 
                 currentTitle = _tabTitles[selectedIndex];
               });
             },
@@ -248,24 +278,18 @@ class _SideBarState extends State<SideBar> {
               Navigator.of(context).pop();
             },
           );
-          return false; // don't switch tab yet, wait for user's choice
+          return false;
         }
-
-        // No unsaved changes, just switch normally
         settingsProvider.revertDarkModePreview();
       }
       setState(() {
         _previousIndex = selectedIndex;
-        _tabHistory.removeLast(); // Remove current tab
-        selectedIndex = _tabHistory.last; // Navigate to the previous tab
-
-        // Restore exactly the title we left off on for this specific tab
+        _tabHistory.removeLast(); 
+        selectedIndex = _tabHistory.last; 
         currentTitle = _tabTitles[selectedIndex];
       });
       return false;
     }
-
-    // 4. If history only has 1 item left (Home), exit the app
     return true;
   }
 
@@ -276,16 +300,67 @@ class _SideBarState extends State<SideBar> {
       child: Scaffold(
         appBar: AppBar(
           leadingWidth: 60,
-          // Hide back button ONLY on absolute root 'Services' view
-          leading: !(selectedIndex == 0 && currentTitle == 'Services')
+          leading: (selectedIndex == 0 && currentTitle == 'Services')
               ? Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 6, 0, 6),
+                  child: StreamBuilder<List<AppNotification>>(
+                    stream: FirebaseServices().streamNotifications(),
+                    builder: (context, notifSnapshot) {
+                      return StreamBuilder<List<String>>(
+                        stream: FirebaseServices().streamReadNotifications(),
+                        builder: (context, readSnapshot) {
+                          int unreadCount = 0;
+                          if (notifSnapshot.hasData && readSnapshot.hasData) {
+                            final notifs = notifSnapshot.data!;
+                            final readIds = readSnapshot.data!;
+                            unreadCount = notifs.where((n) => !readIds.contains(n.id)).length;
+                          }
+
+                          return Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              IconButton(
+                                splashRadius: 20.0,
+                                icon: Icon(Icons.notifications_none_rounded, color: Theme.of(context).colorScheme.onPrimary, size: 26),
+                                onPressed: () {
+                                  NotificationPopupRoute.show(
+                                    context: context,
+                                    child: NotificationModal(
+                                      notifications: notifSnapshot.data ?? [],
+                                      readIds: readSnapshot.data ?? [],
+                                      onNotificationTap: _handleNotificationDeepLink
+                                    ),
+                                  );
+                                },
+                              ),
+                              if (unreadCount > 0)
+                                Positioned(
+                                  top: 10,
+                                  right: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEF4444),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Theme.of(context).colorScheme.primary, width: 1.5),
+                                    ),
+                                    constraints: const BoxConstraints(minWidth: 10, minHeight: 10),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+                )
+              : Padding(
                   padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
                   child: IconButton(
                     icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onPrimary),
-                    onPressed: _handleBackNavigation, // Uses the smart back logic
+                    onPressed: _handleBackNavigation, 
                   ),
-                )
-              : null,
+                ),
           centerTitle: (selectedIndex == 0 && currentTitle == 'Chatbot') ? false : true,
           titleSpacing: 0,
           title: selectedIndex == 0 && currentTitle == 'Chatbot'
@@ -400,12 +475,13 @@ class _SideBarState extends State<SideBar> {
                   ),
                 ),
           actions: [
+            // --- HAMBURGER MENU ---
             Builder(
               builder: (BuildContext context) {
                 return Padding(
-                  padding: const EdgeInsets.all(15),
+                  padding: const EdgeInsets.only(left: 0, right: 15),
                   child: IconButton(
-                    splashRadius: 10.0,
+                    splashRadius: 20.0,
                     onPressed: () {
                       Scaffold.of(context).openEndDrawer();
                     },
@@ -463,7 +539,6 @@ class _SideBarState extends State<SideBar> {
                                         .snapshots()
                                   : null,
                               builder: (context, snapshot) {
-                                // Quick bypass for Guests
                                 if (widget.isGuest) {
                                   return Column(
                                     mainAxisSize: MainAxisSize.min,
@@ -507,14 +582,12 @@ class _SideBarState extends State<SideBar> {
                                   );
                                 }
 
-                                // Force the skeleton if a Real User's data is missing, syncing, or waiting!
                                 if (snapshot.connectionState == ConnectionState.waiting ||
                                     !snapshot.hasData ||
                                     !snapshot.data!.exists) {
                                   return const _SkeletonProfileHeader();
                                 }
 
-                                // Assign the data
                                 final data = snapshot.data!.data() as Map<String, dynamic>;
                                 String currentUsername = data['username'] ?? 'Unknown User';
                                 String currentProfile =
@@ -542,7 +615,6 @@ class _SideBarState extends State<SideBar> {
                                                 width: 75,
                                                 height: 75,
                                                 fit: BoxFit.cover,
-                                                // NEW: Make the image shimmer while downloading!
                                                 loadingBuilder: (context, child, loadingProgress) {
                                                   if (loadingProgress == null) return child;
                                                   return _ShimmerEffect(
@@ -710,7 +782,7 @@ class _SideBarState extends State<SideBar> {
                               isGuest: widget.isGuest,
                               onPrimary: () async {
                                 settingsProvider.revertDarkModePreview();
-                                nav.pop(); // Close the logout modal
+                                nav.pop(); 
 
                                 if (widget.isGuest) {
                                   Hive.box('auth_box').put('continueGuest', false);
@@ -786,13 +858,226 @@ class _SideBarState extends State<SideBar> {
             ],
           ),
         ),
-        // USING INDEXED STACK TO PRESERVE WIDGET STATES!
         body: IndexedStack(index: selectedIndex, children: screens),
       ),
     );
   }
 }
 
+// NOTIFICATION MODAL & LOGIC
+
+class NotificationModal extends StatefulWidget {
+  final List<AppNotification> notifications;
+  final List<String> readIds;
+  final Function(AppNotification) onNotificationTap;
+
+  const NotificationModal({
+    super.key,
+    required this.notifications,
+    required this.readIds,
+    required this.onNotificationTap,
+  });
+
+  @override
+  State<NotificationModal> createState() => _NotificationModalState();
+}
+
+class _NotificationModalState extends State<NotificationModal> {
+  String _activeTab = 'Today';
+
+  String _timeAgo(DateTime d) {
+    Duration diff = DateTime.now().difference(d);
+    if (diff.inMinutes < 1) return 'Just Now';
+    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+    if (diff.inDays < 1) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${d.month}/${d.day}/${d.year}';
+  }
+
+  List<AppNotification> _getFilteredNotifications() {
+    final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    final startOfWeek = startOfToday.subtract(Duration(days: startOfToday.weekday - 1));
+
+    return widget.notifications.where((notif) {
+      if (_activeTab == 'Today') {
+        return notif.timestamp.isAfter(startOfToday) || notif.timestamp.isAtSameMomentAs(startOfToday);
+      } else if (_activeTab == 'This Week') {
+        return notif.timestamp.isAfter(startOfWeek) && notif.timestamp.isBefore(startOfToday);
+      } else {
+        return notif.timestamp.isBefore(startOfWeek);
+      }
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredNotifs = _getFilteredNotifications();
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: isDark ? Theme.of(context).colorScheme.primary : Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.75),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const SizedBox(width: 40), // Balance the flex
+                Text(
+                  'Notifications',
+                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
+                ),
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: Icon(Icons.close, color: isDark ? Colors.white70 : Colors.black54),
+                  onPressed: () => Navigator.pop(context),
+                )
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Segmented Tabs
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isDark ? Theme.of(context).colorScheme.surface : Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: ['Today', 'This Week', 'Earlier'].map((tab) {
+                  bool isActive = _activeTab == tab;
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _activeTab = tab),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isActive 
+                              ? (isDark ? Theme.of(context).colorScheme.secondary : Colors.white) 
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: isActive 
+                              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 2))] 
+                              : [],
+                        ),
+                        child: Center(
+                          child: Text(
+                            tab,
+                            style: GoogleFonts.inter(
+                              fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                              color: isActive ? (isDark ? Colors.white : Colors.black) : Colors.grey.shade500,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Notification List
+            Expanded(
+              child: filteredNotifs.isEmpty
+                  ? Center(
+                      child: Text('No notifications', style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 13)),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: filteredNotifs.length,
+                      separatorBuilder: (context, index) => Divider(color: Colors.grey.shade300, height: 1, thickness: 1),
+                      itemBuilder: (context, index) {
+                        final notif = filteredNotifs[index];
+                        final isRead = widget.readIds.contains(notif.id);
+
+                        return InkWell(
+                          onTap: () {
+                            Navigator.pop(context); 
+                            widget.onNotificationTap(notif);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Left Icon
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: UIHelper.getBgColorForService(notif.title).withValues(alpha: 0.3), // Soften background
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(UIHelper.getIconForService(notif.title), size: 20, color: Colors.black87),
+                                ),
+                                const SizedBox(width: 12),
+                                // Text Content
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          if (!isRead)
+                                            Container(
+                                              margin: const EdgeInsets.only(right: 6),
+                                              width: 6,
+                                              height: 6,
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF2563EB),
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                          Expanded(
+                                            child: Text(
+                                              notif.title,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: isDark ? Colors.white : Colors.black87,
+                                              ),
+                                            ),
+                                          ),
+                                          Text(
+                                            _timeAgo(notif.timestamp),
+                                            style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        notif.body,
+                                        style: GoogleFonts.inter(fontSize: 12, height: 1.4, color: isDark ? Colors.white70 : const Color(0xFF4B5563)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// SKELETON WIDGETS AND REMAINING CODE
 class SideBarOption extends StatelessWidget {
   final String selectedImage;
   final String unselectedImage;
@@ -930,7 +1215,6 @@ class _SkeletonProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Read the app's dynamic text scale factor from your SettingsProvider
     final textScaler = MediaQuery.textScalerOf(context);
 
     return _ShimmerEffect(

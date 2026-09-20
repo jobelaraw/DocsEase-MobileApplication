@@ -28,17 +28,19 @@ class _ServicesContent extends State<Services> {
   final TextEditingController _searchController = TextEditingController();
   String searchQuery = '';
 
-  late Future<List<Office>> _officesFuture;
+  late Stream<List<Office>> _officesStream;
 
   final FirebaseServices _getService = FirebaseServices();
 
   @override
   void initState() {
     super.initState();
-    // Preload offices and share with ChatBot so related services load instantly
-    _officesFuture = _getService.getOffices().then((offices) {
+    // Real-time stream: any add/edit/delete the admin makes on the web
+    // portal is pushed here automatically, no manual refresh needed.
+    _officesStream = _getService.streamOffices();
+    // Keep the ChatBot's cached offices in sync with the live stream too.
+    _officesStream.listen((offices) {
       ChatBotScreen.setCachedOffices(offices);
-      return offices;
     });
     _searchFocusNode.addListener(() {
       setState(() {});
@@ -53,13 +55,10 @@ class _ServicesContent extends State<Services> {
   }
 
   Future<void> _handleRefresh() async {
-    setState(() {
-      // Re-fetch the data. This automatically forces the FutureBuilder
-      _officesFuture = _getService.getOffices();
-    });
-
-    // Return immediately instead of awaiting the full Firebase fetch.
-    return Future.delayed(const Duration(milliseconds: 100));
+    // Data is already live via the stream above, so there's nothing to
+    // re-fetch here. This just gives the pull-to-refresh gesture a brief,
+    // familiar completion animation for reassurance.
+    return Future.delayed(const Duration(milliseconds: 400));
   }
 
   Widget buildFilteredCategory(Office office) {
@@ -118,9 +117,10 @@ class _ServicesContent extends State<Services> {
                     ),
                   ),
 
-                  // FutureBuilder handles the list below the search bar
-                  FutureBuilder<List<Office>>(
-                    future: _officesFuture,
+                  // StreamBuilder handles the list below the search bar - rebuilds
+                  // automatically whenever Firestore pushes an update
+                  StreamBuilder<List<Office>>(
+                    stream: _officesStream,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return SliverPadding(

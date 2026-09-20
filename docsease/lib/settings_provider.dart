@@ -28,6 +28,21 @@ class SettingsProvider extends ChangeNotifier {
   String get pendingLanguage => _language;
   double get pendingFontSize => _fontSize;
 
+  bool _pauseUpdates = false;
+
+  void setPauseUpdates(bool pause) {
+    _pauseUpdates = pause;
+    if (!pause) {
+      super.notifyListeners(); 
+    }
+  }
+
+  @override
+  void notifyListeners() {
+    if (_pauseUpdates) return;
+    super.notifyListeners();
+  }
+
   // Load settings when the app starts or when a user logs in
   Future<void> loadSettings() async {
     String boxName = await _getBoxName();

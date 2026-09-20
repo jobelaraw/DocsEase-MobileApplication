@@ -82,7 +82,6 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                 Positioned.fill(
                   child: Column(
                     children: [
-                      // --- Fixed Header Section ---
                       Padding(
                         padding: const EdgeInsets.all(20),
                         child: Column(
@@ -135,8 +134,6 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                           ],
                         ),
                       ),
-
-                      // --- Bottom Panel ---
                       Expanded(
                         child: Container(
                           width: double.infinity,
@@ -175,7 +172,6 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                   ),
                                 ),
                               ),
-
                               Expanded(
                                 child: SingleChildScrollView(
                                   padding: const EdgeInsets.fromLTRB(26, 0, 26, 20),
@@ -260,12 +256,8 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                         isLoading: isLoading,
                                         isButtonEnabled: _emailController.text.isNotEmpty,
                                         onTapAction: () async {
-                                          final emailRegex = RegExp(
-                                            r'^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$',
-                                          );
-                                          bool isEmailValid = emailRegex.hasMatch(
-                                            _emailController.text.trim(),
-                                          );
+                                          final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$');
+                                          bool isEmailValid = emailRegex.hasMatch(_emailController.text.trim());
 
                                           if (!isEmailValid) {
                                             setState(() => invalidInput = true);
@@ -274,18 +266,16 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
 
                                           try {
                                             setState(() => isLoading = true);
-                                            String targetEmail = _emailController.text.trim();
 
-                                            bool exists = await _authService.isEmailTaken(
-                                              _emailController.text.trim(),
-                                            );
+                                            String targetEmail = _emailController.text.trim();
+                                            bool exists = await _authService.isEmailTaken(targetEmail);
 
                                             if (!exists) {
                                               if (mounted) {
                                                 setState(() {
+                                                  isLoading = false;
                                                   _emailNotFound = true;
                                                   invalidInput = true;
-                                                  isLoading = false;
                                                 });
                                               }
                                               return;
@@ -294,16 +284,13 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                             String recoveryCode = _generateRecoveryCode();
                                             await FirebaseFirestore.instance
                                                 .collection('recovery_codes')
-                                                .doc(targetEmail) // Use email as the document ID
+                                                .doc(targetEmail)
                                                 .set({
-                                                  'code': recoveryCode,
-                                                  'createdAt': FieldValue.serverTimestamp(),
-                                                });
+                                              'code': recoveryCode,
+                                              'createdAt': FieldValue.serverTimestamp(),
+                                            });
 
-                                            bool emailSent = await _sendEmailJSRecovery(
-                                              targetEmail,
-                                              recoveryCode,
-                                            );
+                                            bool emailSent = await _sendEmailJSRecovery(targetEmail, recoveryCode);
 
                                             if (mounted) {
                                               setState(() => isLoading = false);
@@ -320,36 +307,29 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                                     });
                                                     Navigator.push(
                                                       context,
-                                                      SlideRoute(
-                                                        page: ForgotPasswordRecoveryScreen(
-                                                          targetEmail: targetEmail,
-                                                        ),
-                                                      ),
+                                                      SlideRoute(page: ForgotPasswordRecoveryScreen(targetEmail: targetEmail)),
                                                     );
                                                   },
                                                 );
                                               } else {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                      "Failed to send email. Please check your internet and try again.",
-                                                    ),
-                                                  ),
+                                                AuthErrorModal.show(
+                                                  context,
+                                                  title: 'Failed to Send',
+                                                  subtitle: 'Please check your internet and try again.'
                                                 );
                                               }
                                             }
                                           } catch (e) {
                                             if (mounted) {
                                               setState(() {
-                                                invalidInput = true;
                                                 isLoading = false;
+                                                invalidInput = true;
                                               });
                                             }
                                           }
                                         },
                                       ),
                                       const SizedBox(height: 80),
-
                                       Center(
                                         child: Column(
                                           mainAxisSize: MainAxisSize.min,

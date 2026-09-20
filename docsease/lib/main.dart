@@ -11,6 +11,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:docsease/settings_provider.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 Future<void> main() async {
   // 1. Lock the splash screen to the screen
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +44,7 @@ class MyApp extends StatelessWidget {
         double scaleFactor = 0.8 + (settings.fontSize * 0.4);
 
         return MaterialApp(
+          navigatorKey: navigatorKey,
           debugShowMaterialGrid: false,
           themeMode: settings.isDarkMode ? ThemeMode.dark : ThemeMode.light,
           theme: ThemeData(

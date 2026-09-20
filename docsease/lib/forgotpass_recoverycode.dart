@@ -257,7 +257,6 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                           ],
                         ),
                       ),
-
                       Expanded(
                         child: Container(
                           width: double.infinity,
@@ -296,7 +295,6 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                   ),
                                 ),
                               ),
-
                               Expanded(
                                 child: SingleChildScrollView(
                                   padding: const EdgeInsets.fromLTRB(26, 0, 26, 20),
@@ -397,9 +395,7 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                         isLoading: isLoading,
                                         isButtonEnabled: _isComplete,
                                         onTapAction: () async {
-                                          String enteredCode = _controllers
-                                              .map((c) => c.text)
-                                              .join();
+                                          String enteredCode = _controllers.map((c) => c.text).join();
 
                                           if (!_isComplete) {
                                             setState(() => _isComplete = false);
@@ -414,16 +410,19 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                                 .doc(widget.targetEmail)
                                                 .get();
 
-                                            if (!docSnapshot.exists ||
-                                                docSnapshot.data()?['code'] != enteredCode) {
-                                              setState(() {
-                                                _hasError = true;
-                                                isLoading = false;
-                                              });
+                                            if (!docSnapshot.exists || docSnapshot.data()?['code'] != enteredCode) {
+                                              if (mounted) {
+                                                setState(() {
+                                                  isLoading = false;
+                                                  _hasError = true;
+                                                });
+                                              }
                                               return;
                                             }
 
                                             if (mounted) {
+                                              setState(() => isLoading = false);
+                                              
                                               await VerifiedModal.show(
                                                 context,
                                                 onPrimary: () {
@@ -432,7 +431,6 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                                   setState(() {
                                                     _isComplete = false;
                                                     _hasError = false;
-                                                    isLoading = false;
                                                   });
                                                   Navigator.push(
                                                     context,
@@ -449,8 +447,8 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                           } catch (e) {
                                             if (mounted) {
                                               setState(() {
-                                                _isComplete = false;
                                                 isLoading = false;
+                                                _isComplete = false;
                                                 _hasError = true;
                                               });
                                             }
@@ -530,7 +528,6 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                     ],
                   ),
                 ),
-
                 Positioned(
                   top: 8,
                   left: 8,
