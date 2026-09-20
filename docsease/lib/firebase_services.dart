@@ -1,9 +1,21 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:docsease/info_model.dart';
+import 'package:hive/hive.dart';
 import 'dart:io';
+
+// sign in - G account already has profile
+class GoogleAccountAlreadyUsedException implements Exception {}
+
+//G account not registered yet
+class GoogleAccountNotRegisteredException implements Exception {}
+
+// G account belongs to admin
+class GoogleAccountIsAdminException implements Exception {}
 
 class FirebaseServices {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -62,6 +74,17 @@ class FirebaseServices {
     }
   }
 
+  Future<bool> isEmailRegistered(String email) async {
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('isEmailRegistered');
+      final result = await callable.call({'email': email.trim().toLowerCase()});
+      return result.data['exists'] == true;
+    } catch (e) {
+      print('Error checking registered email: $e');
+      rethrow;
+    }
+  }
+
   Future<void> updateUserProfile({
     String? newUsername,
     String? newPassword,
@@ -71,22 +94,19 @@ class FirebaseServices {
     if (user == null) throw Exception("No user logged in");
 
     try {
-      // Prepare Firestore Updates (Username and Image)
       Map<String, dynamic> firestoreUpdates = {};
 
       if (newUsername != null && newUsername.isNotEmpty) {
         firestoreUpdates['username'] = newUsername;
       }
       if (newProfileImgUrl != null && newProfileImgUrl.isNotEmpty) {
-        firestoreUpdates['profile_img'] = newProfileImgUrl; // Saves the URL!
+        firestoreUpdates['profile_img'] = newProfileImgUrl;
       }
 
-      // If there are things to update in Firestore, do it:
       if (firestoreUpdates.isNotEmpty) {
         await _db.collection('users').doc(user.uid).update(firestoreUpdates);
       }
 
-      // Update Password in Firebase Auth (Secure Vault)
       if (newPassword != null && newPassword.isNotEmpty) {
         await user.updatePassword(newPassword);
       }
@@ -95,55 +115,79 @@ class FirebaseServices {
     }
   }
 
-  Future<UserCredential?> signInWithGoogle() async {
-    try {
-      // Trigger the Google Authentication flow
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return null; // The user canceled the sign-in
+  Future<UserCredential?> signInWithGoogleStrict({
+    GoogleSignInAccount? googleUser,
+  }) async {
+    googleUser ??= await GoogleSignIn().signIn();
+    if (googleUser == null) return null;
 
-      // Obtain the auth details from the request
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+    final AuthCredential credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
 
-      // Create a new credential
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
+    UserCredential userCredential = await _auth.signInWithCredential(credential);
+    User? user = userCredential.user;
+    if (user == null) return null;
 
-      // Once signed in, return the UserCredential
-      UserCredential userCredential = await _auth.signInWithCredential(credential);
-      User? user = userCredential.user;
-
-      if (user != null) {
-        // THE SIGN-UP CHECK: Does this user exist in our Firestore database yet?
-        DocumentSnapshot userDoc = await _db.collection('users').doc(user.uid).get();
-
-        if (!userDoc.exists) {
-          // They are a brand new user! Let's set up their profile.
-          String uniqueHistoryId = _db.collection('history').doc().id;
-
-          // We will use their Google Display Name as their default username
-          String defaultUsername = user.displayName ?? "Google User";
-
-          await _db.collection('users').doc(user.uid).set({
-            'user_id': user.uid,
-            'username': defaultUsername,
-            'email': user.email,
-            'profile_img':
-                user.photoURL ??
-                'assets/default_profile.png', // Use their Google photo if they have one!
-            'history_id': uniqueHistoryId,
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-        }
-      }
-
-      return userCredential;
-    } catch (e) {
-      print("Google Sign-In Error: $e");
-      rethrow;
+    final adminDoc = await _db.collection('admin').doc(user.uid).get();
+    if (adminDoc.exists) {
+      await _auth.signOut();
+      throw GoogleAccountIsAdminException();
     }
+
+    final userDoc = await _db.collection('users').doc(user.uid).get();
+    if (!userDoc.exists) {
+      await _auth.signOut();
+      throw GoogleAccountNotRegisteredException();
+    }
+
+    return userCredential;
+  }
+
+  Future<UserCredential?> signUpWithGoogle({
+    GoogleSignInAccount? googleUser,
+  }) async {
+    googleUser ??= await GoogleSignIn().signIn();
+    if (googleUser == null) return null;
+
+    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+    final AuthCredential credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    UserCredential userCredential = await _auth.signInWithCredential(credential);
+    User? user = userCredential.user;
+    if (user == null) return null;
+
+    final adminDoc = await _db.collection('admin').doc(user.uid).get();
+    if (adminDoc.exists) {
+      await _auth.signOut();
+      throw GoogleAccountIsAdminException();
+    }
+
+    final userDoc = await _db.collection('users').doc(user.uid).get();
+    if (userDoc.exists) {
+      await _auth.signOut();
+      throw GoogleAccountAlreadyUsedException();
+    }
+
+    String uniqueHistoryId = _db.collection('history').doc().id;
+    String defaultUsername = user.displayName ?? "Google User";
+
+    await _db.collection('users').doc(user.uid).set({
+      'user_id': user.uid,
+      'username': defaultUsername,
+      'email': user.email,
+      'profile_img': user.photoURL ?? 'assets/default_profile.png',
+      'history_id': uniqueHistoryId,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    return userCredential;
   }
 
   Future<void> signOutUser() async {
@@ -162,18 +206,14 @@ class FirebaseServices {
 
   Future<String?> uploadProfileImage(File imageFile, String uid) async {
     try {
-      // Create a unique file name
       final fileExtension = imageFile.path.split('.').last;
       final fileName = '$uid-${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
 
-      // Point to the 'profile_images' folder in Firebase Storage
       final Reference storageRef = FirebaseStorage.instance.ref().child('profile_images/$fileName');
 
-      // Upload the file
       final UploadTask uploadTask = storageRef.putFile(imageFile);
       final TaskSnapshot snapshot = await uploadTask;
 
-      // Ask Firebase for the secure download URL
       final String downloadUrl = await snapshot.ref.getDownloadURL();
       return downloadUrl;
     } catch (e) {
@@ -184,10 +224,8 @@ class FirebaseServices {
 
   Future<void> deleteOldProfileImage(String oldImageUrl) async {
     try {
-      // Safety check to ensure it's actually a Firebase URL
       if (!oldImageUrl.contains('firebasestorage.googleapis.com')) return;
 
-      // Firebase is incredibly smart: it can find and delete the file directly from the URL!
       final Reference storageRef = FirebaseStorage.instance.refFromURL(oldImageUrl);
       await storageRef.delete();
 
@@ -206,17 +244,14 @@ class FirebaseServices {
         Map<String, dynamic> officeData = doc.data() as Map<String, dynamic>;
         officeData['office_id'] = doc.id;
 
-        // Fetch the 'services' subcollection specifically for this office
         QuerySnapshot serviceSnapshot = await doc.reference.collection('services').get();
 
-        // Attach the fetched services as a list back into the officeData map
         officeData['services'] = serviceSnapshot.docs.map((sDoc) {
           var sData = sDoc.data() as Map<String, dynamic>;
           sData['service_id'] = sDoc.id;
           return sData;
         }).toList();
 
-        // Parse the fully assembled JSON into our Dart Objects
         offices.add(Office.fromJson(officeData));
       }
 
@@ -227,16 +262,82 @@ class FirebaseServices {
     }
   }
 
+  Stream<List<Office>> streamOffices() {
+    late StreamController<List<Office>> controller;
+    StreamSubscription? officesSub;
+    StreamSubscription? servicesSub;
+
+    Map<String, Map<String, dynamic>> officesById = {};
+    Map<String, List<Map<String, dynamic>>> servicesByOfficeId = {};
+    bool officesLoaded = false;
+    bool servicesLoaded = false;
+
+    void emitIfReady() {
+      if (!officesLoaded || !servicesLoaded) return;
+
+      final offices = officesById.entries.map((entry) {
+        final officeId = entry.key;
+        final data = Map<String, dynamic>.from(entry.value);
+        data['office_id'] = officeId;
+        data['services'] = servicesByOfficeId[officeId] ?? [];
+        return Office.fromJson(data);
+      }).toList();
+
+      controller.add(offices);
+    }
+
+    controller = StreamController<List<Office>>.broadcast(
+      onListen: () {
+        officesSub = _db.collection('offices').snapshots().listen(
+          (snap) {
+            officesById = {
+              for (var doc in snap.docs) doc.id: doc.data(),
+            };
+            officesLoaded = true;
+            emitIfReady();
+          },
+          onError: (e) {
+            print("Error streaming offices: $e");
+            controller.addError(e);
+          },
+        );
+
+        servicesSub = _db.collectionGroup('services').snapshots().listen(
+          (snap) {
+            final grouped = <String, List<Map<String, dynamic>>>{};
+            for (var doc in snap.docs) {
+              final officeId = doc.reference.parent.parent?.id;
+              if (officeId == null) continue;
+              final data = Map<String, dynamic>.from(doc.data());
+              data['service_id'] = doc.id;
+              grouped.putIfAbsent(officeId, () => []).add(data);
+            }
+            servicesByOfficeId = grouped;
+            servicesLoaded = true;
+            emitIfReady();
+          },
+          onError: (e) {
+            print("Error streaming services: $e");
+            controller.addError(e);
+          },
+        );
+      },
+      onCancel: () {
+        officesSub?.cancel();
+        servicesSub?.cancel();
+      },
+    );
+
+    return controller.stream;
+  }
+
   Future<ServiceDetail?> getServiceById(String serviceId) async {
     try {
-      // Fetch all offices (1 lightweight read, ~25 tiny documents)
       final officesSnap = await _db.collection('offices').get();
 
-      // Sort offices by ID length descending to match longer prefixes first
       final officeDocs = officesSnap.docs.toList();
       officeDocs.sort((a, b) => b.id.length.compareTo(a.id.length));
 
-      // Find the exact office by checking if the serviceId starts with the office ID
       QueryDocumentSnapshot? matchedOffice;
       for (var doc in officeDocs) {
         if (serviceId.startsWith(doc.id)) {
@@ -245,7 +346,6 @@ class FirebaseServices {
         }
       }
 
-      // If we found the correct office, fetch the service directly! (1 read)
       if (matchedOffice != null) {
         final serviceDoc = await matchedOffice.reference
             .collection('services')
@@ -266,14 +366,12 @@ class FirebaseServices {
         }
       }
 
-      // SAFEGUARD: If the prefix didn't match perfectly, check manually
       for (var office in officeDocs) {
         final sDoc = await office.reference.collection('services').doc(serviceId).get();
         if (sDoc.exists) {
           var serviceData = sDoc.data() as Map<String, dynamic>;
           serviceData['service_id'] = sDoc.id;
 
-          // ignore: unnecessary_cast
           var officeData = office.data() as Map<String, dynamic>;
           officeData['office_name'] = officeData['office_name'] ?? 'Unknown Office';
           officeData['location'] = officeData['location'] ?? 'City Hall';
@@ -291,56 +389,103 @@ class FirebaseServices {
     }
   }
 
-  /*Future<void> seedDatabase() async {
-    final FirebaseFirestore db = FirebaseFirestore.instance;
+  Future<void> deleteAccount() async {
+    User? user = _auth.currentUser;
+    if (user == null) throw Exception("No user logged in");
 
-    // Create a batch worker
-    final WriteBatch batch = db.batch();
-
-    // Prepare your massive list of data right here in Dart
-    final List<Map<String, dynamic>> officesData = [];
+    String uid = user.uid;
 
     try {
-      print("Starting database upload...");
-
-      // 3. Loop through your data and pack it into the batch
-      for (var office in officesData) {
-        // Create a reference for the Office document
-        DocumentReference officeRef = db.collection('offices').doc(office['office_id']);
-
-        batch.set(officeRef, {
-          "office_name": office['office_name'],
-          "location": office['location'],
-          "schedule": office['schedule'],
-          "contact_phone": office['contact_phone'],
-          "contact_email": office['contact_email'],
-          "created_at": FieldValue.serverTimestamp(),
-          "updated_at": FieldValue.serverTimestamp(),
-        });
-
-        // Loop through the services for this specific office
-        List<dynamic> services = office['services'];
-        for (var service in services) {
-          // Create a reference for the Service subcollection inside this office
-          DocumentReference serviceRef = officeRef
-              .collection('services')
-              .doc(service['service_id']);
-
-          batch.set(serviceRef, {
-            "service_name": service['service_name'],
-            "description": service['description'],
-            "tabs": service['tabs'], // Saves the whole array of requirements and procedures!
-            "created_at": FieldValue.serverTimestamp(),
-            "updated_at": FieldValue.serverTimestamp(),
-          });
-        }
+      final historySnapshot = await _db.collection('users').doc(uid).collection('service_history').get();
+      for (var doc in historySnapshot.docs) {
+        await doc.reference.delete();
       }
 
-      // Hit the big red button and upload everything at once!
-      await batch.commit();
-      print("Database successfully populated!");
+      final convoSnapshot = await _db.collection('users').doc(uid).collection('conversations').get();
+      for (var convoDoc in convoSnapshot.docs) {
+        final msgSnapshot = await convoDoc.reference.collection('messages').get();
+        for (var msgDoc in msgSnapshot.docs) {
+          await msgDoc.reference.delete();
+        }
+        await convoDoc.reference.delete();
+      }
+
+      await _db.collection('users').doc(uid).delete();
+      await user.delete();
     } catch (e) {
-      print("Upload failed: $e");
+      rethrow;
     }
-  }*/
+  }
+
+  // NOTIFICATION METHODS
+
+  // Streams global notifications sorted by newest first
+  Stream<List<AppNotification>> streamNotifications() {
+    return _db.collection('notifications').orderBy('timestamp', descending: true).snapshots().map((snap) {
+      return snap.docs.map((doc) => AppNotification.fromJson(doc.id, doc.data())).toList();
+    });
+  }
+
+  // Streams the IDs of notifications the user has already tapped
+  Stream<List<String>> streamReadNotifications() async* {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      // Authenticated User: Stream from Firestore array
+      yield* _db.collection('users').doc(user.uid).snapshots().map((doc) {
+        if (doc.exists && doc.data() != null && doc.data()!.containsKey('read_notifications')) {
+          return List<String>.from(doc.data()!['read_notifications']);
+        }
+        return [];
+      });
+    } else {
+      // Guest User: Stream from local Hive box
+      var box = Hive.box('auth_box');
+      yield List<String>.from(box.get('guest_read_notifs', defaultValue: []));
+      yield* box.watch(key: 'guest_read_notifs').map((event) => List<String>.from(event.value ?? []));
+    }
+  }
+
+  // Marks a notification as read and hides the blue dot
+  Future<void> markNotificationAsRead(String notificationId) async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      await _db.collection('users').doc(user.uid).update({
+        'read_notifications': FieldValue.arrayUnion([notificationId])
+      });
+    } else {
+      var box = Hive.box('auth_box');
+      List<String> reads = List<String>.from(box.get('guest_read_notifs', defaultValue: []));
+      if (!reads.contains(notificationId)) {
+        reads.add(notificationId);
+        await box.put('guest_read_notifs', reads);
+      }
+    }
+  }
+}
+
+// Model for incoming notifications
+class AppNotification {
+  final String id;
+  final String title;
+  final String body;
+  final String serviceId;
+  final DateTime timestamp;
+
+  AppNotification({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.serviceId,
+    required this.timestamp,
+  });
+
+  factory AppNotification.fromJson(String id, Map<String, dynamic> json) {
+    return AppNotification(
+      id: id,
+      title: json['title'] ?? 'DocsEase Update',
+      body: json['body'] ?? '',
+      serviceId: json['service_id'] ?? '',
+      timestamp: (json['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
 }

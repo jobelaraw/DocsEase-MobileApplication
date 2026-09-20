@@ -50,7 +50,6 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                 Positioned.fill(
                   child: Column(
                     children: [
-                      // Header Section
                       Padding(
                         padding: const EdgeInsets.all(20),
                         child: Column(
@@ -103,8 +102,6 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                           ],
                         ),
                       ),
-
-                      // Main White Panel
                       Expanded(
                         child: Container(
                           width: double.infinity,
@@ -143,7 +140,6 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                   ),
                                 ),
                               ),
-
                               Expanded(
                                 child: SingleChildScrollView(
                                   padding: const EdgeInsets.fromLTRB(26, 0, 26, 20),
@@ -181,7 +177,6 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                         ),
                                       ),
                                       const SizedBox(height: 30),
-
                                       CustomTextField(
                                         inputLabel: 'PASSWORD',
                                         inputHint: 'Enter your password',
@@ -244,9 +239,7 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                         },
                                         forceValidate: invalidInput,
                                       ),
-
                                       const SizedBox(height: 40),
-
                                       CustomButton(
                                         buttonText: 'Save Changes',
                                         isLoading: isLoading,
@@ -254,13 +247,9 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                             _passwordController.text.isNotEmpty &&
                                             _confirmPasswordController.text.isNotEmpty,
                                         onTapAction: () async {
-                                          bool isPasswordValid =
-                                              _passwordController.text.isNotEmpty &&
-                                              hasStrongPassword;
-                                          bool isConfirmValid =
-                                              _confirmPasswordController.text.isNotEmpty &&
-                                              _confirmPasswordController.text ==
-                                                  _passwordController.text;
+                                          bool isPasswordValid = _passwordController.text.isNotEmpty && hasStrongPassword;
+                                          bool isConfirmValid = _confirmPasswordController.text.isNotEmpty &&
+                                              _confirmPasswordController.text == _passwordController.text;
                                           if (!isPasswordValid || !isConfirmValid) {
                                             setState(() => invalidInput = true);
                                             return;
@@ -271,19 +260,10 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                             onPrimary: () async {
                                               Navigator.of(context).pop();
 
+                                              setState(() => isLoading = true);
+
                                               try {
-                                                setState(() => isLoading = true);
-
-                                                print("--- PRE-FLIGHT CHECK ---");
-                                                print("Target Email: '${widget.targetEmail}'");
-                                                print("Recovery Code: '${widget.recoveryCode}'");
-                                                print(
-                                                  "New Password: '${_passwordController.text.trim()}'",
-                                                );
-                                                print("------------------------");
-
-                                                HttpsCallable callable = FirebaseFunctions.instance
-                                                    .httpsCallable('resetUserPassword');
+                                                HttpsCallable callable = FirebaseFunctions.instance.httpsCallable('resetUserPassword');
                                                 await callable.call({
                                                   'email': widget.targetEmail,
                                                   'otp': widget.recoveryCode,
@@ -292,6 +272,7 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
 
                                                 if (mounted) {
                                                   setState(() => isLoading = false);
+                                                  
                                                   await ChangesSavedModal.show(
                                                     context,
                                                     onPrimary: () {
@@ -306,11 +287,10 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                               } catch (e) {
                                                 if (mounted) {
                                                   setState(() {
-                                                    invalidInput = true;
                                                     isLoading = false;
+                                                    invalidInput = true;
                                                   });
                                                 }
-                                                print("Cloud Function Error: $e");
                                                 ScaffoldMessenger.of(context).showSnackBar(
                                                   SnackBar(
                                                     content: Text("Error: ${e.toString()}"),

@@ -4,7 +4,15 @@ import 'package:docsease/settings_provider.dart';
 import 'package:provider/provider.dart';
 
 Future<T?> _showAppModal<T>({required BuildContext context, required Widget child}) {
-  return showDialog<T>(context: context, barrierColor: Colors.black54, builder: (_) => child);
+  return showDialog<T>(
+    context: context,
+    barrierColor: Colors.black54,
+    barrierDismissible: false, // Locked: cannot click outside to dismiss
+    builder: (_) => PopScope(
+      canPop: false, // Locked: prevents Android physical back button dismissal
+      child: child,
+    ),
+  );
 }
 
 const _kBlue = Color(0xFF2563EB);
@@ -431,6 +439,118 @@ class LogoutModal {
   }
 }
 
+//Loading modal (no buttons - shown while an async auth action runs, then
+//dismissed programmatically via LoadingModal.hide once it finishes)
+class LoadingModal {
+  static Future<void> show(BuildContext context, {required String title, String? subtitle}) {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? Theme.of(context).colorScheme.primary
+              : Colors.white,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: CircularProgressIndicator(strokeWidth: 3, color: _kBlue),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Colors.black,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : const Color(0xFF4B5563),
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Closes the loading modal. Safe to call even if nothing is showing.
+  static void hide(BuildContext context) {
+    final navigator = Navigator.of(context, rootNavigator: true);
+    if (navigator.canPop()) navigator.pop();
+  }
+}
+
+//Generic auth error modal (e.g. Google account already used, invalid
+//Google account, sign-in/sign-up failed)
+class AuthErrorModal {
+  static Future<void> show(BuildContext context, {required String title, required String subtitle}) {
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.error_outline_rounded,
+        iconColor: _kRed,
+        iconBgColor: _kIconBgRed,
+        title: title,
+        subtitle: subtitle,
+        primaryLabel: 'Got it',
+        singleAction: true,
+        onPrimary: () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
+//Generic auth success modal (e.g. Signed In!, Account Created!) - shown
+//before redirecting, for a smoother transition instead of an instant jump
+class AuthSuccessModal {
+  static Future<void> show(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required Function onPrimary,
+  }) {
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.check_circle_outline_rounded,
+        iconColor: _kGreen,
+        iconBgColor: _kIconBgGreen,
+        title: title,
+        subtitle: subtitle,
+        primaryLabel: 'Continue',
+        singleAction: true,
+        onPrimary: onPrimary,
+      ),
+    );
+  }
+}
+
 //ProfileChanges modal
 class ProfileChangesModal {
   static Future<void> show(BuildContext context, {VoidCallback? onPrimary}) {
@@ -450,6 +570,86 @@ class ProfileChangesModal {
         secondaryLabel: tr('Cancel'),
         onPrimary: onPrimary ?? () => Navigator.of(context, rootNavigator: true).pop(),
         onSecondary: () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
+class DeleteAccountModal {
+  static Future<void> show(
+    BuildContext context, {
+    required Function onPrimary,
+    VoidCallback? onSecondary,
+  }) {
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.warning_amber_rounded,
+        iconColor: _kRed,
+        iconBgColor: _kIconBgRed,
+        title: 'Delete Account?',
+        subtitle: 'This will completely remove or delete your account, as well as your credentials and service history.',
+        primaryLabel: 'Yes, Delete',
+        primaryColor: _kRed,
+        secondaryLabel: 'No',
+        onPrimary: onPrimary,
+        onSecondary: onSecondary ?? () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
+class OfficeNotificationModal {
+  static Future<void> show(BuildContext context, {required String title, required String body, Function? onPrimary}) {
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.business_rounded,
+        iconColor: _kBlue,
+        iconBgColor: _kIconBgBlue,
+        title: title,
+        subtitle: body,
+        primaryLabel: 'Got it',
+        singleAction: true,
+        onPrimary: onPrimary ?? () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
+class NotificationPopupRoute {
+  static Future<T?> show<T>({
+    required BuildContext context,
+    required Widget child,
+  }) {
+    return Navigator.of(context, rootNavigator: true).push<T>(
+      PageRouteBuilder<T>(
+        opaque: false,
+        barrierColor: Colors.black54,
+        barrierDismissible: false,
+        transitionDuration: const Duration(milliseconds: 250),
+        reverseTransitionDuration: const Duration(milliseconds: 200),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return child;
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          // Animate scaling and fading from the top-right position of the bell icon
+          return ScaleTransition(
+            alignment: const Alignment(-0.85, -0.85), // Aligns scale origin near the top-right app bar actions
+            scale: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+              reverseCurve: Curves.easeInCubic,
+            ),
+            child: FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOut,
+              ),
+              child: child,
+            ),
+          );
+        },
       ),
     );
   }

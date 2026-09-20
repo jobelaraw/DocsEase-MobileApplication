@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'navigator_transition.dart';
+import 'package:docsease/app_modals.dart';
 
 class AppStart extends StatefulWidget {
   const AppStart({super.key});
@@ -22,7 +23,6 @@ class _AppStartState extends State<AppStart> {
   @override
   void initState() {
     super.initState();
-    // Check if we need to auto-trigger when mounting
     var authBox = Hive.box('auth_box');
     if (authBox.get('triggerGuestAnimation', defaultValue: false)) {
       authBox.put('triggerGuestAnimation', false);
@@ -39,6 +39,8 @@ class _AppStartState extends State<AppStart> {
 
     await Future.delayed(const Duration(milliseconds: 800));
 
+    if (!mounted) return;
+
     var authBox = Hive.box('auth_box');
 
     if (authBox.get('guestId') == null) {
@@ -48,21 +50,31 @@ class _AppStartState extends State<AppStart> {
     authBox.put('continueGuest', true);
 
     if (mounted) {
-      Navigator.pushAndRemoveUntil(
+      setState(() {
+        _isGuestLoading = false;
+      });
+      
+      AuthSuccessModal.show(
         context,
-        SlideRoute(page: const SideBar(isGuest: true)),
-        (Route<dynamic> route) => false,
+        title: 'Welcome Guest!',
+        subtitle: 'Continuing without an account.',
+        onPrimary: () {
+          Navigator.of(context, rootNavigator: true).pop();
+          Navigator.pushAndRemoveUntil(
+            context,
+            SlideRoute(page: const SideBar(isGuest: true)),
+            (Route<dynamic> route) => false,
+          );
+        },
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // AppStart now listens to the Hive box in real-time!
     return ValueListenableBuilder(
       valueListenable: Hive.box('auth_box').listenable(keys: ['triggerGuestAnimation']),
       builder: (context, box, child) {
-        // If Authentication sets the flag to true, instantly trigger the loader!
         if (box.get('triggerGuestAnimation', defaultValue: false) && !_guestTriggerFired) {
           _guestTriggerFired = true;
 
@@ -90,16 +102,12 @@ class _AppStartState extends State<AppStart> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Spacer(flex: 2),
-
-                      // ── App Logo ──
                       Image.asset(
                         'assets/docsease_logo.png',
                         width: MediaQuery.of(context).size.width < 400 ? 180 : 200,
                         height: MediaQuery.of(context).size.width < 400 ? 180 : 200,
                       ),
-
                       const SizedBox(height: 32),
-
                       Text(
                         'Welcome to\nDocsEase!',
                         textAlign: TextAlign.center,
@@ -110,9 +118,7 @@ class _AppStartState extends State<AppStart> {
                           height: 1.25,
                         ),
                       ),
-
                       const SizedBox(height: 14),
-
                       Text(
                         'Your smart assistant for government\ndocuments. Navigate complex forms with ease',
                         textAlign: TextAlign.center,
@@ -122,10 +128,7 @@ class _AppStartState extends State<AppStart> {
                           height: 1.55,
                         ),
                       ),
-
                       const Spacer(flex: 3),
-
-                      //Get Started Button
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -147,10 +150,7 @@ class _AppStartState extends State<AppStart> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 14),
-
-                      //Continue as Guest Button
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -183,10 +183,7 @@ class _AppStartState extends State<AppStart> {
                                 ),
                         ),
                       ),
-
                       const SizedBox(height: 24),
-
-                      // ── Terms & Privacy ──
                       RichText(
                         textAlign: TextAlign.center,
                         text: TextSpan(
@@ -220,7 +217,6 @@ class _AppStartState extends State<AppStart> {
                           ],
                         ),
                       ),
-
                       const SizedBox(height: 20),
                     ],
                   ),
