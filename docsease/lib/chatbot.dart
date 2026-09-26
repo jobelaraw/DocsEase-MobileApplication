@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -34,6 +35,11 @@ class ChatBotScreen extends StatefulWidget {
   // Lets the header's new chat icon open the chat history drawer
   static void openHistory() {
     _ChatBotScreenState._activeState?._scaffoldKey.currentState?.openDrawer();
+  }
+
+  // Lets the header's search icon open the search bar
+  static void openSearch() {
+    _ChatBotScreenState._activeState?._openSearch();
   }
 
   @override
@@ -93,6 +99,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   bool _showSuggestions = true; // Controls visibility of floating chips
   bool _isSelecting = false; // History drawer is in "delete multiple" mode
   final Set<String> _selectedIds = {}; // Conversations checked for deletion
+  bool _isSearching = false; // Shows the search bar above the messages
+  final TextEditingController _searchController = TextEditingController();
+  List<int> _searchMatches = []; // Indexes of messages containing the query, oldest first
+  int _currentMatch = 0; // Position in _searchMatches that is focused
+  Map<int, GlobalKey> _matchKeys = {}; // Message index -> key, used to scroll to a match
   static List<Office> _cachedOffices = []; // Cached offices data from Firestore (shared across instances)
 
   // Connectivity
@@ -158,6 +169,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     _messages.clear();
     _suggestions = _generateRandomSuggestions();
     _showSuggestions = true;
+    _clearSearch();
   }
 
   // ─── New Chat: Clears the screen, the conversation is created on the first message ───
@@ -297,6 +309,72 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       _isSelecting = false;
       _selectedIds.clear();
     });
+  }
+
+  // ─── Search: Finds messages in the open conversation that contain the query ───
+  void _openSearch() {
+    _scaffoldKey.currentState?.closeDrawer();
+    if (_isLoadingHistory) return;
+    setState(() => _isSearching = true);
+  }
+
+  void _closeSearch() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(_clearSearch);
+  }
+
+  void _clearSearch() {
+    _isSearching = false;
+    _searchController.clear();
+    _searchMatches = [];
+    _matchKeys = {};
+  }
+
+  void _runSearch(String query) {
+    final q = query.trim().toLowerCase();
+    final matches = [
+      if (q.isNotEmpty)
+        for (var i = 0; i < _messages.length; i++)
+          if (_messages[i].text.toLowerCase().contains(q)) i,
+    ];
+    setState(() {
+      _searchMatches = matches;
+      _matchKeys = {for (final i in matches) i: _matchKeys[i] ?? GlobalKey()};
+      _currentMatch = matches.length - 1; // Start from the newest match
+    });
+    _scrollToMatch();
+  }
+
+  // Moves between matches: -1 = older, +1 = newer
+  void _stepMatch(int step) {
+    final next = _currentMatch + step;
+    if (next < 0 || next >= _searchMatches.length) return;
+    setState(() => _currentMatch = next);
+    _scrollToMatch();
+  }
+
+  void _scrollToMatch() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _currentMatch < 0 || _currentMatch >= _searchMatches.length) return;
+      final matchContext = _matchKeys[_searchMatches[_currentMatch]]?.currentContext;
+      if (matchContext == null) return;
+      Scrollable.ensureVisible(
+        matchContext,
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  // ─── Search Highlight: Outlines matching messages, thicker for the current match ───
+  BoxDecoration? _searchHighlight(int index, BorderRadius radius) {
+    if (!_matchKeys.containsKey(index)) return null;
+    final isCurrent = _searchMatches[_currentMatch] == index;
+    return BoxDecoration(
+      borderRadius: radius,
+      border: Border.all(color: const Color(0xFFF59E0B), width: isCurrent ? 2.5 : 1),
+    );
   }
 
   // ─── Load Conversation from Firestore + regenerate related services ───
@@ -535,6 +613,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     _tts.dispose();
     _controller.dispose();
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -553,12 +632,15 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         ? const Center(child: CircularProgressIndicator())
         : Column(
         children: [
+          if (_isSearching) _buildSearchBar(),
           Expanded(
             child: Stack(
               children: [
                 ListView.builder(
                   controller: _scrollController,
                   physics: const BouncingScrollPhysics(),
+                  // While searching, build every message so any match can be scrolled to
+                  scrollCacheExtent: _isSearching ? const ScrollCacheExtent.pixels(100000) : null,
                   reverse: true,
                   padding: EdgeInsets.only(left: 10, right: 10, top: 20, bottom: _showSuggestions ? 60 : 20),
                   itemCount: _messages.length + (_isLoading ? 1 : 0),
@@ -569,7 +651,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                     final msg = _messages[reversedIndex];
                     final showDate = _shouldShowDateSeparator(reversedIndex);
                     final messageWidget = msg.isUser
-                        ? _buildUserMessage(msg.text, msg.time)
+                        ? _buildUserMessage(msg.text, msg.time, reversedIndex)
                         : Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -580,16 +662,21 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                             ],
                           );
                     
+                    final matchKey = _matchKeys[reversedIndex];
+                    final keyedMessage = matchKey != null
+                        ? KeyedSubtree(key: matchKey, child: messageWidget)
+                        : messageWidget;
+
                     if (showDate) {
                       return Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _buildDateSeparator(msg.datetime),
-                          messageWidget,
+                          keyedMessage,
                         ],
                       );
                     }
-                    return messageWidget;
+                    return keyedMessage;
                   },
                 ),
                 // Floating suggestion chips
@@ -660,6 +747,82 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Search Bar: Query field, match counter, older/newer arrows, and close ───
+  Widget _buildSearchBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final lang = Provider.of<SettingsProvider>(context).language;
+    final total = _searchMatches.length;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(color: onSurface.withValues(alpha: 0.1), width: 0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 42,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: isDark ? Theme.of(context).colorScheme.primary : const Color(0xFFF2F2F2),
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.search, color: onSurface.withValues(alpha: 0.5), size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      autofocus: true,
+                      textInputAction: TextInputAction.search,
+                      onChanged: _runSearch,
+                      onSubmitted: (_) => _stepMatch(-1),
+                      decoration: InputDecoration(
+                        isCollapsed: true,
+                        border: InputBorder.none,
+                        hintText: AppLocalizations.translate('Search in conversation', lang),
+                        hintStyle: GoogleFonts.inter(color: onSurface.withValues(alpha: 0.5), fontSize: 14),
+                      ),
+                    ),
+                  ),
+                  if (_searchController.text.trim().isNotEmpty)
+                    Text(
+                      total == 0 ? '0/0' : '${total - _currentMatch}/$total',
+                      style: GoogleFonts.inter(color: onSurface.withValues(alpha: 0.6), fontSize: 12),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            color: onSurface,
+            icon: const Icon(Icons.keyboard_arrow_up),
+            onPressed: _currentMatch > 0 ? () => _stepMatch(-1) : null,
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            color: onSurface,
+            icon: const Icon(Icons.keyboard_arrow_down),
+            onPressed: _currentMatch < total - 1 ? () => _stepMatch(1) : null,
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            color: onSurface,
+            icon: const Icon(Icons.close),
+            onPressed: _closeSearch,
           ),
         ],
       ),
@@ -1267,6 +1430,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   // ─── Build Bot Message Bubble ───
   Widget _buildBotMessage(String text, String time, int index) {
+    const botBubbleRadius = BorderRadius.only(
+      topRight: Radius.circular(20),
+      bottomLeft: Radius.circular(20),
+      bottomRight: Radius.circular(20),
+    );
     return Padding(
       padding: const EdgeInsets.only(bottom: 18, right: 20),
       child: Row(
@@ -1358,12 +1526,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                           color: Theme.of(context).brightness == Brightness.dark
                               ? Theme.of(context).colorScheme.primary
                               : Theme.of(context).colorScheme.surface,
-                          borderRadius: BorderRadius.only(
-                            topRight: Radius.circular(20),
-                            bottomLeft: Radius.circular(20),
-                            bottomRight: Radius.circular(20),
-                          ),
+                          borderRadius: botBubbleRadius,
                         ),
+                        foregroundDecoration: _searchHighlight(index, botBubbleRadius),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -1440,7 +1605,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   }
 
   // ─── Build User Message Bubble ───
-  Widget _buildUserMessage(String text, String time) {
+  Widget _buildUserMessage(String text, String time, int index) {
+    const userBubbleRadius = BorderRadius.only(
+      topLeft: Radius.circular(20),
+      bottomLeft: Radius.circular(20),
+      bottomRight: Radius.circular(20),
+    );
     return Padding(
       padding: EdgeInsets.only(bottom: 18, left: MediaQuery.of(context).size.width * 0.25),
       child: Column(
@@ -1450,12 +1620,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             padding: const EdgeInsets.fromLTRB(15, 15, 15, 7),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.secondary,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
+              borderRadius: userBubbleRadius,
             ),
+            foregroundDecoration: _searchHighlight(index, userBubbleRadius),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [

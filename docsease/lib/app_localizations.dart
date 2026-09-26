@@ -67,6 +67,7 @@ class AppLocalizations {
       'Building Permit': 'Permiso sa Pagtatayo ng Gusali',
       'New Chat': 'Bagong Chat',
       'Chat History': 'Kasaysayan ng Chat',
+      'Search in conversation': 'Maghanap sa usapan',
       'No conversations yet.': 'Wala pang mga usapan.',
       'Delete chat': 'Burahin ang chat',
       'Delete current conversation': 'Burahin ang kasalukuyang usapan',
