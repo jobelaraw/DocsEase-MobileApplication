@@ -33,7 +33,7 @@ class ChatBotScreen extends StatefulWidget {
 
   // Lets the header's new chat icon open the chat history drawer
   static void openHistory() {
-    _ChatBotScreenState._activeState?._scaffoldKey.currentState?.openDrawer();
+    _ChatBotScreenState._activeState?._scaffoldKey.currentState?.openEndDrawer();
   }
 
   // Lets the header's search icon open the search bar
@@ -183,7 +183,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   // ─── New Chat: Clears the screen, the conversation is created on the first message ───
   void _startNewChat() {
-    _scaffoldKey.currentState?.closeDrawer();
+    _scaffoldKey.currentState?.closeEndDrawer();
     if (_isLoading) return;
     _resetToNewChat();
   }
@@ -198,7 +198,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   // ─── Open Conversation: Loads a past conversation from the history drawer ───
   Future<void> _openConversation(String convoId) async {
-    _scaffoldKey.currentState?.closeDrawer();
+    _scaffoldKey.currentState?.closeEndDrawer();
     if (_isLoading || convoId == _conversationId) return;
     setState(() {
       _resetChat();
@@ -301,7 +301,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         }
 
         _exitSelection();
-        if (closeDrawer) _scaffoldKey.currentState?.closeDrawer();
+        if (closeDrawer) _scaffoldKey.currentState?.closeEndDrawer();
         if (ids.contains(_conversationId)) _resetToNewChat();
       },
     );
@@ -322,7 +322,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   // ─── Search: Finds messages in the open conversation that contain the query ───
   void _openSearch() {
-    _scaffoldKey.currentState?.closeDrawer();
+    _scaffoldKey.currentState?.closeEndDrawer();
     if (_isLoadingHistory) return;
     setState(() => _isSearching = true);
   }
@@ -613,8 +613,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      drawer: _buildHistoryDrawer(),
-      onDrawerChanged: (isOpen) {
+      endDrawer: _buildHistoryDrawer(),
+      onEndDrawerChanged: (isOpen) {
         if (!isOpen && _isSelecting) _exitSelection();
       },
       backgroundColor: Theme.of(context).brightness == Brightness.dark
