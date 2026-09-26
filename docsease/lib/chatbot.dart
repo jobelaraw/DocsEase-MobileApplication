@@ -1,14 +1,13 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'tts_service.dart';
+import 'chat_ai_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:docsease/app_localizations.dart';
 import 'package:docsease/settings_provider.dart';
@@ -76,7 +75,9 @@ class _ChatMessage {
   final DateTime datetime;
   final List<ServiceDetail> relatedServices; // Related service cards shown below bot reply
   final bool isWelcome; // Greeting + random service cards at the start of a new chat
-  _ChatMessage({required this.text, required this.isUser, required this.time, required this.datetime, this.relatedServices = const [], this.isWelcome = false});
+  final String? category; // Bot reply type from ChatAiService, e.g. specific_service or general
+  final String? answeredTopic; // For specific_service: which part was answered (requirements, fees, ...)
+  _ChatMessage({required this.text, required this.isUser, required this.time, required this.datetime, this.relatedServices = const [], this.isWelcome = false, this.category, this.answeredTopic});
 }
 
 // ─── ChatBot Screen State ───
@@ -385,31 +386,23 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     );
   }
 
-  // ─── Load Conversation from Firestore + regenerate related services ───
+  // ─── Load Conversation from Firestore + restore the cards saved with each bot reply ───
   Future<void> _loadConversation(String convoId) async {
     final messages = await _chatService.getMessages(convoId);
     if (_conversationId != convoId) return; // A different conversation was opened meanwhile
     if (mounted && messages.isNotEmpty) {
       _messages.clear();
-      String? lastUserText;
       for (var msg in messages) {
         final dt = (msg['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
-        final isUser = msg['isUser'] ?? false;
-        List<ServiceDetail> related = [];
-        if (!isUser && lastUserText != null) {
-          related = _findRelatedServices(lastUserText);
-          lastUserText = null;
-        }
-        if (isUser) lastUserText = msg['text'] ?? '';
-        final isWelcome = msg['type'] == 'welcome';
-        if (isWelcome) related = _servicesByIds(List<String>.from(msg['serviceIds'] ?? []));
         _messages.add(_ChatMessage(
           text: msg['text'] ?? '',
-          isUser: isUser,
+          isUser: msg['isUser'] ?? false,
           time: _formatTime(dt),
           datetime: dt,
-          relatedServices: related,
-          isWelcome: isWelcome,
+          relatedServices: _servicesByIds(List<String>.from(msg['serviceIds'] ?? [])),
+          isWelcome: msg['type'] == 'welcome',
+          category: msg['category'],
+          answeredTopic: msg['answeredTopic'],
         ));
       }
     }
@@ -489,67 +482,47 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         return;
       }
 
-      final relatedForCards = _findRelatedServices(text);
+      // Offices may have failed to load when the screen opened (e.g., offline)
+      if (_cachedOffices.isEmpty) _cachedOffices = await FirebaseServices().getOffices();
 
-      final messages = [
-        {
-          'role': 'system',
-          'content':
-              'Ikaw si DocsEase Bot. Tagapayo sa government documents sa Pilipinas.'
-              'RULES:'
-              '1. If user greets (hi, hello, kamusta, etc): respond with a SHORT friendly greeting and ask how you can help with their document needs.'
-              '2. If user asks GENERALLY about a service (how to get, pano kumuha, etc): respond with ONLY 1 SHORT sentence description. Do NOT mention any button or shortcut.'
-              '3. If user asks SPECIFICALLY about requirements: list ONLY requirements.'
-              '4. If user asks SPECIFICALLY about procedure/steps: list ONLY the steps.'
-              '5. If user asks SPECIFICALLY about cost/fee/bayad: answer ONLY the cost.'
-              '6. If user asks SPECIFICALLY about office/location/saan: answer ONLY the location.'
-              '7. If user asks SPECIFICALLY about duration/time: answer ONLY the processing time.'
-              '8. NEVER add extra info the user did not ask for.'
-              '9. ONLY reject questions about coding, math, programming, personal advice, or topics completely unrelated to government services. Questions about permits, documents, certificates, offices ARE related - answer them.'
-              'WIKA: Match user language (Tagalog/English).'
-              'FORMAT: Keep answers short and direct. Use bullet points only when listing multiple items.',
-        },
-        ..._messages
-            .skip(1)
-            .toList()
-            .reversed
-            .take(4)
-            .toList()
-            .reversed
-            .map((m) => {'role': m.isUser ? 'user' : 'assistant', 'content': m.text}),
-      ];
+      // Recent turns so follow-ups like "magkano?" know which service is being discussed
+      final history = _messages
+          .where((m) => !m.isWelcome)
+          .toList()
+          .reversed
+          .take(6)
+          .toList()
+          .reversed
+          .map((m) => {'role': m.isUser ? 'user' : 'assistant', 'content': m.text})
+          .toList();
 
-      final response = await http
-          .post(
-            Uri.parse('https://api.openai.com/v1/chat/completions'),
-            headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $apiKey'},
-            body: jsonEncode({
-              'model': 'gpt-4o-mini',
-              'messages': messages,
-              'temperature': 0.0,
-              'max_tokens': 150,
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
+      final reply = await ChatAiService(apiKey: apiKey, offices: _cachedOffices).ask(history);
+      final services = _servicesByIds(reply.serviceIds).take(3).toList();
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final reply = data['choices'][0]['message']['content'] as String;
-        if (mounted) {
-          final replyTime = DateTime.now();
-          setState(() {
-            _messages.add(
-              _ChatMessage(text: reply.trim(), isUser: false, time: _formatTime(replyTime), datetime: replyTime, relatedServices: relatedForCards),
-            );
+      if (mounted) {
+        final replyTime = DateTime.now();
+        setState(() {
+          _messages.add(_ChatMessage(
+            text: reply.answer,
+            isUser: false,
+            time: _formatTime(replyTime),
+            datetime: replyTime,
+            relatedServices: services,
+            category: reply.category,
+            answeredTopic: reply.answeredTopic,
+          ));
+        });
+        if (_chatService.isLoggedIn && _conversationId != null) {
+          _chatService.saveMessage(_conversationId!, reply.answer, false, extra: {
+            'category': reply.category,
+            'answeredTopic': reply.answeredTopic,
+            'serviceIds': services.map((s) => s.serviceId).toList(),
           });
-          if (_chatService.isLoggedIn && _conversationId != null) {
-            _chatService.saveMessage(_conversationId!, reply.trim(), false);
-          }
         }
-      } else {
-        debugPrint('OpenAI error: ${response.statusCode} ${response.body}');
-        if (mounted) _addError('Error ${response.statusCode}: ${response.reasonPhrase}');
       }
+    } on ChatAiException catch (e) {
+      debugPrint('OpenAI error: $e');
+      if (mounted) _addError('Error ${e.statusCode}: ${e.reasonPhrase}');
     } catch (e) {
       debugPrint('Chatbot error: $e');
       if (mounted) _addError('Failed to connect. Please check your internet connection.');
@@ -678,7 +651,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildBotMessage(msg.text, msg.time, reversedIndex),
-                              if (msg.relatedServices.isNotEmpty)
+                              if (msg.category == 'specific_service' && msg.relatedServices.isNotEmpty)
+                                _buildFollowUpCards(msg.relatedServices.first, msg.answeredTopic)
+                              else if (msg.relatedServices.isNotEmpty)
                                 _buildRelatedServices(msg.relatedServices),
                             ],
                           );
@@ -1194,105 +1169,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   }
 
 
-  // ─── Find Related Services: Keyword matching against cached offices ───
-  // Matches user's message keywords against service names (English + Filipino)
-  // Returns 1 result for specific queries (2+ keyword matches)
-  // Returns up to 3 results for broad queries (1 keyword match)
-  List<ServiceDetail> _findRelatedServices(String userMessage) {
-    if (_cachedOffices.isEmpty) return [];
-    final msg = userMessage.toLowerCase();
-    final allServices = _cachedOffices.expand((o) => o.services).toList();
-
-    // Tagalog topic mappings
-    const tagalogMap = {
-      'negosyo': 'business',
-      'permiso': 'permit',
-      'kasal': 'marriage',
-      'ikasal': 'marriage',
-      'kapanganakan': 'birth',
-      'pagtatayo': 'building',
-      'konstruksyon': 'construction',
-      'lisensya': 'license',
-      'sertipiko': 'certificate',
-      'clearance': 'clearance',
-      'buwis': 'tax',
-      'kamatayan': 'death',
-      'patay': 'death',
-      'namatay': 'death',
-      'rehistro': 'registration',
-      'pagreretiro': 'retirement',
-      'reklamo': 'complaint',
-      'espesyal': 'special',
-      'okupasyon': 'occupancy',
-      'elektrikal': 'electrical',
-      'inspeksyon': 'inspection',
-      'kalusugan': 'health',
-      'bata': 'child',
-      'renewal': 'renewal',
-      'mag-renew': 'renewal',
-    };
-
-    // Words to ignore
-    const skipWords = {'pano', 'paano', 'mag', 'ang', 'nga', 'nang', 'para', 'saan', 'ano', 'anong', 'gusto', 'kailangan', 'asikaso', 'papel', 'dokumento', 'proseso', 'kumuha', 'pagkuha'};
-
-    // Extract meaningful topic keywords
-    final words = msg.split(RegExp(r'[\s,?.!]+'));
-    final topicKeywords = <String>[];
-    for (var w in words) {
-      if (w.length < 3 || skipWords.contains(w)) continue;
-      if (tagalogMap.containsKey(w)) {
-        topicKeywords.add(tagalogMap[w]!);
-      } else {
-        topicKeywords.add(w);
-      }
-    }
-
-    if (topicKeywords.isEmpty) return [];
-
-    // Score services by how many topic keywords match their name
-    final scored = <ServiceDetail, int>{};
-    for (var service in allServices) {
-      final nameEn = service.title.toLowerCase();
-      final nameFil = service.titleFil.toLowerCase();
-      int score = 0;
-      for (var kw in topicKeywords) {
-        if (nameEn.contains(kw) || nameFil.contains(kw)) score++;
-      }
-      if (score > 0) scored[service] = score;
-    }
-
-    if (scored.isEmpty) return [];
-
-    final sorted = scored.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    final topScore = sorted.first.value;
-
-    // If top score is high (2+ keywords matched), it's a specific service - show only 1
-    if (topScore >= 2) {
-      return [sorted.first.key];
-    }
-
-    // For single keyword matches, only return services that share the SAME matched keyword
-    // This prevents "certificate" matching unrelated certificate services
-    final topService = sorted.first.key;
-    final topNameEn = topService.title.toLowerCase();
-    // Find which keyword matched the top result
-    String? matchedKeyword;
-    for (var kw in topicKeywords) {
-      if (topNameEn.contains(kw)) {
-        matchedKeyword = kw;
-        break;
-      }
-    }
-    if (matchedKeyword == null) return [topService];
-
-    // Only return services that also match this specific keyword
-    final filtered = sorted.where((e) {
-      final name = e.key.title.toLowerCase();
-      return name.contains(matchedKeyword!);
-    }).take(3).map((e) => e.key).toList();
-    return filtered;
-  }
-
   // ─── Navigate to Office: Shows all services under an office ───
   void _navigateToOffice(String officeId) {
     final office = _cachedOffices.where((o) => o.officeId == officeId).firstOrNull;
@@ -1509,11 +1385,100 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   // ─── Build Individual Related Service Card ───
   Widget _buildRelatedServiceCard(ServiceDetail service) {
     final lang = Provider.of<SettingsProvider>(context, listen: false).language;
-    return GestureDetector(
+    return _buildSuggestionCard(
+      icon: UIHelper.getIconForService(service.title),
+      iconBackground: UIHelper.getBgColorForService(service.title),
+      title: service.getTitle(lang),
+      subtitle: service.getDescription(lang),
       onTap: () => Navigator.push(
         context,
         SlideRoute(page: InformationScreen(detail: service)),
       ),
+    );
+  }
+
+  // Follow-up topics offered under a specific-service answer: key, label, icon, question (English, Filipino)
+  static const _followUpTopics = [
+    ('requirements', 'Requirements', Icons.checklist_rounded,
+        'What are the requirements for {s}?', 'Ano ang mga requirements para sa {s}?'),
+    ('steps', 'Step-by-step process', Icons.format_list_numbered_rounded,
+        'What are the steps for {s}?', 'Ano ang mga hakbang para sa {s}?'),
+    ('fees', 'Fees', Icons.payments_outlined,
+        'How much are the fees for {s}?', 'Magkano ang bayad para sa {s}?'),
+    ('persons_in_charge', 'Persons in charge', Icons.badge_outlined,
+        'Who is in charge of {s}?', 'Sino ang namamahala sa {s}?'),
+    ('processing_time', 'Processing time', Icons.schedule_rounded,
+        'How long does {s} take?', 'Gaano katagal ang {s}?'),
+  ];
+
+  // ─── Follow-Up Cards: Other topics about the service just answered (fees, steps, ...) ───
+  Widget _buildFollowUpCards(ServiceDetail service, String? answeredTopic) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    final serviceTitle = service.getTitle(lang);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final topics = _followUpTopics.where((t) => t.$1 != answeredTopic).take(3);
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 46, right: 46, top: 9, bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${AppLocalizations.translate('More about', lang)} $serviceTitle',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 3),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              SlideRoute(page: InformationScreen(detail: service)),
+            ),
+            child: Text(
+              '${AppLocalizations.translate('View full details', lang)} →',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white70 : Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...topics.map((topic) {
+            final question = (lang == 'Filipino' ? topic.$5 : topic.$4).replaceAll('{s}', serviceTitle);
+            return _buildSuggestionCard(
+              icon: topic.$3,
+              iconBackground: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
+              title: AppLocalizations.translate(topic.$2, lang),
+              subtitle: serviceTitle,
+              onTap: () => _askFollowUp(question),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ─── Ask Follow-Up: Sends a follow-up card's question as if the user typed it ───
+  void _askFollowUp(String question) {
+    if (_isLoading) return;
+    _controller.text = question;
+    _sendMessage();
+  }
+
+  // ─── Suggestion Card: Icon tile, title, one-line subtitle, chevron ───
+  Widget _buildSuggestionCard({
+    required IconData icon,
+    required Color iconBackground,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1532,13 +1497,13 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: UIHelper.getBgColorForService(service.title),
+                color: iconBackground,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
-                UIHelper.getIconForService(service.title),
+                icon,
                 size: 18,
-                color: Colors.black,
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
               ),
             ),
             const SizedBox(width: 12),
@@ -1547,16 +1512,16 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    service.getTitle(lang),
+                    title,
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                     ),
                   ),
-                  if (service.getDescription(lang).isNotEmpty)
+                  if (subtitle.isNotEmpty)
                     Text(
-                      service.getDescription(lang),
+                      subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.inter(
