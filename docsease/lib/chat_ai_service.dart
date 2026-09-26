@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:docsease/info_model.dart';
 
@@ -83,7 +84,7 @@ class ChatAiService {
     return ChatAiReply(
       replyLanguage: reply['reply_language'] as String,
       category: category,
-      answer: (reply['answer'] as String).trim(),
+      answer: composeAnswer(reply['answer'] as Map<String, dynamic>),
       serviceIds: serviceIds,
       answeredTopic: reply['answered_topic'] as String,
     );
@@ -115,6 +116,63 @@ class ChatAiService {
     // Decode as UTF-8 explicitly so "Biñan" and other accents come through intact
     final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     return data['choices'][0]['message'] as Map<String, dynamic>;
+  }
+
+  // ─── Compose Answer: Builds Markdown with a bold main point and indented details per item ───
+  @visibleForTesting
+  static String composeAnswer(Map<String, dynamic> answer) {
+    final parts = <String>[];
+    final intro = (answer['intro'] as String).trim();
+    if (intro.isNotEmpty) parts.add(intro);
+
+    final items = answer['items'] as List<dynamic>;
+    if (items.isNotEmpty) {
+      final numbered = answer['list_style'] == 'numbered';
+      final lines = <String>[];
+      for (var i = 0; i < items.length; i++) {
+        final item = items[i] as Map<String, dynamic>;
+        final (point, extraDetails) = _splitParentheses((item['point'] as String).replaceAll('**', '').trim());
+        final details = [...extraDetails, ...List<String>.from(item['details'])];
+
+        final marker = numbered ? '${i + 1}.' : '-';
+        lines.add('$marker **$point**');
+        // Nested list indented to the item's text so Markdown renders it under the point
+        final indent = ' ' * (marker.length + 1);
+        for (final detail in details.map((d) => d.trim()).where((d) => d.isNotEmpty)) {
+          lines.add('$indent- $detail');
+        }
+      }
+      parts.add(lines.join('\n'));
+    }
+
+    final closing = (answer['closing'] as String).trim();
+    if (closing.isNotEmpty) parts.add(closing);
+    return parts.join('\n\n');
+  }
+
+  // Safety net: moves "(...)" at the start or end of a point into its details,
+  // e.g. "Occupancy Permit (if applicable)" or "(For representatives) Authorization Letter".
+  // Acronyms such as "(OBO)" stay in the point.
+  static (String, List<String>) _splitParentheses(String point) {
+    final leading = <String>[];
+    final trailing = <String>[];
+    var rest = point;
+    bool isAcronym(String text) => RegExp(r'^[A-Z0-9&/.\-]{2,10}$').hasMatch(text.trim());
+    String capitalize(String text) => text[0].toUpperCase() + text.substring(1);
+
+    while (true) {
+      final start = RegExp(r'^\(([^()]+)\)\s*(\S.*)$').firstMatch(rest);
+      if (start == null || isAcronym(start.group(1)!)) break;
+      leading.add(capitalize(start.group(1)!.trim()));
+      rest = start.group(2)!;
+    }
+    while (true) {
+      final end = RegExp(r'^(.*\S)\s*\(([^()]+)\)$').firstMatch(rest);
+      if (end == null || isAcronym(end.group(2)!)) break;
+      trailing.insert(0, capitalize(end.group(2)!.trim()));
+      rest = end.group(1)!;
+    }
+    return (rest, [...leading, ...trailing]);
   }
 
   // ─── Catalog: Every office (schedule, contacts) and its services, one line each ───
@@ -158,7 +216,7 @@ class ChatAiService {
           lines.add('Requirements:');
           for (final req in tab.requirements) {
             final secureAt = _clean(req.secureAt);
-            lines.add('- ${_clean(req.title)}${secureAt.isEmpty ? '' : ' (secure at: $secureAt)'}');
+            lines.add('- ${_clean(req.title)}${secureAt.isEmpty ? '' : ' | Secure at: $secureAt'}');
           }
         }
         if (tab.steps.isNotEmpty) {
@@ -280,7 +338,34 @@ class ChatAiService {
             'type': 'string',
             'enum': ['greeting', 'specific_service', 'general', 'office_info', 'off_topic', 'not_found'],
           },
-          'answer': {'type': 'string'},
+          'answer': {
+            'type': 'object',
+            'additionalProperties': false,
+            'required': ['intro', 'list_style', 'items', 'closing'],
+            'properties': {
+              'intro': {'type': 'string'},
+              'list_style': {
+                'type': 'string',
+                'enum': ['none', 'bullets', 'numbered'],
+              },
+              'items': {
+                'type': 'array',
+                'items': {
+                  'type': 'object',
+                  'additionalProperties': false,
+                  'required': ['point', 'details'],
+                  'properties': {
+                    'point': {'type': 'string'},
+                    'details': {
+                      'type': 'array',
+                      'items': {'type': 'string'},
+                    },
+                  },
+                },
+              },
+              'closing': {'type': 'string'},
+            },
+          },
           'service_ids': {
             'type': 'array',
             'items': {'type': 'string'},
@@ -326,7 +411,14 @@ LANGUAGE
 - Write the WHOLE answer in reply_language: natural Filipino for tagalog, a casual Tagalog-English mix for taglish, plain English for english. Translate the data into that language, but keep official names of offices, services, forms, and documents as written.
 
 STYLE
-- Be short and direct. Use bullet points only for lists such as requirements or steps.
+- Be short and direct.
+
+FORMAT (the answer object)
+- intro: the sentence(s) before any list; for answers without a list, the whole answer goes here. When there is a list, keep intro to one short lead-in sentence and don't repeat the list's content in it. Bold the key information with **double asterisks** (e.g., "Biñan City Hall's offices are open **Monday to Friday, 8AM-5PM**.").
+- items: use for requirements, steps, fees, persons in charge, or any other list. point = only the main point, short, with no parentheses. details = the extra information that would otherwise go in parentheses or after it, one short line each (e.g., point "Occupancy Permit", details ["If applicable", "Secure at: City Engineering Office"]; point "Application and Assessment", details ["Submit the requirements and fill out the application form."]). Leave items empty when there is no list.
+- list_style: "numbered" for steps, "bullets" for other lists, "none" when items is empty.
+- closing: an optional short sentence after the list; usually empty.
+- Never write Markdown list markers or parentheses in intro or closing.
 - Never mention buttons, cards, service IDs, tools, or "the data".
 
 BIÑAN CITY HALL DATA

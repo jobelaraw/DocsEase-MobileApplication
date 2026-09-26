@@ -421,8 +421,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   // ─── Strip Markdown: Removes formatting for TTS ───
   String _stripMarkdown(String text) {
     return text
-        .replaceAll(RegExp(r'\*\*(.*?)\*\*'), r'$1')
-        .replaceAll(RegExp(r'\*(.*?)\*'), r'$1')
+        .replaceAllMapped(RegExp(r'\*\*(.*?)\*\*'), (m) => m[1]!)
+        .replaceAllMapped(RegExp(r'\*(.*?)\*'), (m) => m[1]!)
         .replaceAll(RegExp(r'#+\s'), '')
         .replaceAll(RegExp(r'- '), '')
         .trim();
