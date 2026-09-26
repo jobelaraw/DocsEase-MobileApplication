@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -115,10 +116,23 @@ class FirebaseServices {
     }
   }
 
-  Future<UserCredential?> signInWithGoogleStrict({
-    GoogleSignInAccount? googleUser,
-  }) async {
-    googleUser ??= await GoogleSignIn().signIn();
+  // Returns null if the user dismissed the account picker.
+  Future<UserCredential?> _signInWithGoogle() async {
+    // google_sign_in's signIn() doesn't return an idToken on web, so use Firebase's popup flow there
+    if (kIsWeb) {
+      final provider = GoogleAuthProvider()..setCustomParameters({'prompt': 'select_account'});
+      try {
+        return await _auth.signInWithPopup(provider);
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'popup-closed-by-user' || e.code == 'cancelled-popup-request') return null;
+        rethrow;
+      }
+    }
+
+    final GoogleSignIn googleSignIn = GoogleSignIn();
+    // sign out first so the account picker is always shown
+    await googleSignIn.signOut();
+    final googleUser = await googleSignIn.signIn();
     if (googleUser == null) return null;
 
     final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
@@ -126,9 +140,12 @@ class FirebaseServices {
       accessToken: googleAuth.accessToken,
       idToken: googleAuth.idToken,
     );
+    return await _auth.signInWithCredential(credential);
+  }
 
-    UserCredential userCredential = await _auth.signInWithCredential(credential);
-    User? user = userCredential.user;
+  Future<UserCredential?> signInWithGoogleStrict() async {
+    UserCredential? userCredential = await _signInWithGoogle();
+    User? user = userCredential?.user;
     if (user == null) return null;
 
     final adminDoc = await _db.collection('admin').doc(user.uid).get();
@@ -146,20 +163,9 @@ class FirebaseServices {
     return userCredential;
   }
 
-  Future<UserCredential?> signUpWithGoogle({
-    GoogleSignInAccount? googleUser,
-  }) async {
-    googleUser ??= await GoogleSignIn().signIn();
-    if (googleUser == null) return null;
-
-    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-    final AuthCredential credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-
-    UserCredential userCredential = await _auth.signInWithCredential(credential);
-    User? user = userCredential.user;
+  Future<UserCredential?> signUpWithGoogle() async {
+    UserCredential? userCredential = await _signInWithGoogle();
+    User? user = userCredential?.user;
     if (user == null) return null;
 
     final adminDoc = await _db.collection('admin').doc(user.uid).get();
@@ -192,10 +198,13 @@ class FirebaseServices {
 
   Future<void> signOutUser() async {
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn();
+      // on web the Google session is managed by Firebase Auth
+      if (!kIsWeb) {
+        final GoogleSignIn googleSignIn = GoogleSignIn();
 
-      if (await googleSignIn.isSignedIn()) {
-        await googleSignIn.signOut();
+        if (await googleSignIn.isSignedIn()) {
+          await googleSignIn.signOut();
+        }
       }
     } catch (e) {
       print("Sign Out Error: $e");
