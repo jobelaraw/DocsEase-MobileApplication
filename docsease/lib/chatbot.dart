@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'tts_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:docsease/app_localizations.dart';
@@ -18,6 +19,7 @@ import 'package:docsease/info_model.dart';
 import 'package:docsease/information.dart';
 import 'package:docsease/services.dart';
 import 'package:docsease/navigator_transition.dart';
+import 'package:docsease/app_modals.dart';
 
 // ─── ChatBot Screen Widget ───
 class ChatBotScreen extends StatefulWidget {
@@ -29,8 +31,35 @@ class ChatBotScreen extends StatefulWidget {
     _ChatBotScreenState._cachedOffices = offices;
   }
 
+  // Lets the header's new chat icon open the chat history drawer
+  static void openHistory() {
+    _ChatBotScreenState._activeState?._scaffoldKey.currentState?.openDrawer();
+  }
+
   @override
   State<ChatBotScreen> createState() => _ChatBotScreenState();
+}
+
+// ─── New Chat Icon: Square with a pencil, used in the header and history drawer ───
+class NewChatIcon extends StatelessWidget {
+  final Color color;
+  final double size;
+  const NewChatIcon({super.key, required this.color, this.size = 22});
+
+  static const _svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
+      'stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+      '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>'
+      '<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+
+  @override
+  Widget build(BuildContext context) {
+    return SvgPicture.string(
+      _svg,
+      width: size,
+      height: size,
+      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+    );
+  }
 }
 
 // ─── Chat Message Model ───
@@ -50,6 +79,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   final ScrollController _scrollController = ScrollController();
   final TtsService _tts = TtsService();
   final ChatService _chatService = ChatService();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  late final Stream<QuerySnapshot> _conversationsStream = _chatService.getConversations();
+  static _ChatBotScreenState? _activeState; // Currently open chatbot, used by openHistory()
 
   // State variables
   int? _speakingIndex; // Index of currently speaking message (for TTS)
@@ -69,6 +101,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   @override
   void initState() {
     super.initState();
+    _activeState = this;
     _conversationId = widget.conversationId;
     _suggestions = _generateRandomSuggestions(); // Generate random suggestion chips
     _initData(); // Load offices + messages
@@ -98,24 +131,94 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       }
     }
 
-    if (_messages.isEmpty) {
-      final now = DateTime.now();
-      _messages.add(_ChatMessage(
-        text: "Hi! Ako si DocsEase Bot at Nandito ako para tulungan ka sa mga dokumento, permit, at anumang prosesong kailangan mo. Ano ang gusto mong gawin ngayon?",
-        isUser: false,
-        time: _formatTime(now),
-        datetime: now,
-      ));
-    }
+    if (_messages.isEmpty) _addWelcomeMessage();
 
     if (mounted) {
       setState(() => _isLoadingHistory = false);
     }
   }
 
+  // ─── Welcome Message: First bot message of every new chat ───
+  void _addWelcomeMessage() {
+    final now = DateTime.now();
+    _messages.add(_ChatMessage(
+      text: "Hi! Ako si DocsEase Bot at Nandito ako para tulungan ka sa mga dokumento, permit, at anumang prosesong kailangan mo. Ano ang gusto mong gawin ngayon?",
+      isUser: false,
+      time: _formatTime(now),
+      datetime: now,
+    ));
+  }
+
+  // ─── Reset Chat: Stops TTS and clears the screen before switching conversations ───
+  void _resetChat() {
+    _tts.stop();
+    _speakingIndex = null;
+    _messages.clear();
+    _suggestions = _generateRandomSuggestions();
+    _showSuggestions = true;
+  }
+
+  // ─── New Chat: Clears the screen, the conversation is created on the first message ───
+  void _startNewChat() {
+    _scaffoldKey.currentState?.closeDrawer();
+    if (_isLoading) return;
+    setState(() {
+      _resetChat();
+      _conversationId = null;
+      _addWelcomeMessage();
+    });
+  }
+
+  // ─── Open Conversation: Loads a past conversation from the history drawer ───
+  Future<void> _openConversation(String convoId) async {
+    _scaffoldKey.currentState?.closeDrawer();
+    if (_isLoading || convoId == _conversationId) return;
+    setState(() {
+      _resetChat();
+      _conversationId = convoId;
+      _isLoadingHistory = true;
+    });
+
+    await _loadConversation(convoId);
+    if (!mounted || _conversationId != convoId) return; // User switched again while loading
+    if (_messages.isEmpty) _addWelcomeMessage();
+    setState(() => _isLoadingHistory = false);
+  }
+
+  // ─── Delete History: Confirms, deletes every conversation, then starts fresh ───
+  void _confirmDeleteHistory() {
+    _scaffoldKey.currentState?.closeDrawer();
+    if (_isLoading) return;
+    DeleteChatHistoryModal.show(
+      context,
+      onPrimary: () async {
+        var failed = false;
+        try {
+          await _chatService.deleteAllConversations();
+        } catch (e) {
+          debugPrint('Delete chat history error: $e');
+          failed = true;
+        }
+        if (!mounted) return;
+        Navigator.of(context, rootNavigator: true).pop();
+        if (failed) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(AppLocalizations.translate(
+              'Failed to delete chat history.',
+              Provider.of<SettingsProvider>(context, listen: false).language,
+            )),
+          ));
+        } else {
+          _startNewChat();
+        }
+      },
+    );
+  }
+
   // ─── Load Conversation from Firestore + regenerate related services ───
   Future<void> _loadConversation(String convoId) async {
     final messages = await _chatService.getMessages(convoId);
+    if (_conversationId != convoId) return; // A different conversation was opened meanwhile
     if (mounted && messages.isNotEmpty) {
       _messages.clear();
       String? lastUserText;
@@ -343,6 +446,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   @override
   void dispose() {
+    if (_activeState == this) _activeState = null;
     _connectivitySubscription.cancel();
     _tts.dispose();
     _controller.dispose();
@@ -353,6 +457,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: _buildHistoryDrawer(),
       backgroundColor: Theme.of(context).brightness == Brightness.dark
                   ? Theme.of(context).colorScheme.surface
                   : Theme.of(context).colorScheme.tertiary,
@@ -469,6 +575,149 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ─── Chat History Drawer: New chat, delete all, and past conversations ───
+  Widget _buildHistoryDrawer() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+    final lang = Provider.of<SettingsProvider>(context).language;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final textColor = isDark ? Colors.white : Colors.black87;
+
+    return Drawer(
+      width: screenWidth > 400 ? 300 : screenWidth * 0.75,
+      backgroundColor: isDark ? colorScheme.surface : const Color(0xFFE5F6FF),
+      shape: const RoundedRectangleBorder(),
+      // Disabled while the bot is replying so the reply lands in the right conversation
+      child: AbsorbPointer(
+        absorbing: _isLoading,
+        child: Opacity(
+          opacity: _isLoading ? 0.5 : 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // --- NEW CHAT + DELETE BUTTONS ---
+              Container(
+                color: colorScheme.primary,
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildDrawerButton(
+                        onTap: _startNewChat,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            NewChatIcon(color: textColor, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              AppLocalizations.translate('New Chat', lang),
+                              style: GoogleFonts.inter(
+                                color: isDark ? Colors.white : colorScheme.primary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    _buildDrawerButton(
+                      onTap: _confirmDeleteHistory,
+                      child: Icon(Icons.delete_outline, color: textColor, size: 24),
+                    ),
+                  ],
+                ),
+              ),
+
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                child: Text(
+                  AppLocalizations.translate('Chat History', lang),
+                  style: GoogleFonts.inter(color: textColor, fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ),
+
+              // --- CONVERSATION LIST ---
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _conversationsStream,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final conversations = snapshot.data?.docs ?? [];
+                    if (conversations.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text(
+                          AppLocalizations.translate('No conversations yet.', lang),
+                          style: GoogleFonts.inter(color: textColor.withValues(alpha: 0.5), fontSize: 13),
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: conversations.length,
+                      itemBuilder: (context, index) {
+                        final convo = conversations[index];
+                        final title = (convo.data() as Map<String, dynamic>)['title'] ?? 'Untitled';
+                        final isActive = convo.id == _conversationId;
+
+                        return InkWell(
+                          onTap: () => _openConversation(convo.id),
+                          child: Container(
+                            color: isActive ? colorScheme.primary.withValues(alpha: isDark ? 0.6 : 0.1) : null,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            child: Row(
+                              children: [
+                                Icon(Icons.chat_bubble_outline, color: textColor, size: 18),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.inter(color: textColor, fontSize: 13),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Drawer Button: White rounded button on the drawer's blue header ───
+  Widget _buildDrawerButton({required VoidCallback onTap, required Widget child}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: SizedBox(
+          height: 42,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 9),
+            child: Center(child: child),
+          ),
+        ),
       ),
     );
   }

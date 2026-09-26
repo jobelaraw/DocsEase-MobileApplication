@@ -65,6 +65,10 @@ class AppLocalizations {
       'Business Permit': 'Permiso sa Negosyo', 
       'Marriage Certificate': 'Sertipiko ng Kasal',
       'Building Permit': 'Permiso sa Pagtatayo ng Gusali',
+      'New Chat': 'Bagong Chat',
+      'Chat History': 'Kasaysayan ng Chat',
+      'No conversations yet.': 'Wala pang mga usapan.',
+      'Failed to delete chat history.': 'Hindi nabura ang kasaysayan ng chat.',
 
       // Modals
       'Are you sure you want to exit?': 'Sigurado ka bang gusto mong lumabas?',
@@ -72,6 +76,10 @@ class AppLocalizations {
           'Hindi mase-save ang mga pagbabago kung aalis ka sa pahinang ito.',
       'Yes': 'Oo',
       'Cancel': 'Kanselahin',
+      'Delete': 'Burahin',
+      'Delete all chat history?': 'Burahin ang lahat ng kasaysayan ng chat?',
+      'All your conversations will be permanently deleted.':
+          'Permanenteng mabubura ang lahat ng iyong mga usapan.',
       'Changes Saved!': 'Na-save na ang Pagbabago!',
       'Updated successfully. Please click to continue.':
           'Matagumpay na na-update. Pindutin upang magpatuloy.',

@@ -76,6 +76,13 @@ class ChatService {
     await _conversationsRef.doc(convoId).delete();
   }
 
+  /// Delete all conversations
+  Future<void> deleteAllConversations() async {
+    if (_uid == null) return;
+    final convos = await _conversationsRef.get();
+    await Future.wait(convos.docs.map((doc) => deleteConversation(doc.id)));
+  }
+
   /// Check if user is logged in
   bool get isLoggedIn => _uid != null;
 }

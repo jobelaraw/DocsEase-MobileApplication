@@ -242,6 +242,30 @@ class ExitConfirmationModal {
   }
 }
 
+//Delete chat history modal
+class DeleteChatHistoryModal {
+  static Future<void> show(BuildContext context, {required Function onPrimary}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.delete_outline_rounded,
+        iconColor: _kRed,
+        iconBgColor: _kIconBgRed,
+        title: tr('Delete all chat history?'),
+        subtitle: tr('All your conversations will be permanently deleted.'),
+        primaryLabel: tr('Delete'),
+        primaryColor: _kRed,
+        onPrimary: onPrimary,
+        secondaryLabel: tr('Cancel'),
+        onSecondary: () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
 //Changes saved modal
 class ChangesSavedModal {
   static Future<void> show(BuildContext context, {required Function onPrimary, String? subtitle}) {

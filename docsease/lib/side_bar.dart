@@ -1,4 +1,5 @@
 import 'package:docsease/about_us.dart';
+import 'package:docsease/chatbot.dart';
 import 'package:docsease/app_modals.dart';
 import 'package:docsease/authentication.dart';
 import 'package:docsease/firebase_services.dart';
@@ -475,6 +476,13 @@ class _SideBarState extends State<SideBar> {
                   ),
                 ),
           actions: [
+            // --- NEW CHAT / CHAT HISTORY (chatbot only) ---
+            if (selectedIndex == 0 && currentTitle == 'Chatbot')
+              IconButton(
+                splashRadius: 20.0,
+                onPressed: ChatBotScreen.openHistory,
+                icon: NewChatIcon(color: Theme.of(context).colorScheme.onPrimary),
+              ),
             // --- HAMBURGER MENU ---
             Builder(
               builder: (BuildContext context) {
