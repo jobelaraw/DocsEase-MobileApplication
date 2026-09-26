@@ -184,7 +184,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     return '$h:$m $period';
   }
 
-  // ─── Send Message: Handles user input, calls Groq AI, shows related services ───
+  // ─── Send Message: Handles user input, calls OpenAI, shows related services ───
   Future<void> _sendMessage() async {
     FocusManager.instance.primaryFocus?.unfocus();
 
@@ -206,7 +206,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     }
 
     try {
-      final apiKey = dotenv.env['GROQ_API'];
+      final apiKey = dotenv.env['API_KEY'];
       if (apiKey == null || apiKey.isEmpty) {
         _addError('API key not loaded.');
         setState(() => _isLoading = false);
@@ -245,10 +245,10 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
       final response = await http
           .post(
-            Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+            Uri.parse('https://api.openai.com/v1/chat/completions'),
             headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $apiKey'},
             body: jsonEncode({
-              'model': 'llama-3.1-8b-instant',
+              'model': 'gpt-4o-mini',
               'messages': messages,
               'temperature': 0.0,
               'max_tokens': 150,
@@ -271,7 +271,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           }
         }
       } else {
-        debugPrint('Groq error: ${response.statusCode} ${response.body}');
+        debugPrint('OpenAI error: ${response.statusCode} ${response.body}');
         if (mounted) _addError('Error ${response.statusCode}: ${response.reasonPhrase}');
       }
     } catch (e) {
