@@ -75,7 +75,8 @@ class _ChatMessage {
   final String time;
   final DateTime datetime;
   final List<ServiceDetail> relatedServices; // Related service cards shown below bot reply
-  _ChatMessage({required this.text, required this.isUser, required this.time, required this.datetime, this.relatedServices = const []});
+  final bool isWelcome; // Greeting + random service cards at the start of a new chat
+  _ChatMessage({required this.text, required this.isUser, required this.time, required this.datetime, this.relatedServices = const [], this.isWelcome = false});
 }
 
 // ─── ChatBot Screen State ───
@@ -88,6 +89,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late final Stream<QuerySnapshot> _conversationsStream = _chatService.getConversations();
   static _ChatBotScreenState? _activeState; // Currently open chatbot, used by openHistory()
+  static const _welcomeTitle = "Hey Citizen! I'm your DocsEase Bot, your assistant here in DocuGuide!";
+  static const _welcomeSubtitle =
+      'Nandito ako para tulungan ka sa mga dokumento, permit, at anumang prosesong kailangan mo. Ano ang gusto mong gawin ngayon?';
 
   // State variables
   int? _speakingIndex; // Index of currently speaking message (for TTS)
@@ -151,14 +155,18 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     }
   }
 
-  // ─── Welcome Message: First bot message of every new chat ───
+  // ─── Welcome Message: Greeting + 3 random service cards at the start of every new chat ───
   void _addWelcomeMessage() {
     final now = DateTime.now();
+    final services = _cachedOffices.expand((o) => o.services).where((s) => s.title.isNotEmpty).toList()
+      ..shuffle();
     _messages.add(_ChatMessage(
-      text: "Hi! Ako si DocsEase Bot at Nandito ako para tulungan ka sa mga dokumento, permit, at anumang prosesong kailangan mo. Ano ang gusto mong gawin ngayon?",
+      text: '$_welcomeTitle\n\n$_welcomeSubtitle',
       isUser: false,
       time: _formatTime(now),
       datetime: now,
+      relatedServices: services.take(3).toList(),
+      isWelcome: true,
     ));
   }
 
@@ -335,7 +343,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     final matches = [
       if (q.isNotEmpty)
         for (var i = 0; i < _messages.length; i++)
-          if (_messages[i].text.toLowerCase().contains(q)) i,
+          if (!_messages[i].isWelcome && _messages[i].text.toLowerCase().contains(q)) i,
     ];
     setState(() {
       _searchMatches = matches;
@@ -393,12 +401,15 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           lastUserText = null;
         }
         if (isUser) lastUserText = msg['text'] ?? '';
+        final isWelcome = msg['type'] == 'welcome';
+        if (isWelcome) related = _servicesByIds(List<String>.from(msg['serviceIds'] ?? []));
         _messages.add(_ChatMessage(
           text: msg['text'] ?? '',
           isUser: isUser,
           time: _formatTime(dt),
           datetime: dt,
           relatedServices: related,
+          isWelcome: isWelcome,
         ));
       }
     }
@@ -554,7 +565,15 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       _conversationId = await _chatService.createConversation(text);
       // Save the welcome message that was shown before user's first message
       if (_conversationId != null && _messages.isNotEmpty && !_messages[0].isUser) {
-        await _chatService.saveMessage(_conversationId!, _messages[0].text, false);
+        final welcome = _messages[0];
+        await _chatService.saveMessage(
+          _conversationId!,
+          welcome.text,
+          false,
+          extra: welcome.isWelcome
+              ? {'type': 'welcome', 'serviceIds': welcome.relatedServices.map((s) => s.serviceId).toList()}
+              : null,
+        );
       }
     }
     if (_conversationId != null) {
@@ -650,7 +669,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                     if (reversedIndex == _messages.length) return _buildTypingIndicator();
                     final msg = _messages[reversedIndex];
                     final showDate = _shouldShowDateSeparator(reversedIndex);
-                    final messageWidget = msg.isUser
+                    final messageWidget = msg.isWelcome
+                        ? _buildWelcomeMessage(msg.relatedServices)
+                        : msg.isUser
                         ? _buildUserMessage(msg.text, msg.time, reversedIndex)
                         : Column(
                             mainAxisSize: MainAxisSize.min,
@@ -1290,6 +1311,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     }
   }
 
+  // ─── Services By IDs: Looks up cached services, skipping any that no longer exist ───
+  List<ServiceDetail> _servicesByIds(List<String> ids) {
+    final allServices = _cachedOffices.expand((o) => o.services).toList();
+    return [
+      for (final id in ids) ...allServices.where((s) => s.serviceId == id).take(1),
+    ];
+  }
+
   // ─── Navigate to Service: Opens InformationScreen for a specific service ───
   void _navigateToService(String serviceId) {
     final allServices = _cachedOffices.expand((o) => o.services).toList();
@@ -1302,26 +1331,141 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     }
   }
 
-  // ─── Build Date Separator ("Today", "Yesterday", etc.) ───
+  // ─── Build Date Separator: Small pill with "TODAY", "YESTERDAY", or the date ───
   Widget _buildDateSeparator(DateTime date) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Row(
-        children: [
-          Expanded(child: Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15))),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              _formatDateLabel(date),
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
-                fontWeight: FontWeight.w500,
-              ),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.1) : const Color(0xFFC4E1F0),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            AppLocalizations.translate(_formatDateLabel(date), lang).toUpperCase(),
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+              color: isDark ? Colors.white60 : const Color(0xFF7A8C95),
             ),
           ),
-          Expanded(child: Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15))),
+        ),
+      ),
+    );
+  }
+
+  // ─── Welcome Message: Greeting headline and random service cards for a new chat ───
+  Widget _buildWelcomeMessage(List<ServiceDetail> services) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            AppLocalizations.translate(_welcomeTitle, lang),
+            style: GoogleFonts.inter(
+              fontSize: 21,
+              fontWeight: FontWeight.w800,
+              height: 1.25,
+              color: isDark ? Colors.white : const Color(0xFF222425),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _welcomeSubtitle,
+            style: GoogleFonts.inter(fontSize: 14, height: 1.4, color: onSurface.withValues(alpha: 0.8)),
+          ),
+          const SizedBox(height: 18),
+          ...services.map(_buildWelcomeServiceCard),
         ],
+      ),
+    );
+  }
+
+  // ─── Welcome Service Card: Icon tile, name, description, and arrow; opens the service ───
+  Widget _buildWelcomeServiceCard(ServiceDetail service) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final description = service.getDescription(lang);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: isDark ? Theme.of(context).colorScheme.primary : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => Navigator.push(
+            context,
+            SlideRoute(page: InformationScreen(detail: service)),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: onSurface.withValues(alpha: 0.08), width: 1.5),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: UIHelper.getBgColorForService(service.title),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(UIHelper.getIconForService(service.title), size: 30, color: Colors.black87),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        service.getTitle(lang),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: onSurface.withValues(alpha: 0.9),
+                        ),
+                      ),
+                      if (description.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(fontSize: 12, height: 1.3, color: onSurface.withValues(alpha: 0.6)),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.1) : const Color(0xFFEEF2F7),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.arrow_forward, size: 18, color: isDark ? Colors.white : const Color(0xFF3D72DF)),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

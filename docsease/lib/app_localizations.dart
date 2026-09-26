@@ -73,6 +73,8 @@ class AppLocalizations {
       'Previous 7 Days': 'Nakaraang 7 Araw',
       'Previous 30 Days': 'Nakaraang 30 Araw',
       'Older': 'Mas Luma',
+      "Hey Citizen! I'm your DocsEase Bot, your assistant here in DocuGuide!":
+          'Kumusta, Mamamayan! Ako si DocsEase Bot, ang iyong katuwang dito sa DocuGuide!',
       'No conversations yet.': 'Wala pang mga usapan.',
       'Delete chat': 'Burahin ang chat',
       'Delete current conversation': 'Burahin ang kasalukuyang usapan',
