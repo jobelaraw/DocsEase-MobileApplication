@@ -84,6 +84,7 @@ class AppLocalizations {
           'Kumusta, Mamamayan! Ako si DocsEase Bot, ang iyong katuwang dito sa DocuGuide!',
       'No conversations yet.': 'Wala pang mga usapan.',
       'Delete chat': 'Burahin ang chat',
+      'What would you like to delete?': 'Ano ang gusto mong burahin?',
       'Delete current conversation': 'Burahin ang kasalukuyang usapan',
       'Delete multiple conversations': 'Burahin ang maraming usapan',
       '{n} selected': '{n} ang napili',

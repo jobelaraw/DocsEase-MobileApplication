@@ -35,7 +35,6 @@ class _AppModalBase extends StatefulWidget {
     required this.onPrimary,
     this.onSecondary,
     this.singleAction = false,
-    // ignore: unused_element_parameter
     this.extraContent,
   });
 
@@ -238,6 +237,106 @@ class ExitConfirmationModal {
         secondaryLabel: tr('Cancel'),
         onSecondary: onSecondary ?? () => Navigator.of(context).pop(),
       ),
+    );
+  }
+}
+
+//Delete chat options modal
+class DeleteChatOptionsModal {
+  // onDeleteCurrent is null when there is no saved conversation open, which disables that option
+  static Future<void> show(
+    BuildContext context, {
+    VoidCallback? onDeleteCurrent,
+    required VoidCallback onDeleteMultiple,
+  }) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+    void close() => Navigator.of(context, rootNavigator: true).pop();
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.delete_outline_rounded,
+        iconColor: _kRed,
+        iconBgColor: _kIconBgRed,
+        title: tr('Delete chat'),
+        subtitle: tr('What would you like to delete?'),
+        primaryLabel: tr('Cancel'),
+        singleAction: true,
+        onPrimary: close,
+        extraContent: Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            children: [
+              _buildOption(
+                icon: Icons.delete_outline_rounded,
+                label: tr('Delete current conversation'),
+                filled: true,
+                onPressed: onDeleteCurrent == null
+                    ? null
+                    : () {
+                        close();
+                        onDeleteCurrent();
+                      },
+              ),
+              const SizedBox(height: 12),
+              _buildOption(
+                icon: Icons.checklist_rounded,
+                label: tr('Delete multiple conversations'),
+                filled: false,
+                onPressed: () {
+                  close();
+                  onDeleteMultiple();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Widget _buildOption({
+    required IconData icon,
+    required String label,
+    required bool filled,
+    required VoidCallback? onPressed,
+  }) {
+    final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(5));
+    final content = Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 18),
+        const SizedBox(width: 8),
+        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+      ],
+    );
+
+    return SizedBox(
+      width: double.infinity,
+      height: 35,
+      child: filled
+          ? ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _kRed,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: _kRed.withValues(alpha: 0.35),
+                disabledForegroundColor: Colors.white,
+                elevation: 0,
+                shape: shape,
+              ),
+              onPressed: onPressed,
+              child: content,
+            )
+          : OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _kRed,
+                side: const BorderSide(color: _kRed),
+                shape: shape,
+              ),
+              onPressed: onPressed,
+              child: content,
+            ),
     );
   }
 }

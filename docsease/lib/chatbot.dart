@@ -214,63 +214,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   // ─── Delete Options: Delete the current conversation or pick several to delete ───
   void _showDeleteOptions() {
-    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : Colors.black87;
     final currentId = _conversationId; // Null for a new chat that hasn't been saved yet
-
-    showModalBottomSheet(
-      context: context,
-      useRootNavigator: true,
-      backgroundColor: isDark ? Theme.of(context).colorScheme.primary : Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (sheetContext) {
-        Widget option(IconData icon, String label, VoidCallback? onTap) {
-          final color = onTap != null ? textColor : textColor.withValues(alpha: 0.35);
-          return ListTile(
-            leading: Icon(icon, color: color),
-            title: Text(
-              AppLocalizations.translate(label, lang),
-              style: GoogleFonts.inter(color: color, fontSize: 14),
-            ),
-            onTap: onTap == null
-                ? null
-                : () {
-                    Navigator.pop(sheetContext);
-                    onTap();
-                  },
-          );
-        }
-
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                  child: Text(
-                    AppLocalizations.translate('Delete chat', lang),
-                    style: GoogleFonts.inter(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                option(
-                  Icons.delete_outline,
-                  'Delete current conversation',
-                  currentId == null ? null : () => _confirmDelete([currentId], closeDrawer: true),
-                ),
-                option(
-                  Icons.checklist_rounded,
-                  'Delete multiple conversations',
-                  () => setState(() => _isSelecting = true),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    DeleteChatOptionsModal.show(
+      context,
+      onDeleteCurrent: currentId == null ? null : () => _confirmDelete([currentId], closeDrawer: true),
+      onDeleteMultiple: () => setState(() => _isSelecting = true),
     );
   }
 
