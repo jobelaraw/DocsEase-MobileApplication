@@ -911,45 +911,70 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                       );
                     }
 
-                    return ListView.builder(
-                      padding: EdgeInsets.zero,
-                      itemCount: conversations.length,
-                      itemBuilder: (context, index) {
-                        final convo = conversations[index];
-                        final title = (convo.data() as Map<String, dynamic>)['title'] ?? 'Untitled';
-                        final isSelected = _selectedIds.contains(convo.id);
-                        final isHighlighted = _isSelecting ? isSelected : convo.id == _conversationId;
+                    // Newest first, grouped under Today / Yesterday / Previous 7 Days / ...
+                    final items = <Widget>[];
+                    String? currentGroup;
+                    for (final convo in conversations) {
+                      final data = convo.data() as Map<String, dynamic>;
+                      final title = data['title'] ?? 'Untitled';
+                      // Null for a moment while a new chat's server timestamp is pending
+                      final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+                      final group = _historyGroup(updatedAt);
+                      final isSelected = _selectedIds.contains(convo.id);
+                      final isHighlighted = _isSelecting ? isSelected : convo.id == _conversationId;
 
-                        return InkWell(
-                          onTap: _isSelecting ? () => _toggleSelected(convo.id) : () => _openConversation(convo.id),
-                          child: Container(
-                            color: isHighlighted ? colorScheme.primary.withValues(alpha: isDark ? 0.6 : 0.1) : null,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            child: Row(
-                              children: [
-                                if (_isSelecting)
-                                  Icon(
-                                    isSelected ? Icons.check_box : Icons.check_box_outline_blank,
-                                    color: isSelected && !isDark ? colorScheme.primary : textColor,
-                                    size: 18,
-                                  )
-                                else
-                                  Icon(Icons.chat_bubble_outline, color: textColor, size: 18),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.inter(color: textColor, fontSize: 13),
-                                  ),
-                                ),
-                              ],
+                      if (group != currentGroup) {
+                        items.add(Padding(
+                          padding: EdgeInsets.fromLTRB(16, currentGroup == null ? 4 : 16, 16, 4),
+                          child: Text(
+                            AppLocalizations.translate(group, lang).toUpperCase(),
+                            style: GoogleFonts.inter(
+                              color: textColor.withValues(alpha: 0.55),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
                             ),
                           ),
-                        );
-                      },
-                    );
+                        ));
+                        currentGroup = group;
+                      }
+
+                      items.add(InkWell(
+                        onTap: _isSelecting ? () => _toggleSelected(convo.id) : () => _openConversation(convo.id),
+                        child: Container(
+                          color: isHighlighted ? colorScheme.primary.withValues(alpha: isDark ? 0.6 : 0.1) : null,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          child: Row(
+                            children: [
+                              if (_isSelecting)
+                                Icon(
+                                  isSelected ? Icons.check_box : Icons.check_box_outline_blank,
+                                  color: isSelected && !isDark ? colorScheme.primary : textColor,
+                                  size: 18,
+                                )
+                              else
+                                Icon(Icons.chat_bubble_outline, color: textColor, size: 18),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(color: textColor, fontSize: 13),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _historyTimeLabel(updatedAt, group),
+                                style: GoogleFonts.inter(color: textColor.withValues(alpha: 0.55), fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ));
+                    }
+
+                    return ListView(padding: EdgeInsets.zero, children: items);
                   },
                 ),
               ),
@@ -958,6 +983,27 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         ),
       ),
     );
+  }
+
+  // ─── History Group: Date section a conversation falls under, by its last activity ───
+  String _historyGroup(DateTime date) {
+    final now = DateTime.now();
+    final days = DateTime.utc(now.year, now.month, now.day)
+        .difference(DateTime.utc(date.year, date.month, date.day))
+        .inDays;
+    if (days <= 0) return 'Today';
+    if (days == 1) return 'Yesterday';
+    if (days <= 7) return 'Previous 7 Days';
+    if (days <= 30) return 'Previous 30 Days';
+    return 'Older';
+  }
+
+  // ─── History Time Label: "10:42 AM" for today, "May 18" for older, with year if not this year ───
+  String _historyTimeLabel(DateTime date, String group) {
+    if (group == 'Today') return _formatTime(date);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final label = '${months[date.month - 1]} ${date.day}';
+    return date.year == DateTime.now().year ? label : '$label, ${date.year}';
   }
 
   // ─── Selection Bar: Cancel, selected count, and delete for "delete multiple" mode ───
