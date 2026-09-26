@@ -91,6 +91,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   bool _isLoadingHistory = true; // Shows spinner while loading chat history
   late List<Map<String, dynamic>> _suggestions; // Floating suggestion chips data
   bool _showSuggestions = true; // Controls visibility of floating chips
+  bool _isSelecting = false; // History drawer is in "delete multiple" mode
+  final Set<String> _selectedIds = {}; // Conversations checked for deletion
   static List<Office> _cachedOffices = []; // Cached offices data from Firestore (shared across instances)
 
   // Connectivity
@@ -162,6 +164,10 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   void _startNewChat() {
     _scaffoldKey.currentState?.closeDrawer();
     if (_isLoading) return;
+    _resetToNewChat();
+  }
+
+  void _resetToNewChat() {
     setState(() {
       _resetChat();
       _conversationId = null;
@@ -185,18 +191,80 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     setState(() => _isLoadingHistory = false);
   }
 
-  // ─── Delete History: Confirms, deletes every conversation, then starts fresh ───
-  void _confirmDeleteHistory() {
-    _scaffoldKey.currentState?.closeDrawer();
-    if (_isLoading) return;
-    DeleteChatHistoryModal.show(
+  // ─── Delete Options: Delete the current conversation or pick several to delete ───
+  void _showDeleteOptions() {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final currentId = _conversationId; // Null for a new chat that hasn't been saved yet
+
+    showModalBottomSheet(
+      context: context,
+      useRootNavigator: true,
+      backgroundColor: isDark ? Theme.of(context).colorScheme.primary : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (sheetContext) {
+        Widget option(IconData icon, String label, VoidCallback? onTap) {
+          final color = onTap != null ? textColor : textColor.withValues(alpha: 0.35);
+          return ListTile(
+            leading: Icon(icon, color: color),
+            title: Text(
+              AppLocalizations.translate(label, lang),
+              style: GoogleFonts.inter(color: color, fontSize: 14),
+            ),
+            onTap: onTap == null
+                ? null
+                : () {
+                    Navigator.pop(sheetContext);
+                    onTap();
+                  },
+          );
+        }
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  child: Text(
+                    AppLocalizations.translate('Delete chat', lang),
+                    style: GoogleFonts.inter(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                option(
+                  Icons.delete_outline,
+                  'Delete current conversation',
+                  currentId == null ? null : () => _confirmDelete([currentId], closeDrawer: true),
+                ),
+                option(
+                  Icons.checklist_rounded,
+                  'Delete multiple conversations',
+                  () => setState(() => _isSelecting = true),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ─── Confirm Delete: Deletes conversations, starts a new chat if the open one was deleted ───
+  void _confirmDelete(List<String> ids, {bool closeDrawer = false}) {
+    if (ids.isEmpty || _isLoading) return;
+    DeleteConversationsModal.show(
       context,
+      count: ids.length,
       onPrimary: () async {
         var failed = false;
         try {
-          await _chatService.deleteAllConversations();
+          await _chatService.deleteConversations(ids);
         } catch (e) {
-          debugPrint('Delete chat history error: $e');
+          debugPrint('Delete conversations error: $e');
           failed = true;
         }
         if (!mounted) return;
@@ -204,15 +272,31 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         if (failed) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(AppLocalizations.translate(
-              'Failed to delete chat history.',
+              'Failed to delete conversation.',
               Provider.of<SettingsProvider>(context, listen: false).language,
             )),
           ));
-        } else {
-          _startNewChat();
+          return;
         }
+
+        _exitSelection();
+        if (closeDrawer) _scaffoldKey.currentState?.closeDrawer();
+        if (ids.contains(_conversationId)) _resetToNewChat();
       },
     );
+  }
+
+  void _toggleSelected(String convoId) {
+    setState(() {
+      if (!_selectedIds.remove(convoId)) _selectedIds.add(convoId);
+    });
+  }
+
+  void _exitSelection() {
+    setState(() {
+      _isSelecting = false;
+      _selectedIds.clear();
+    });
   }
 
   // ─── Load Conversation from Firestore + regenerate related services ───
@@ -459,6 +543,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     return Scaffold(
       key: _scaffoldKey,
       drawer: _buildHistoryDrawer(),
+      onDrawerChanged: (isOpen) {
+        if (!isOpen && _isSelecting) _exitSelection();
+      },
       backgroundColor: Theme.of(context).brightness == Brightness.dark
                   ? Theme.of(context).colorScheme.surface
                   : Theme.of(context).colorScheme.tertiary,
@@ -579,7 +666,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     );
   }
 
-  // ─── Chat History Drawer: New chat, delete all, and past conversations ───
+  // ─── Chat History Drawer: New chat, delete options, and past conversations ───
   Widget _buildHistoryDrawer() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorScheme = Theme.of(context).colorScheme;
@@ -599,11 +686,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- NEW CHAT + DELETE BUTTONS ---
+              // --- NEW CHAT + DELETE BUTTONS (or selection bar when deleting multiple) ---
               Container(
                 color: colorScheme.primary,
                 padding: const EdgeInsets.all(12),
-                child: Row(
+                child: _isSelecting ? _buildSelectionBar(lang, textColor) : Row(
                   children: [
                     Expanded(
                       child: _buildDrawerButton(
@@ -627,7 +714,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                     ),
                     const SizedBox(width: 10),
                     _buildDrawerButton(
-                      onTap: _confirmDeleteHistory,
+                      onTap: _showDeleteOptions,
                       child: Icon(Icons.delete_outline, color: textColor, size: 24),
                     ),
                   ],
@@ -667,16 +754,24 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                       itemBuilder: (context, index) {
                         final convo = conversations[index];
                         final title = (convo.data() as Map<String, dynamic>)['title'] ?? 'Untitled';
-                        final isActive = convo.id == _conversationId;
+                        final isSelected = _selectedIds.contains(convo.id);
+                        final isHighlighted = _isSelecting ? isSelected : convo.id == _conversationId;
 
                         return InkWell(
-                          onTap: () => _openConversation(convo.id),
+                          onTap: _isSelecting ? () => _toggleSelected(convo.id) : () => _openConversation(convo.id),
                           child: Container(
-                            color: isActive ? colorScheme.primary.withValues(alpha: isDark ? 0.6 : 0.1) : null,
+                            color: isHighlighted ? colorScheme.primary.withValues(alpha: isDark ? 0.6 : 0.1) : null,
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             child: Row(
                               children: [
-                                Icon(Icons.chat_bubble_outline, color: textColor, size: 18),
+                                if (_isSelecting)
+                                  Icon(
+                                    isSelected ? Icons.check_box : Icons.check_box_outline_blank,
+                                    color: isSelected && !isDark ? colorScheme.primary : textColor,
+                                    size: 18,
+                                  )
+                                else
+                                  Icon(Icons.chat_bubble_outline, color: textColor, size: 18),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
@@ -702,8 +797,46 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     );
   }
 
+  // ─── Selection Bar: Cancel, selected count, and delete for "delete multiple" mode ───
+  Widget _buildSelectionBar(String lang, Color textColor) {
+    const red = Color(0xFFEF4444);
+    final hasSelection = _selectedIds.isNotEmpty;
+
+    return Row(
+      children: [
+        _buildDrawerButton(
+          onTap: _exitSelection,
+          child: Icon(Icons.close, color: textColor, size: 22),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            AppLocalizations.translate('{n} selected', lang).replaceAll('{n}', '${_selectedIds.length}'),
+            style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+        ),
+        Opacity(
+          opacity: hasSelection ? 1 : 0.5,
+          child: _buildDrawerButton(
+            onTap: hasSelection ? () => _confirmDelete(_selectedIds.toList()) : null,
+            child: Row(
+              children: [
+                const Icon(Icons.delete_outline, color: red, size: 22),
+                const SizedBox(width: 4),
+                Text(
+                  AppLocalizations.translate('Delete', lang),
+                  style: GoogleFonts.inter(color: red, fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   // ─── Drawer Button: White rounded button on the drawer's blue header ───
-  Widget _buildDrawerButton({required VoidCallback onTap, required Widget child}) {
+  Widget _buildDrawerButton({required VoidCallback? onTap, required Widget child}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
       color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,

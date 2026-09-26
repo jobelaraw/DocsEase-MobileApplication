@@ -242,9 +242,9 @@ class ExitConfirmationModal {
   }
 }
 
-//Delete chat history modal
-class DeleteChatHistoryModal {
-  static Future<void> show(BuildContext context, {required Function onPrimary}) {
+//Delete conversations modal
+class DeleteConversationsModal {
+  static Future<void> show(BuildContext context, {required int count, required Function onPrimary}) {
     final lang = Provider.of<SettingsProvider>(context, listen: false).language;
     String tr(String key) => AppLocalizations.translate(key, lang);
 
@@ -254,8 +254,10 @@ class DeleteChatHistoryModal {
         iconData: Icons.delete_outline_rounded,
         iconColor: _kRed,
         iconBgColor: _kIconBgRed,
-        title: tr('Delete all chat history?'),
-        subtitle: tr('All your conversations will be permanently deleted.'),
+        title: count == 1
+            ? tr('Delete conversation?')
+            : tr('Delete {n} conversations?').replaceAll('{n}', '$count'),
+        subtitle: tr('This cannot be undone.'),
         primaryLabel: tr('Delete'),
         primaryColor: _kRed,
         onPrimary: onPrimary,

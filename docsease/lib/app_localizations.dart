@@ -68,7 +68,11 @@ class AppLocalizations {
       'New Chat': 'Bagong Chat',
       'Chat History': 'Kasaysayan ng Chat',
       'No conversations yet.': 'Wala pang mga usapan.',
-      'Failed to delete chat history.': 'Hindi nabura ang kasaysayan ng chat.',
+      'Delete chat': 'Burahin ang chat',
+      'Delete current conversation': 'Burahin ang kasalukuyang usapan',
+      'Delete multiple conversations': 'Burahin ang maraming usapan',
+      '{n} selected': '{n} ang napili',
+      'Failed to delete conversation.': 'Hindi nabura ang usapan.',
 
       // Modals
       'Are you sure you want to exit?': 'Sigurado ka bang gusto mong lumabas?',
@@ -77,9 +81,9 @@ class AppLocalizations {
       'Yes': 'Oo',
       'Cancel': 'Kanselahin',
       'Delete': 'Burahin',
-      'Delete all chat history?': 'Burahin ang lahat ng kasaysayan ng chat?',
-      'All your conversations will be permanently deleted.':
-          'Permanenteng mabubura ang lahat ng iyong mga usapan.',
+      'Delete conversation?': 'Burahin ang usapan?',
+      'Delete {n} conversations?': 'Burahin ang {n} na usapan?',
+      'This cannot be undone.': 'Hindi na ito maibabalik.',
       'Changes Saved!': 'Na-save na ang Pagbabago!',
       'Updated successfully. Please click to continue.':
           'Matagumpay na na-update. Pindutin upang magpatuloy.',
