@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -579,8 +578,10 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 ListView.builder(
                   controller: _scrollController,
                   physics: const BouncingScrollPhysics(),
-                  // While searching, build every message so any match can be scrolled to
-                  scrollCacheExtent: _isSearching ? const ScrollCacheExtent.pixels(100000) : null,
+                  // While searching, build every message so any match can be scrolled to.
+                  // cacheExtent is deprecated in Flutter 3.44+ but scrollCacheExtent doesn't exist before it.
+                  // ignore: deprecated_member_use
+                  cacheExtent: _isSearching ? 100000 : null,
                   reverse: true,
                   padding: EdgeInsets.only(left: 10, right: 10, top: 20, bottom: _showSuggestions ? 60 : 20),
                   itemCount: _messages.length + (_isLoading ? 1 : 0),
