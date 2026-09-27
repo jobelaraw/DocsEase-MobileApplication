@@ -1,12 +1,13 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'tts_service.dart';
+import 'chat_ai_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:docsease/app_localizations.dart';
 import 'package:docsease/settings_provider.dart';
@@ -18,6 +19,7 @@ import 'package:docsease/info_model.dart';
 import 'package:docsease/information.dart';
 import 'package:docsease/services.dart';
 import 'package:docsease/navigator_transition.dart';
+import 'package:docsease/app_modals.dart';
 
 // ─── ChatBot Screen Widget ───
 class ChatBotScreen extends StatefulWidget {
@@ -29,8 +31,40 @@ class ChatBotScreen extends StatefulWidget {
     _ChatBotScreenState._cachedOffices = offices;
   }
 
+  // Lets the header's new chat icon open the chat history drawer
+  static void openHistory() {
+    _ChatBotScreenState._activeState?._scaffoldKey.currentState?.openEndDrawer();
+  }
+
+  // Lets the header's search icon open the search bar
+  static void openSearch() {
+    _ChatBotScreenState._activeState?._openSearch();
+  }
+
   @override
   State<ChatBotScreen> createState() => _ChatBotScreenState();
+}
+
+// ─── New Chat Icon: Square with a pencil, used in the header and history drawer ───
+class NewChatIcon extends StatelessWidget {
+  final Color color;
+  final double size;
+  const NewChatIcon({super.key, required this.color, this.size = 22});
+
+  static const _svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
+      'stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+      '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>'
+      '<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+
+  @override
+  Widget build(BuildContext context) {
+    return SvgPicture.string(
+      _svg,
+      width: size,
+      height: size,
+      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+    );
+  }
 }
 
 // ─── Chat Message Model ───
@@ -40,7 +74,10 @@ class _ChatMessage {
   final String time;
   final DateTime datetime;
   final List<ServiceDetail> relatedServices; // Related service cards shown below bot reply
-  _ChatMessage({required this.text, required this.isUser, required this.time, required this.datetime, this.relatedServices = const []});
+  final bool isWelcome; // Greeting + random service cards at the start of a new chat
+  final String? category; // Bot reply type from ChatAiService, e.g. specific_service or general
+  final String? answeredTopic; // For specific_service: which part was answered (requirements, fees, ...)
+  _ChatMessage({required this.text, required this.isUser, required this.time, required this.datetime, this.relatedServices = const [], this.isWelcome = false, this.category, this.answeredTopic});
 }
 
 // ─── ChatBot Screen State ───
@@ -50,6 +87,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   final ScrollController _scrollController = ScrollController();
   final TtsService _tts = TtsService();
   final ChatService _chatService = ChatService();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  late final Stream<QuerySnapshot> _conversationsStream = _chatService.getConversations();
+  static _ChatBotScreenState? _activeState; // Currently open chatbot, used by openHistory()
+  static const _welcomeTitle = "Hey Citizen! I'm your DocsEase Bot, your assistant here in DocuGuide!";
+  static const _welcomeSubtitle =
+      'Nandito ako para tulungan ka sa mga dokumento, permit, at anumang prosesong kailangan mo. Ano ang gusto mong gawin ngayon?';
 
   // State variables
   int? _speakingIndex; // Index of currently speaking message (for TTS)
@@ -59,6 +102,13 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   bool _isLoadingHistory = true; // Shows spinner while loading chat history
   late List<Map<String, dynamic>> _suggestions; // Floating suggestion chips data
   bool _showSuggestions = true; // Controls visibility of floating chips
+  bool _isSelecting = false; // History drawer is in "delete multiple" mode
+  final Set<String> _selectedIds = {}; // Conversations checked for deletion
+  bool _isSearching = false; // Shows the search bar above the messages
+  final TextEditingController _searchController = TextEditingController();
+  List<int> _searchMatches = []; // Indexes of messages containing the query, oldest first
+  int _currentMatch = 0; // Position in _searchMatches that is focused
+  Map<int, GlobalKey> _matchKeys = {}; // Message index -> key, used to scroll to a match
   static List<Office> _cachedOffices = []; // Cached offices data from Firestore (shared across instances)
 
   // Connectivity
@@ -69,6 +119,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   @override
   void initState() {
     super.initState();
+    _activeState = this;
     _conversationId = widget.conversationId;
     _suggestions = _generateRandomSuggestions(); // Generate random suggestion chips
     _initData(); // Load offices + messages
@@ -98,42 +149,208 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       }
     }
 
-    if (_messages.isEmpty) {
-      final now = DateTime.now();
-      _messages.add(_ChatMessage(
-        text: "Hi! Ako si DocsEase Bot at Nandito ako para tulungan ka sa mga dokumento, permit, at anumang prosesong kailangan mo. Ano ang gusto mong gawin ngayon?",
-        isUser: false,
-        time: _formatTime(now),
-        datetime: now,
-      ));
-    }
+    if (_messages.isEmpty) _addWelcomeMessage();
 
     if (mounted) {
       setState(() => _isLoadingHistory = false);
     }
   }
 
-  // ─── Load Conversation from Firestore + regenerate related services ───
+  // ─── Welcome Message: Greeting + 3 random service cards at the start of every new chat ───
+  void _addWelcomeMessage() {
+    final now = DateTime.now();
+    final services = _cachedOffices.expand((o) => o.services).where((s) => s.title.isNotEmpty).toList()
+      ..shuffle();
+    _messages.add(_ChatMessage(
+      text: '$_welcomeTitle\n\n$_welcomeSubtitle',
+      isUser: false,
+      time: _formatTime(now),
+      datetime: now,
+      relatedServices: services.take(3).toList(),
+      isWelcome: true,
+    ));
+  }
+
+  // ─── Reset Chat: Stops TTS and clears the screen before switching conversations ───
+  void _resetChat() {
+    _tts.stop();
+    _speakingIndex = null;
+    _messages.clear();
+    _suggestions = _generateRandomSuggestions();
+    _showSuggestions = true;
+    _clearSearch();
+  }
+
+  // ─── New Chat: Clears the screen, the conversation is created on the first message ───
+  void _startNewChat() {
+    _scaffoldKey.currentState?.closeEndDrawer();
+    if (_isLoading) return;
+    _resetToNewChat();
+  }
+
+  void _resetToNewChat() {
+    setState(() {
+      _resetChat();
+      _conversationId = null;
+      _addWelcomeMessage();
+    });
+  }
+
+  // ─── Open Conversation: Loads a past conversation from the history drawer ───
+  Future<void> _openConversation(String convoId) async {
+    _scaffoldKey.currentState?.closeEndDrawer();
+    if (_isLoading || convoId == _conversationId) return;
+    setState(() {
+      _resetChat();
+      _conversationId = convoId;
+      _isLoadingHistory = true;
+    });
+
+    await _loadConversation(convoId);
+    if (!mounted || _conversationId != convoId) return; // User switched again while loading
+    if (_messages.isEmpty) _addWelcomeMessage();
+    setState(() => _isLoadingHistory = false);
+  }
+
+  // ─── Delete Options: Delete the current conversation or pick several to delete ───
+  void _showDeleteOptions() {
+    final currentId = _conversationId; // Null for a new chat that hasn't been saved yet
+    DeleteChatOptionsModal.show(
+      context,
+      onDeleteCurrent: currentId == null ? null : () => _confirmDelete([currentId], closeDrawer: true),
+      onDeleteMultiple: () => setState(() => _isSelecting = true),
+    );
+  }
+
+  // ─── Confirm Delete: Deletes conversations, starts a new chat if the open one was deleted ───
+  void _confirmDelete(List<String> ids, {bool closeDrawer = false}) {
+    if (ids.isEmpty || _isLoading) return;
+    DeleteConversationsModal.show(
+      context,
+      count: ids.length,
+      onPrimary: () async {
+        var failed = false;
+        try {
+          await _chatService.deleteConversations(ids);
+        } catch (e) {
+          debugPrint('Delete conversations error: $e');
+          failed = true;
+        }
+        if (!mounted) return;
+        Navigator.of(context, rootNavigator: true).pop();
+        if (failed) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(AppLocalizations.translate(
+              'Failed to delete conversation.',
+              Provider.of<SettingsProvider>(context, listen: false).language,
+            )),
+          ));
+          return;
+        }
+
+        _exitSelection();
+        if (closeDrawer) _scaffoldKey.currentState?.closeEndDrawer();
+        if (ids.contains(_conversationId)) _resetToNewChat();
+      },
+    );
+  }
+
+  void _toggleSelected(String convoId) {
+    setState(() {
+      if (!_selectedIds.remove(convoId)) _selectedIds.add(convoId);
+    });
+  }
+
+  void _exitSelection() {
+    setState(() {
+      _isSelecting = false;
+      _selectedIds.clear();
+    });
+  }
+
+  // ─── Search: Finds messages in the open conversation that contain the query ───
+  void _openSearch() {
+    _scaffoldKey.currentState?.closeEndDrawer();
+    if (_isLoadingHistory) return;
+    setState(() => _isSearching = true);
+  }
+
+  void _closeSearch() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(_clearSearch);
+  }
+
+  void _clearSearch() {
+    _isSearching = false;
+    _searchController.clear();
+    _searchMatches = [];
+    _matchKeys = {};
+  }
+
+  void _runSearch(String query) {
+    final q = query.trim().toLowerCase();
+    final matches = [
+      if (q.isNotEmpty)
+        for (var i = 0; i < _messages.length; i++)
+          if (!_messages[i].isWelcome && _messages[i].text.toLowerCase().contains(q)) i,
+    ];
+    setState(() {
+      _searchMatches = matches;
+      _matchKeys = {for (final i in matches) i: _matchKeys[i] ?? GlobalKey()};
+      _currentMatch = matches.length - 1; // Start from the newest match
+    });
+    _scrollToMatch();
+  }
+
+  // Moves between matches: -1 = older, +1 = newer
+  void _stepMatch(int step) {
+    final next = _currentMatch + step;
+    if (next < 0 || next >= _searchMatches.length) return;
+    setState(() => _currentMatch = next);
+    _scrollToMatch();
+  }
+
+  void _scrollToMatch() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _currentMatch < 0 || _currentMatch >= _searchMatches.length) return;
+      final matchContext = _matchKeys[_searchMatches[_currentMatch]]?.currentContext;
+      if (matchContext == null) return;
+      Scrollable.ensureVisible(
+        matchContext,
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  // ─── Search Highlight: Outlines matching messages, thicker for the current match ───
+  BoxDecoration? _searchHighlight(int index, BorderRadius radius) {
+    if (!_matchKeys.containsKey(index)) return null;
+    final isCurrent = _searchMatches[_currentMatch] == index;
+    return BoxDecoration(
+      borderRadius: radius,
+      border: Border.all(color: const Color(0xFFF59E0B), width: isCurrent ? 2.5 : 1),
+    );
+  }
+
+  // ─── Load Conversation from Firestore + restore the cards saved with each bot reply ───
   Future<void> _loadConversation(String convoId) async {
     final messages = await _chatService.getMessages(convoId);
+    if (_conversationId != convoId) return; // A different conversation was opened meanwhile
     if (mounted && messages.isNotEmpty) {
       _messages.clear();
-      String? lastUserText;
       for (var msg in messages) {
         final dt = (msg['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
-        final isUser = msg['isUser'] ?? false;
-        List<ServiceDetail> related = [];
-        if (!isUser && lastUserText != null) {
-          related = _findRelatedServices(lastUserText);
-          lastUserText = null;
-        }
-        if (isUser) lastUserText = msg['text'] ?? '';
         _messages.add(_ChatMessage(
           text: msg['text'] ?? '',
-          isUser: isUser,
+          isUser: msg['isUser'] ?? false,
           time: _formatTime(dt),
           datetime: dt,
-          relatedServices: related,
+          relatedServices: _servicesByIds(List<String>.from(msg['serviceIds'] ?? [])),
+          isWelcome: msg['type'] == 'welcome',
+          category: msg['category'],
+          answeredTopic: msg['answeredTopic'],
         ));
       }
     }
@@ -152,8 +369,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   // ─── Strip Markdown: Removes formatting for TTS ───
   String _stripMarkdown(String text) {
     return text
-        .replaceAll(RegExp(r'\*\*(.*?)\*\*'), r'$1')
-        .replaceAll(RegExp(r'\*(.*?)\*'), r'$1')
+        .replaceAllMapped(RegExp(r'\*\*(.*?)\*\*'), (m) => m[1]!)
+        .replaceAllMapped(RegExp(r'\*(.*?)\*'), (m) => m[1]!)
         .replaceAll(RegExp(r'#+\s'), '')
         .replaceAll(RegExp(r'- '), '')
         .trim();
@@ -184,7 +401,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     return '$h:$m $period';
   }
 
-  // ─── Send Message: Handles user input, calls Groq AI, shows related services ───
+  // ─── Send Message: Handles user input, calls OpenAI, shows related services ───
   Future<void> _sendMessage() async {
     FocusManager.instance.primaryFocus?.unfocus();
 
@@ -206,74 +423,54 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     }
 
     try {
-      final apiKey = dotenv.env['GROQ_API'];
+      final apiKey = dotenv.env['API_KEY'];
       if (apiKey == null || apiKey.isEmpty) {
         _addError('API key not loaded.');
         setState(() => _isLoading = false);
         return;
       }
 
-      final relatedForCards = _findRelatedServices(text);
+      // Offices may have failed to load when the screen opened (e.g., offline)
+      if (_cachedOffices.isEmpty) _cachedOffices = await FirebaseServices().getOffices();
 
-      final messages = [
-        {
-          'role': 'system',
-          'content':
-              'Ikaw si DocsEase Bot. Tagapayo sa government documents sa Pilipinas.'
-              'RULES:'
-              '1. If user greets (hi, hello, kamusta, etc): respond with a SHORT friendly greeting and ask how you can help with their document needs.'
-              '2. If user asks GENERALLY about a service (how to get, pano kumuha, etc): respond with ONLY 1 SHORT sentence description. Do NOT mention any button or shortcut.'
-              '3. If user asks SPECIFICALLY about requirements: list ONLY requirements.'
-              '4. If user asks SPECIFICALLY about procedure/steps: list ONLY the steps.'
-              '5. If user asks SPECIFICALLY about cost/fee/bayad: answer ONLY the cost.'
-              '6. If user asks SPECIFICALLY about office/location/saan: answer ONLY the location.'
-              '7. If user asks SPECIFICALLY about duration/time: answer ONLY the processing time.'
-              '8. NEVER add extra info the user did not ask for.'
-              '9. ONLY reject questions about coding, math, programming, personal advice, or topics completely unrelated to government services. Questions about permits, documents, certificates, offices ARE related - answer them.'
-              'WIKA: Match user language (Tagalog/English).'
-              'FORMAT: Keep answers short and direct. Use bullet points only when listing multiple items.',
-        },
-        ..._messages
-            .skip(1)
-            .toList()
-            .reversed
-            .take(4)
-            .toList()
-            .reversed
-            .map((m) => {'role': m.isUser ? 'user' : 'assistant', 'content': m.text}),
-      ];
+      // Recent turns so follow-ups like "magkano?" know which service is being discussed
+      final history = _messages
+          .where((m) => !m.isWelcome)
+          .toList()
+          .reversed
+          .take(6)
+          .toList()
+          .reversed
+          .map((m) => {'role': m.isUser ? 'user' : 'assistant', 'content': m.text})
+          .toList();
 
-      final response = await http
-          .post(
-            Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-            headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $apiKey'},
-            body: jsonEncode({
-              'model': 'llama-3.1-8b-instant',
-              'messages': messages,
-              'temperature': 0.0,
-              'max_tokens': 150,
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
+      final reply = await ChatAiService(apiKey: apiKey, offices: _cachedOffices).ask(history);
+      final services = _servicesByIds(reply.serviceIds).take(3).toList();
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final reply = data['choices'][0]['message']['content'] as String;
-        if (mounted) {
-          final replyTime = DateTime.now();
-          setState(() {
-            _messages.add(
-              _ChatMessage(text: reply.trim(), isUser: false, time: _formatTime(replyTime), datetime: replyTime, relatedServices: relatedForCards),
-            );
+      if (mounted) {
+        final replyTime = DateTime.now();
+        setState(() {
+          _messages.add(_ChatMessage(
+            text: reply.answer,
+            isUser: false,
+            time: _formatTime(replyTime),
+            datetime: replyTime,
+            relatedServices: services,
+            category: reply.category,
+            answeredTopic: reply.answeredTopic,
+          ));
+        });
+        if (_chatService.isLoggedIn && _conversationId != null) {
+          _chatService.saveMessage(_conversationId!, reply.answer, false, extra: {
+            'category': reply.category,
+            'answeredTopic': reply.answeredTopic,
+            'serviceIds': services.map((s) => s.serviceId).toList(),
           });
-          if (_chatService.isLoggedIn && _conversationId != null) {
-            _chatService.saveMessage(_conversationId!, reply.trim(), false);
-          }
         }
-      } else {
-        debugPrint('Groq error: ${response.statusCode} ${response.body}');
-        if (mounted) _addError('Error ${response.statusCode}: ${response.reasonPhrase}');
       }
+    } on ChatAiException catch (e) {
+      debugPrint('OpenAI error: $e');
+      if (mounted) _addError('Error ${e.statusCode}: ${e.reasonPhrase}');
     } catch (e) {
       debugPrint('Chatbot error: $e');
       if (mounted) _addError('Failed to connect. Please check your internet connection.');
@@ -289,7 +486,15 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       _conversationId = await _chatService.createConversation(text);
       // Save the welcome message that was shown before user's first message
       if (_conversationId != null && _messages.isNotEmpty && !_messages[0].isUser) {
-        await _chatService.saveMessage(_conversationId!, _messages[0].text, false);
+        final welcome = _messages[0];
+        await _chatService.saveMessage(
+          _conversationId!,
+          welcome.text,
+          false,
+          extra: welcome.isWelcome
+              ? {'type': 'welcome', 'serviceIds': welcome.relatedServices.map((s) => s.serviceId).toList()}
+              : null,
+        );
       }
     }
     if (_conversationId != null) {
@@ -343,16 +548,23 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   @override
   void dispose() {
+    if (_activeState == this) _activeState = null;
     _connectivitySubscription.cancel();
     _tts.dispose();
     _controller.dispose();
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
+      endDrawer: _buildHistoryDrawer(),
+      onEndDrawerChanged: (isOpen) {
+        if (!isOpen && _isSelecting) _exitSelection();
+      },
       backgroundColor: Theme.of(context).brightness == Brightness.dark
                   ? Theme.of(context).colorScheme.surface
                   : Theme.of(context).colorScheme.tertiary,
@@ -360,12 +572,15 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         ? const Center(child: CircularProgressIndicator())
         : Column(
         children: [
+          if (_isSearching) _buildSearchBar(),
           Expanded(
             child: Stack(
               children: [
                 ListView.builder(
                   controller: _scrollController,
                   physics: const BouncingScrollPhysics(),
+                  // While searching, build every message so any match can be scrolled to
+                  scrollCacheExtent: _isSearching ? const ScrollCacheExtent.pixels(100000) : null,
                   reverse: true,
                   padding: EdgeInsets.only(left: 10, right: 10, top: 20, bottom: _showSuggestions ? 60 : 20),
                   itemCount: _messages.length + (_isLoading ? 1 : 0),
@@ -375,28 +590,37 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                     if (reversedIndex == _messages.length) return _buildTypingIndicator();
                     final msg = _messages[reversedIndex];
                     final showDate = _shouldShowDateSeparator(reversedIndex);
-                    final messageWidget = msg.isUser
-                        ? _buildUserMessage(msg.text, msg.time)
+                    final messageWidget = msg.isWelcome
+                        ? _buildWelcomeMessage(msg.relatedServices)
+                        : msg.isUser
+                        ? _buildUserMessage(msg.text, msg.time, reversedIndex)
                         : Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildBotMessage(msg.text, msg.time, reversedIndex),
-                              if (msg.relatedServices.isNotEmpty)
+                              if (msg.category == 'specific_service' && msg.relatedServices.isNotEmpty)
+                                _buildFollowUpCards(msg.relatedServices.first, msg.answeredTopic)
+                              else if (msg.relatedServices.isNotEmpty)
                                 _buildRelatedServices(msg.relatedServices),
                             ],
                           );
                     
+                    final matchKey = _matchKeys[reversedIndex];
+                    final keyedMessage = matchKey != null
+                        ? KeyedSubtree(key: matchKey, child: messageWidget)
+                        : messageWidget;
+
                     if (showDate) {
                       return Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _buildDateSeparator(msg.datetime),
-                          messageWidget,
+                          keyedMessage,
                         ],
                       );
                     }
-                    return messageWidget;
+                    return keyedMessage;
                   },
                 ),
                 // Floating suggestion chips
@@ -469,6 +693,317 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ─── Search Bar: Query field, match counter, older/newer arrows, and close ───
+  Widget _buildSearchBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final lang = Provider.of<SettingsProvider>(context).language;
+    final total = _searchMatches.length;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(color: onSurface.withValues(alpha: 0.1), width: 0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 42,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: isDark ? Theme.of(context).colorScheme.primary : const Color(0xFFF2F2F2),
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.search, color: onSurface.withValues(alpha: 0.5), size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      autofocus: true,
+                      textInputAction: TextInputAction.search,
+                      onChanged: _runSearch,
+                      onSubmitted: (_) => _stepMatch(-1),
+                      decoration: InputDecoration(
+                        isCollapsed: true,
+                        border: InputBorder.none,
+                        hintText: AppLocalizations.translate('Search in conversation', lang),
+                        hintStyle: GoogleFonts.inter(color: onSurface.withValues(alpha: 0.5), fontSize: 14),
+                      ),
+                    ),
+                  ),
+                  if (_searchController.text.trim().isNotEmpty)
+                    Text(
+                      total == 0 ? '0/0' : '${total - _currentMatch}/$total',
+                      style: GoogleFonts.inter(color: onSurface.withValues(alpha: 0.6), fontSize: 12),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            color: onSurface,
+            icon: const Icon(Icons.keyboard_arrow_up),
+            onPressed: _currentMatch > 0 ? () => _stepMatch(-1) : null,
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            color: onSurface,
+            icon: const Icon(Icons.keyboard_arrow_down),
+            onPressed: _currentMatch < total - 1 ? () => _stepMatch(1) : null,
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            color: onSurface,
+            icon: const Icon(Icons.close),
+            onPressed: _closeSearch,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Chat History Drawer: New chat, delete options, and past conversations ───
+  Widget _buildHistoryDrawer() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+    final lang = Provider.of<SettingsProvider>(context).language;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final textColor = isDark ? Colors.white : Colors.black87;
+
+    return Drawer(
+      width: screenWidth > 400 ? 300 : screenWidth * 0.75,
+      backgroundColor: isDark ? colorScheme.surface : const Color(0xFFE5F6FF),
+      shape: const RoundedRectangleBorder(),
+      // Disabled while the bot is replying so the reply lands in the right conversation
+      child: AbsorbPointer(
+        absorbing: _isLoading,
+        child: Opacity(
+          opacity: _isLoading ? 0.5 : 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // --- NEW CHAT + DELETE BUTTONS (or selection bar when deleting multiple) ---
+              Container(
+                color: colorScheme.primary,
+                padding: const EdgeInsets.all(12),
+                child: _isSelecting ? _buildSelectionBar(lang, textColor) : Row(
+                  children: [
+                    Expanded(
+                      child: _buildDrawerButton(
+                        onTap: _startNewChat,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            NewChatIcon(color: textColor, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              AppLocalizations.translate('New Chat', lang),
+                              style: GoogleFonts.inter(
+                                color: isDark ? Colors.white : colorScheme.primary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    _buildDrawerButton(
+                      onTap: _showDeleteOptions,
+                      child: Icon(Icons.delete_outline, color: textColor, size: 24),
+                    ),
+                  ],
+                ),
+              ),
+
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                child: Text(
+                  AppLocalizations.translate('Chat History', lang),
+                  style: GoogleFonts.inter(color: textColor, fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ),
+
+              // --- CONVERSATION LIST ---
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _conversationsStream,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final conversations = snapshot.data?.docs ?? [];
+                    if (conversations.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text(
+                          AppLocalizations.translate('No conversations yet.', lang),
+                          style: GoogleFonts.inter(color: textColor.withValues(alpha: 0.5), fontSize: 13),
+                        ),
+                      );
+                    }
+
+                    // Newest first, grouped under Today / Yesterday / Previous 7 Days / ...
+                    final items = <Widget>[];
+                    String? currentGroup;
+                    for (final convo in conversations) {
+                      final data = convo.data() as Map<String, dynamic>;
+                      final title = data['title'] ?? 'Untitled';
+                      // Null for a moment while a new chat's server timestamp is pending
+                      final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+                      final group = _historyGroup(updatedAt);
+                      final isSelected = _selectedIds.contains(convo.id);
+                      final isHighlighted = _isSelecting ? isSelected : convo.id == _conversationId;
+
+                      if (group != currentGroup) {
+                        items.add(Padding(
+                          padding: EdgeInsets.fromLTRB(16, currentGroup == null ? 4 : 16, 16, 4),
+                          child: Text(
+                            AppLocalizations.translate(group, lang).toUpperCase(),
+                            style: GoogleFonts.inter(
+                              color: textColor.withValues(alpha: 0.55),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ));
+                        currentGroup = group;
+                      }
+
+                      items.add(InkWell(
+                        onTap: _isSelecting ? () => _toggleSelected(convo.id) : () => _openConversation(convo.id),
+                        child: Container(
+                          color: isHighlighted ? colorScheme.primary.withValues(alpha: isDark ? 0.6 : 0.1) : null,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          child: Row(
+                            children: [
+                              if (_isSelecting)
+                                Icon(
+                                  isSelected ? Icons.check_box : Icons.check_box_outline_blank,
+                                  color: isSelected && !isDark ? colorScheme.primary : textColor,
+                                  size: 18,
+                                )
+                              else
+                                Icon(Icons.chat_bubble_outline, color: textColor, size: 18),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(color: textColor, fontSize: 13),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _historyTimeLabel(updatedAt, group),
+                                style: GoogleFonts.inter(color: textColor.withValues(alpha: 0.55), fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ));
+                    }
+
+                    return ListView(padding: EdgeInsets.zero, children: items);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── History Group: Date section a conversation falls under, by its last activity ───
+  String _historyGroup(DateTime date) {
+    final now = DateTime.now();
+    final days = DateTime.utc(now.year, now.month, now.day)
+        .difference(DateTime.utc(date.year, date.month, date.day))
+        .inDays;
+    if (days <= 0) return 'Today';
+    if (days == 1) return 'Yesterday';
+    if (days <= 7) return 'Previous 7 Days';
+    if (days <= 30) return 'Previous 30 Days';
+    return 'Older';
+  }
+
+  // ─── History Time Label: "10:42 AM" for today, "May 18" for older, with year if not this year ───
+  String _historyTimeLabel(DateTime date, String group) {
+    if (group == 'Today') return _formatTime(date);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final label = '${months[date.month - 1]} ${date.day}';
+    return date.year == DateTime.now().year ? label : '$label, ${date.year}';
+  }
+
+  // ─── Selection Bar: Cancel, selected count, and delete for "delete multiple" mode ───
+  Widget _buildSelectionBar(String lang, Color textColor) {
+    const red = Color(0xFFEF4444);
+    final hasSelection = _selectedIds.isNotEmpty;
+
+    return Row(
+      children: [
+        _buildDrawerButton(
+          onTap: _exitSelection,
+          child: Icon(Icons.close, color: textColor, size: 22),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            AppLocalizations.translate('{n} selected', lang).replaceAll('{n}', '${_selectedIds.length}'),
+            style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+        ),
+        Opacity(
+          opacity: hasSelection ? 1 : 0.5,
+          child: _buildDrawerButton(
+            onTap: hasSelection ? () => _confirmDelete(_selectedIds.toList()) : null,
+            child: Row(
+              children: [
+                const Icon(Icons.delete_outline, color: red, size: 22),
+                const SizedBox(width: 4),
+                Text(
+                  AppLocalizations.translate('Delete', lang),
+                  style: GoogleFonts.inter(color: red, fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─── Drawer Button: White rounded button on the drawer's blue header ───
+  Widget _buildDrawerButton({required VoidCallback? onTap, required Widget child}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: SizedBox(
+          height: 42,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 9),
+            child: Center(child: child),
+          ),
+        ),
       ),
     );
   }
@@ -582,105 +1117,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   }
 
 
-  // ─── Find Related Services: Keyword matching against cached offices ───
-  // Matches user's message keywords against service names (English + Filipino)
-  // Returns 1 result for specific queries (2+ keyword matches)
-  // Returns up to 3 results for broad queries (1 keyword match)
-  List<ServiceDetail> _findRelatedServices(String userMessage) {
-    if (_cachedOffices.isEmpty) return [];
-    final msg = userMessage.toLowerCase();
-    final allServices = _cachedOffices.expand((o) => o.services).toList();
-
-    // Tagalog topic mappings
-    const tagalogMap = {
-      'negosyo': 'business',
-      'permiso': 'permit',
-      'kasal': 'marriage',
-      'ikasal': 'marriage',
-      'kapanganakan': 'birth',
-      'pagtatayo': 'building',
-      'konstruksyon': 'construction',
-      'lisensya': 'license',
-      'sertipiko': 'certificate',
-      'clearance': 'clearance',
-      'buwis': 'tax',
-      'kamatayan': 'death',
-      'patay': 'death',
-      'namatay': 'death',
-      'rehistro': 'registration',
-      'pagreretiro': 'retirement',
-      'reklamo': 'complaint',
-      'espesyal': 'special',
-      'okupasyon': 'occupancy',
-      'elektrikal': 'electrical',
-      'inspeksyon': 'inspection',
-      'kalusugan': 'health',
-      'bata': 'child',
-      'renewal': 'renewal',
-      'mag-renew': 'renewal',
-    };
-
-    // Words to ignore
-    const skipWords = {'pano', 'paano', 'mag', 'ang', 'nga', 'nang', 'para', 'saan', 'ano', 'anong', 'gusto', 'kailangan', 'asikaso', 'papel', 'dokumento', 'proseso', 'kumuha', 'pagkuha'};
-
-    // Extract meaningful topic keywords
-    final words = msg.split(RegExp(r'[\s,?.!]+'));
-    final topicKeywords = <String>[];
-    for (var w in words) {
-      if (w.length < 3 || skipWords.contains(w)) continue;
-      if (tagalogMap.containsKey(w)) {
-        topicKeywords.add(tagalogMap[w]!);
-      } else {
-        topicKeywords.add(w);
-      }
-    }
-
-    if (topicKeywords.isEmpty) return [];
-
-    // Score services by how many topic keywords match their name
-    final scored = <ServiceDetail, int>{};
-    for (var service in allServices) {
-      final nameEn = service.title.toLowerCase();
-      final nameFil = service.titleFil.toLowerCase();
-      int score = 0;
-      for (var kw in topicKeywords) {
-        if (nameEn.contains(kw) || nameFil.contains(kw)) score++;
-      }
-      if (score > 0) scored[service] = score;
-    }
-
-    if (scored.isEmpty) return [];
-
-    final sorted = scored.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    final topScore = sorted.first.value;
-
-    // If top score is high (2+ keywords matched), it's a specific service - show only 1
-    if (topScore >= 2) {
-      return [sorted.first.key];
-    }
-
-    // For single keyword matches, only return services that share the SAME matched keyword
-    // This prevents "certificate" matching unrelated certificate services
-    final topService = sorted.first.key;
-    final topNameEn = topService.title.toLowerCase();
-    // Find which keyword matched the top result
-    String? matchedKeyword;
-    for (var kw in topicKeywords) {
-      if (topNameEn.contains(kw)) {
-        matchedKeyword = kw;
-        break;
-      }
-    }
-    if (matchedKeyword == null) return [topService];
-
-    // Only return services that also match this specific keyword
-    final filtered = sorted.where((e) {
-      final name = e.key.title.toLowerCase();
-      return name.contains(matchedKeyword!);
-    }).take(3).map((e) => e.key).toList();
-    return filtered;
-  }
-
   // ─── Navigate to Office: Shows all services under an office ───
   void _navigateToOffice(String officeId) {
     final office = _cachedOffices.where((o) => o.officeId == officeId).firstOrNull;
@@ -699,6 +1135,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     }
   }
 
+  // ─── Services By IDs: Looks up cached services, skipping any that no longer exist ───
+  List<ServiceDetail> _servicesByIds(List<String> ids) {
+    final allServices = _cachedOffices.expand((o) => o.services).toList();
+    return [
+      for (final id in ids) ...allServices.where((s) => s.serviceId == id).take(1),
+    ];
+  }
+
   // ─── Navigate to Service: Opens InformationScreen for a specific service ───
   void _navigateToService(String serviceId) {
     final allServices = _cachedOffices.expand((o) => o.services).toList();
@@ -711,26 +1155,141 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     }
   }
 
-  // ─── Build Date Separator ("Today", "Yesterday", etc.) ───
+  // ─── Build Date Separator: Small pill with "TODAY", "YESTERDAY", or the date ───
   Widget _buildDateSeparator(DateTime date) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Row(
-        children: [
-          Expanded(child: Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15))),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              _formatDateLabel(date),
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
-                fontWeight: FontWeight.w500,
-              ),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.1) : const Color(0xFFC4E1F0),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            AppLocalizations.translate(_formatDateLabel(date), lang).toUpperCase(),
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+              color: isDark ? Colors.white60 : const Color(0xFF7A8C95),
             ),
           ),
-          Expanded(child: Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15))),
+        ),
+      ),
+    );
+  }
+
+  // ─── Welcome Message: Greeting headline and random service cards for a new chat ───
+  Widget _buildWelcomeMessage(List<ServiceDetail> services) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            AppLocalizations.translate(_welcomeTitle, lang),
+            style: GoogleFonts.inter(
+              fontSize: 21,
+              fontWeight: FontWeight.w800,
+              height: 1.25,
+              color: isDark ? Colors.white : const Color(0xFF222425),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _welcomeSubtitle,
+            style: GoogleFonts.inter(fontSize: 14, height: 1.4, color: onSurface.withValues(alpha: 0.8)),
+          ),
+          const SizedBox(height: 18),
+          ...services.map(_buildWelcomeServiceCard),
         ],
+      ),
+    );
+  }
+
+  // ─── Welcome Service Card: Icon tile, name, description, and arrow; opens the service ───
+  Widget _buildWelcomeServiceCard(ServiceDetail service) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final description = service.getDescription(lang);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: isDark ? Theme.of(context).colorScheme.primary : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => Navigator.push(
+            context,
+            SlideRoute(page: InformationScreen(detail: service)),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: onSurface.withValues(alpha: 0.08), width: 1.5),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: UIHelper.getBgColorForService(service.title),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(UIHelper.getIconForService(service.title), size: 30, color: Colors.black87),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        service.getTitle(lang),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: onSurface.withValues(alpha: 0.9),
+                        ),
+                      ),
+                      if (description.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(fontSize: 12, height: 1.3, color: onSurface.withValues(alpha: 0.6)),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.1) : const Color(0xFFEEF2F7),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.arrow_forward, size: 18, color: isDark ? Colors.white : const Color(0xFF3D72DF)),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -774,11 +1333,100 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   // ─── Build Individual Related Service Card ───
   Widget _buildRelatedServiceCard(ServiceDetail service) {
     final lang = Provider.of<SettingsProvider>(context, listen: false).language;
-    return GestureDetector(
+    return _buildSuggestionCard(
+      icon: UIHelper.getIconForService(service.title),
+      iconBackground: UIHelper.getBgColorForService(service.title),
+      title: service.getTitle(lang),
+      subtitle: service.getDescription(lang),
       onTap: () => Navigator.push(
         context,
         SlideRoute(page: InformationScreen(detail: service)),
       ),
+    );
+  }
+
+  // Follow-up topics offered under a specific-service answer: key, label, icon, question (English, Filipino)
+  static const _followUpTopics = [
+    ('requirements', 'Requirements', Icons.checklist_rounded,
+        'What are the requirements for {s}?', 'Ano ang mga requirements para sa {s}?'),
+    ('steps', 'Step-by-step process', Icons.format_list_numbered_rounded,
+        'What are the steps for {s}?', 'Ano ang mga hakbang para sa {s}?'),
+    ('fees', 'Fees', Icons.payments_outlined,
+        'How much are the fees for {s}?', 'Magkano ang bayad para sa {s}?'),
+    ('persons_in_charge', 'Persons in charge', Icons.badge_outlined,
+        'Who is in charge of {s}?', 'Sino ang namamahala sa {s}?'),
+    ('processing_time', 'Processing time', Icons.schedule_rounded,
+        'How long does {s} take?', 'Gaano katagal ang {s}?'),
+  ];
+
+  // ─── Follow-Up Cards: Other topics about the service just answered (fees, steps, ...) ───
+  Widget _buildFollowUpCards(ServiceDetail service, String? answeredTopic) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    final serviceTitle = service.getTitle(lang);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final topics = _followUpTopics.where((t) => t.$1 != answeredTopic).take(3);
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 46, right: 46, top: 9, bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${AppLocalizations.translate('More about', lang)} $serviceTitle',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 3),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              SlideRoute(page: InformationScreen(detail: service)),
+            ),
+            child: Text(
+              '${AppLocalizations.translate('View full details', lang)} →',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white70 : Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...topics.map((topic) {
+            final question = (lang == 'Filipino' ? topic.$5 : topic.$4).replaceAll('{s}', serviceTitle);
+            return _buildSuggestionCard(
+              icon: topic.$3,
+              iconBackground: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
+              title: AppLocalizations.translate(topic.$2, lang),
+              subtitle: serviceTitle,
+              onTap: () => _askFollowUp(question),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ─── Ask Follow-Up: Sends a follow-up card's question as if the user typed it ───
+  void _askFollowUp(String question) {
+    if (_isLoading) return;
+    _controller.text = question;
+    _sendMessage();
+  }
+
+  // ─── Suggestion Card: Icon tile, title, one-line subtitle, chevron ───
+  Widget _buildSuggestionCard({
+    required IconData icon,
+    required Color iconBackground,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -797,13 +1445,13 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: UIHelper.getBgColorForService(service.title),
+                color: iconBackground,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
-                UIHelper.getIconForService(service.title),
+                icon,
                 size: 18,
-                color: Colors.black,
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
               ),
             ),
             const SizedBox(width: 12),
@@ -812,16 +1460,16 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    service.getTitle(lang),
+                    title,
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                     ),
                   ),
-                  if (service.getDescription(lang).isNotEmpty)
+                  if (subtitle.isNotEmpty)
                     Text(
-                      service.getDescription(lang),
+                      subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.inter(
@@ -885,6 +1533,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   // ─── Build Bot Message Bubble ───
   Widget _buildBotMessage(String text, String time, int index) {
+    const botBubbleRadius = BorderRadius.only(
+      topRight: Radius.circular(20),
+      bottomLeft: Radius.circular(20),
+      bottomRight: Radius.circular(20),
+    );
     return Padding(
       padding: const EdgeInsets.only(bottom: 18, right: 20),
       child: Row(
@@ -976,12 +1629,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                           color: Theme.of(context).brightness == Brightness.dark
                               ? Theme.of(context).colorScheme.primary
                               : Theme.of(context).colorScheme.surface,
-                          borderRadius: BorderRadius.only(
-                            topRight: Radius.circular(20),
-                            bottomLeft: Radius.circular(20),
-                            bottomRight: Radius.circular(20),
-                          ),
+                          borderRadius: botBubbleRadius,
                         ),
+                        foregroundDecoration: _searchHighlight(index, botBubbleRadius),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -1058,7 +1708,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   }
 
   // ─── Build User Message Bubble ───
-  Widget _buildUserMessage(String text, String time) {
+  Widget _buildUserMessage(String text, String time, int index) {
+    const userBubbleRadius = BorderRadius.only(
+      topLeft: Radius.circular(20),
+      bottomLeft: Radius.circular(20),
+      bottomRight: Radius.circular(20),
+    );
     return Padding(
       padding: EdgeInsets.only(bottom: 18, left: MediaQuery.of(context).size.width * 0.25),
       child: Column(
@@ -1068,12 +1723,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             padding: const EdgeInsets.fromLTRB(15, 15, 15, 7),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.secondary,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
+              borderRadius: userBubbleRadius,
             ),
+            foregroundDecoration: _searchHighlight(index, userBubbleRadius),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [

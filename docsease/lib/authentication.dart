@@ -7,7 +7,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:docsease/settings_provider.dart';
 
@@ -396,22 +395,10 @@ class _SignInState extends State<SignIn> {
             );
             try {
               setState(() => _isGoogleLoading = true);
-
-              final GoogleSignIn googleSignIn = GoogleSignIn();
-              await googleSignIn.signOut();
-              final googleUser = await googleSignIn.signIn();
-
-              if (googleUser == null) {
-                if (mounted) setState(() => _isGoogleLoading = false);
-                return;
-              }
-
               settings.setPauseUpdates(true);
 
               final authService = FirebaseServices();
-              final result = await authService.signInWithGoogleStrict(
-                googleUser: googleUser,
-              );
+              final result = await authService.signInWithGoogleStrict();
 
               if (mounted) {
                 setState(() => _isGoogleLoading = false);
@@ -737,22 +724,10 @@ class _SignUpState extends State<SignUp> {
             );
             try {
               setState(() => _isGoogleLoading = true);
-
-              final GoogleSignIn googleSignIn = GoogleSignIn();
-              await googleSignIn.signOut();
-              final googleUser = await googleSignIn.signIn();
-
-              if (googleUser == null) {
-                if (mounted) setState(() => _isGoogleLoading = false);
-                return;
-              }
-
               settings.setPauseUpdates(true);
 
               final authService = FirebaseServices();
-              final result = await authService.signUpWithGoogle(
-                googleUser: googleUser,
-              );
+              final result = await authService.signUpWithGoogle();
 
               if (mounted) {
                 setState(() => _isGoogleLoading = false);

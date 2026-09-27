@@ -1,4 +1,5 @@
 import 'package:docsease/about_us.dart';
+import 'package:docsease/chatbot.dart';
 import 'package:docsease/app_modals.dart';
 import 'package:docsease/authentication.dart';
 import 'package:docsease/firebase_services.dart';
@@ -430,36 +431,42 @@ class _SideBarState extends State<SideBar> {
                       ],
                     ),
                     const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          "DocsEase Bot",
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "DocsEase Bot",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          isOnline
-                              ? AppLocalizations.translate(
-                                  'Online Assistant',
-                                  Provider.of<SettingsProvider>(context).language,
-                                )
-                              : AppLocalizations.translate(
-                                  'Offline - Waiting for network...',
-                                  Provider.of<SettingsProvider>(context).language,
-                                ),
-                          style: GoogleFonts.inter(
-                            color: Colors.white60,
-                            fontSize: 11,
-                            fontWeight: FontWeight.normal,
+                          const SizedBox(height: 2),
+                          Text(
+                            isOnline
+                                ? AppLocalizations.translate(
+                                    'Online Assistant',
+                                    Provider.of<SettingsProvider>(context).language,
+                                  )
+                                : AppLocalizations.translate(
+                                    'Offline - Waiting for network...',
+                                    Provider.of<SettingsProvider>(context).language,
+                                  ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              color: Colors.white60,
+                              fontSize: 11,
+                              fontWeight: FontWeight.normal,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 )
@@ -475,6 +482,21 @@ class _SideBarState extends State<SideBar> {
                   ),
                 ),
           actions: [
+            // --- SEARCH + NEW CHAT / CHAT HISTORY (chatbot only) ---
+            if (selectedIndex == 0 && currentTitle == 'Chatbot') ...[
+              IconButton(
+                splashRadius: 20.0,
+                visualDensity: VisualDensity.compact,
+                onPressed: ChatBotScreen.openSearch,
+                icon: Icon(Icons.search, color: Theme.of(context).colorScheme.onPrimary, size: 24),
+              ),
+              IconButton(
+                splashRadius: 20.0,
+                visualDensity: VisualDensity.compact,
+                onPressed: ChatBotScreen.openHistory,
+                icon: NewChatIcon(color: Theme.of(context).colorScheme.onPrimary),
+              ),
+            ],
             // --- HAMBURGER MENU ---
             Builder(
               builder: (BuildContext context) {

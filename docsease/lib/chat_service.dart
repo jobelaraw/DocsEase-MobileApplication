@@ -23,13 +23,14 @@ class ChatService {
   }
 
   /// Save a message to a conversation
-  Future<void> saveMessage(String convoId, String text, bool isUser) async {
+  Future<void> saveMessage(String convoId, String text, bool isUser, {Map<String, dynamic>? extra}) async {
     if (_uid == null) return;
     // Write message and update timestamp in parallel
     _conversationsRef.doc(convoId).collection('messages').add({
       'text': text,
       'isUser': isUser,
       'timestamp': FieldValue.serverTimestamp(),
+      ...?extra,
     });
     _conversationsRef.doc(convoId).update({
       'updatedAt': FieldValue.serverTimestamp(),
@@ -74,6 +75,11 @@ class ChatService {
       await doc.reference.delete();
     }
     await _conversationsRef.doc(convoId).delete();
+  }
+
+  /// Delete several conversations at once
+  Future<void> deleteConversations(List<String> convoIds) async {
+    await Future.wait(convoIds.map(deleteConversation));
   }
 
   /// Check if user is logged in
