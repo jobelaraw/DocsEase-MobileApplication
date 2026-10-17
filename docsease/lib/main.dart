@@ -70,7 +70,7 @@ class MyApp extends StatelessWidget {
               onSurface: Colors.white70,
             ),
           ),
-          title: 'DocsEase',
+          title: 'GaBayan',
           debugShowCheckedModeBanner: false,
           builder: (context, child) {
             return MediaQuery(

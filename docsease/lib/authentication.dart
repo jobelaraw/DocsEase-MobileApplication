@@ -108,7 +108,7 @@ class _AuthenticationState extends State<Authentication>
                             ),
                             const SizedBox(height: 7),
                             Text(
-                              'DocsEase',
+                              'GaBayan',
                               style: GoogleFonts.inter(
                                 fontSize: 25,
                                 fontWeight: FontWeight.bold,
@@ -361,7 +361,7 @@ class _SignInState extends State<SignIn> {
                 AuthSuccessModal.show(
                   context,
                   title: 'Signed In!',
-                  subtitle: 'Welcome back to DocsEase.',
+                  subtitle: 'Welcome back to GaBayan.',
                   onPrimary: () {
                     Navigator.of(context, rootNavigator: true).pop();
                     Navigator.of(context).popUntil((route) => route.isFirst);
@@ -370,12 +370,32 @@ class _SignInState extends State<SignIn> {
                 );
               }
             } catch (e) {
+              // A Google-only account has no password, so email/password fails.
+              // Tell the user to use Google instead of a vague "invalid" error.
+              bool googleOnly = false;
+              if (e is FirebaseAuthException &&
+                  (e.code == 'invalid-credential' || e.code == 'wrong-password')) {
+                try {
+                  final providers = await FirebaseServices()
+                      .getSignInProviders(widget.emailController.text);
+                  googleOnly = providers.contains('google.com') &&
+                      !providers.contains('password');
+                } catch (_) {}
+              }
               if (mounted) {
                 settings.setPauseUpdates(false);
                 setState(() {
                   _isEmailLoading = false;
-                  errorMessage = 'Email or password is invalid.';
+                  if (!googleOnly) errorMessage = 'Email or password is invalid.';
                 });
+                if (googleOnly) {
+                  AuthErrorModal.show(
+                    context,
+                    title: 'Use Google Sign-In',
+                    subtitle:
+                        'This account was created with Google. Please tap "Continue with Google", or use Forgot Password to set a password.',
+                  );
+                }
               }
             }
           },
@@ -407,7 +427,7 @@ class _SignInState extends State<SignIn> {
                   AuthSuccessModal.show(
                     context,
                     title: 'Signed In!',
-                    subtitle: 'Welcome back to DocsEase.',
+                    subtitle: 'Welcome back to GaBayan.',
                     onPrimary: () {
                       Navigator.of(context, rootNavigator: true).pop();
                       Navigator.of(context).popUntil((route) => route.isFirst);
@@ -430,6 +450,13 @@ class _SignInState extends State<SignIn> {
                     title: 'Invalid Google Account',
                     subtitle:
                         'This Google account is not registered as a citizen account.',
+                  );
+                } else if (e is EmailPasswordAccountException) {
+                  AuthErrorModal.show(
+                    context,
+                    title: 'Use Email & Password',
+                    subtitle:
+                        'This email is registered with an email and password. Please sign in using your email and password instead.',
                   );
                 } else {
                   AuthErrorModal.show(
@@ -685,7 +712,7 @@ class _SignUpState extends State<SignUp> {
                 AuthSuccessModal.show(
                   context,
                   title: 'Account Created!',
-                  subtitle: 'Welcome to DocsEase.',
+                  subtitle: 'Welcome to GaBayan.',
                   onPrimary: () {
                     Navigator.of(context, rootNavigator: true).pop();
                     Navigator.of(context).popUntil((route) => route.isFirst);
@@ -736,7 +763,7 @@ class _SignUpState extends State<SignUp> {
                   AuthSuccessModal.show(
                     context,
                     title: 'Account Created!',
-                    subtitle: 'Welcome to DocsEase.',
+                    subtitle: 'Welcome to GaBayan.',
                     onPrimary: () {
                       Navigator.of(context, rootNavigator: true).pop();
                       Navigator.of(context).popUntil((route) => route.isFirst);
@@ -764,6 +791,18 @@ class _SignUpState extends State<SignUp> {
                     context,
                     title: 'Invalid Google Account',
                     subtitle: 'This Google account cannot be used to sign up.',
+                  );
+                } else if (e is EmailPasswordAccountException) {
+                  AuthRedirectModal.show(
+                    context,
+                    title: 'Email Already Registered',
+                    subtitle:
+                        'This email already has an email and password account. Please sign in with your email and password instead.',
+                    primaryLabel: 'Go to Sign In',
+                    onPrimary: () {
+                      Navigator.of(context, rootNavigator: true).pop();
+                      widget.onTapAction();
+                    },
                   );
                 } else {
                   AuthErrorModal.show(

@@ -144,7 +144,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  'DocsEase',
+                                  'GaBayan',
                                   style: GoogleFonts.inter(
                                     color: const Color(0xFF93C5FD),
                                     fontSize: 35,

@@ -437,7 +437,7 @@ class _SideBarState extends State<SideBar> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            "DocsEase Bot",
+                            "GaBayan Bot",
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.inter(

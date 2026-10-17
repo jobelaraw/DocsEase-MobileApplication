@@ -109,7 +109,7 @@ class _AppStartState extends State<AppStart> {
                       ),
                       const SizedBox(height: 32),
                       Text(
-                        'Welcome to\nDocsEase!',
+                        'Welcome to\nGaBayan!',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.inter(
                           fontSize: 34,

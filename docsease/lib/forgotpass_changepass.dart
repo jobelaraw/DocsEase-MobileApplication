@@ -81,7 +81,7 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'DocsEase',
+                              'GaBayan',
                               style: GoogleFonts.inter(
                                 color: Colors.white,
                                 fontSize: 24,
