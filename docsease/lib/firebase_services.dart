@@ -18,6 +18,9 @@ class GoogleAccountNotRegisteredException implements Exception {}
 // G account belongs to admin
 class GoogleAccountIsAdminException implements Exception {}
 
+// Google sign-in/up blocked: this email belongs to an email/password account
+class EmailPasswordAccountException implements Exception {}
+
 class FirebaseServices {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -86,6 +89,14 @@ class FirebaseServices {
     }
   }
 
+  Future<List<String>> getSignInProviders(String email) async {
+    final callable = FirebaseFunctions.instance.httpsCallable('isEmailRegistered');
+    final result = await callable.call({'email': email.trim().toLowerCase()});
+    final data = Map<String, dynamic>.from(result.data as Map);
+    if (data['providers'] == null) throw StateError('providers missing'); // old function deployed
+    return List<String>.from(data['providers']);
+  }
+
   Future<void> updateUserProfile({
     String? newUsername,
     String? newPassword,
@@ -117,7 +128,9 @@ class FirebaseServices {
   }
 
   // Returns null if the user dismissed the account picker.
-  Future<UserCredential?> _signInWithGoogle() async {
+  Future<UserCredential?> _signInWithGoogle({
+    Future<void> Function(String email)? preCheck,
+  }) async {
     // google_sign_in's signIn() doesn't return an idToken on web, so use Firebase's popup flow there
     if (kIsWeb) {
       final provider = GoogleAuthProvider()..setCustomParameters({'prompt': 'select_account'});
@@ -135,6 +148,15 @@ class FirebaseServices {
     final googleUser = await googleSignIn.signIn();
     if (googleUser == null) return null;
 
+    if (preCheck != null) {
+      try {
+        await preCheck(googleUser.email);
+      } catch (_) {
+        await googleSignIn.signOut();
+        rethrow;
+      }
+    }
+
     final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
     final AuthCredential credential = GoogleAuthProvider.credential(
       accessToken: googleAuth.accessToken,
@@ -144,7 +166,14 @@ class FirebaseServices {
   }
 
   Future<UserCredential?> signInWithGoogleStrict() async {
-    UserCredential? userCredential = await _signInWithGoogle();
+    UserCredential? userCredential = await _signInWithGoogle(
+      preCheck: (email) async {
+        final providers = await getSignInProviders(email);
+        if (providers.isEmpty) throw GoogleAccountNotRegisteredException();
+        if (!providers.contains('google.com')) throw EmailPasswordAccountException();
+      },
+    );
+    
     User? user = userCredential?.user;
     if (user == null) return null;
 
@@ -164,7 +193,14 @@ class FirebaseServices {
   }
 
   Future<UserCredential?> signUpWithGoogle() async {
-    UserCredential? userCredential = await _signInWithGoogle();
+    UserCredential? userCredential = await _signInWithGoogle(
+      preCheck: (email) async {
+        final providers = await getSignInProviders(email);
+        if (providers.isNotEmpty && !providers.contains('google.com')) {
+          throw EmailPasswordAccountException();
+        }
+      },
+    );
     User? user = userCredential?.user;
     if (user == null) return null;
 

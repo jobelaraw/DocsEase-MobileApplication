@@ -10,6 +10,7 @@ import 'package:docsease/app_localizations.dart';
 import 'package:docsease/settings_provider.dart';
 import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class InformationScreen extends StatefulWidget {
   final ServiceDetail detail;
@@ -605,6 +606,10 @@ class _StepItem extends StatelessWidget {
             ),
           ],
         ),
+        if (step.onlineLink.trim().isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _OnlineLinkChip(url: step.onlineLink.trim()),
+        ],
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(16),
@@ -749,6 +754,85 @@ class _StepItem extends StatelessWidget {
   }
 }
 
+class _OnlineLinkChip extends StatelessWidget {
+  final String url;
+
+  const _OnlineLinkChip({required this.url});
+
+  // Prefixes the url with https:// if the admin saved it without a scheme,
+  // so url_launcher doesn't choke on something like "example.gov.ph".
+  Uri _resolvedUri() {
+    final hasScheme = RegExp(r'^[a-zA-Z][a-zA-Z\d+\-.]*://').hasMatch(url);
+    return Uri.parse(hasScheme ? url : 'https://$url');
+  }
+
+  Future<void> _openLink(BuildContext context) async {
+    final uri = _resolvedUri();
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't open the link.")),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(15),
+        onTap: () => _openLink(context),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Theme.of(context).colorScheme.primary
+                : const Color(0xFFFFF7E0),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: isDark
+                  ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1)
+                  : const Color(0xFFF0E4BE),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.link, size: 18, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  url,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Colors.black87,
+                    decoration: TextDecoration.underline,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.open_in_new,
+                size: 16,
+                color: isDark
+                    ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.6)
+                    : Colors.black45,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _InfoBox extends StatelessWidget {
   final String label;
   final String value;
@@ -813,11 +897,35 @@ class _InfoGrid extends StatelessWidget {
     required this.language,
   });
 
+  // Resolves a "website or email" value typed by the admin into a launchable
+  // Uri: an email-looking value becomes a mailto: link, everything else is
+  // treated as a URL (https:// is added if the admin left the scheme off).
+  Uri _resolveWebsiteOrEmailUri(String raw) {
+    final value = raw.trim();
+    final looksLikeEmail =
+        !value.contains('://') && RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value);
+    if (looksLikeEmail) return Uri(scheme: 'mailto', path: value);
+
+    final hasScheme = RegExp(r'^[a-zA-Z][a-zA-Z\d+\-.]*://').hasMatch(value);
+    return Uri.parse(hasScheme ? value : 'https://$value');
+  }
+
+  Future<void> _openWebsiteOrEmail(BuildContext context, String raw) async {
+    final uri = _resolveWebsiteOrEmailUri(raw);
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't open that.")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final locationVal = detail.location.isNotEmpty ? detail.location : "N/A";
     final contactVal = detail.contactPhone.isNotEmpty ? detail.contactPhone : "N/A";
     final websiteVal = detail.contactEmail.isNotEmpty ? detail.contactEmail : "N/A";
+    final hasWebsite = websiteVal != "N/A";
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -849,6 +957,7 @@ class _InfoGrid extends StatelessWidget {
                     Icons.language,
                     AppLocalizations.translate("WEBSITE", language),
                     websiteVal,
+                    onTap: hasWebsite ? () => _openWebsiteOrEmail(context, websiteVal) : null,
                   ),
                 ],
               );
@@ -872,6 +981,7 @@ class _InfoGrid extends StatelessWidget {
                       Icons.language,
                       AppLocalizations.translate("WEBSITE", language),
                       websiteVal,
+                      onTap: hasWebsite ? () => _openWebsiteOrEmail(context, websiteVal) : null,
                     ),
                   ),
                 ],
@@ -883,58 +993,77 @@ class _InfoGrid extends StatelessWidget {
     );
   }
 
-  Widget _buildCard(BuildContext context, IconData icon, String label, String value) {
+  Widget _buildCard(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value, {
+    VoidCallback? onTap,
+  }) {
+    final isLink = onTap != null;
+
     return Material(
       borderRadius: BorderRadius.circular(25),
       elevation: 4,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Theme.of(context).colorScheme.primary
-              : Colors.white,
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(
-            color: Theme.brightnessOf(context) == Brightness.dark
-                ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1)
-                : Colors.grey.shade100,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(25),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Theme.of(context).colorScheme.primary
+                : Colors.white,
+            borderRadius: BorderRadius.circular(25),
+            border: Border.all(
+              color: Theme.brightnessOf(context) == Brightness.dark
+                  ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1)
+                  : Colors.grey.shade100,
+            ),
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: const Color(0xFF3B73E0), size: 18),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    label,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)
-                          : Colors.black45,
-                      fontWeight: FontWeight.w600,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, color: const Color(0xFF3B73E0), size: 18),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)
+                            : Colors.black45,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 15),
-            Text(
-              value,
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.onSurface
-                    : Colors.black,
-                height: 1.3,
+                  if (isLink) ...[
+                    const Spacer(),
+                    const Icon(Icons.open_in_new, size: 14, color: Color(0xFF3B73E0)),
+                  ],
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 15),
+              Text(
+                value,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isLink
+                      ? const Color(0xFF3B73E0)
+                      : (Theme.of(context).brightness == Brightness.dark
+                            ? Theme.of(context).colorScheme.onSurface
+                            : Colors.black),
+                  decoration: isLink ? TextDecoration.underline : null,
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

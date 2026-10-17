@@ -173,6 +173,8 @@ class ServiceTab {
                 .where((e) => e.isNotEmpty)
                 .toList() ??
             [],
+        // Links aren't translated, so always take them from the original step.
+        onlineLink: orig['online_link'] ?? '',
       ));
     }
 
@@ -205,6 +207,7 @@ class ServiceStep {
   final String fee;
   final String processingTime;
   final List<String> personsInCharge;
+  final String onlineLink;
 
   ServiceStep({
     required this.title,
@@ -213,6 +216,7 @@ class ServiceStep {
     this.fee = 'None',
     this.processingTime = '',
     this.personsInCharge = const [],
+    this.onlineLink = '',
   });
 
   factory ServiceStep.fromJson(Map<String, dynamic> json, String officeName) {
@@ -232,6 +236,7 @@ class ServiceStep {
               .where((e) => e.isNotEmpty)
               .toList() ??
           [],
+      onlineLink: json['online_link'] ?? '',
     );
   }
 
@@ -249,6 +254,8 @@ class ServiceStep {
               .where((e) => e.isNotEmpty)
               .toList() ??
           [],
+      // Links aren't translated, so always fall back to the original field.
+      onlineLink: json['online_link'] ?? '',
     );
   }
 }

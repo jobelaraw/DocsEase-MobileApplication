@@ -113,7 +113,7 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                             ),
                             const SizedBox(height: 14),
                             Text(
-                              'DocsEase',
+                              'GaBayan',
                               style: GoogleFonts.inter(
                                 color: Colors.white,
                                 fontSize: 24,
@@ -282,15 +282,20 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                             }
 
                                             String recoveryCode = _generateRecoveryCode();
-                                            await FirebaseFirestore.instance
-                                                .collection('recovery_codes')
-                                                .doc(targetEmail)
-                                                .set({
-                                              'code': recoveryCode,
-                                              'createdAt': FieldValue.serverTimestamp(),
-                                            });
-
                                             bool emailSent = await _sendEmailJSRecovery(targetEmail, recoveryCode);
+                                            if (emailSent) {
+                                              final expiresAt = DateTime.now().add(
+                                                const Duration(minutes: 5),
+                                              );
+                                              await FirebaseFirestore.instance
+                                                  .collection('recovery_codes')
+                                                  .doc(targetEmail)
+                                                  .set({
+                                                'code': recoveryCode,
+                                                'createdAt': FieldValue.serverTimestamp(),
+                                                'expiresAt': Timestamp.fromDate(expiresAt),
+                                              });
+                                            }
 
                                             if (mounted) {
                                               setState(() => isLoading = false);

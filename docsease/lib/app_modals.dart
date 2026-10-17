@@ -454,7 +454,7 @@ class RequireSignInModal {
         title: title == "Profile"
             ? tr('Profile Requires Authentication')
             : title == 'Chatbot'
-            ? tr('DocsEase Bot Requires Authentication')
+            ? tr('GaBayan Bot Requires Authentication')
             : tr('Service History Requires Authentication'),
         subtitle: tr("You'll be directed to sign in screen. Are you sure you want to continue?"),
         primaryLabel: tr('Yes'),
@@ -775,6 +775,32 @@ class NotificationPopupRoute {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+//Auth modal with a redirect button (e.g. "Go to Sign In")
+class AuthRedirectModal {
+  static Future<void> show(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required String primaryLabel,
+    required VoidCallback onPrimary,
+  }) {
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.info_outline_rounded,
+        iconColor: _kBlue,
+        iconBgColor: _kIconBgBlue,
+        title: title,
+        subtitle: subtitle,
+        primaryLabel: primaryLabel,
+        secondaryLabel: 'Cancel',
+        onPrimary: onPrimary,
+        onSecondary: () => Navigator.of(context, rootNavigator: true).pop(),
       ),
     );
   }

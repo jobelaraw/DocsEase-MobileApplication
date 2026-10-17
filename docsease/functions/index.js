@@ -34,6 +34,22 @@ exports.resetUserPassword = onCall(async (request) => {
     return { success: true };
 });
 
+// Look up which sign-in methods an email has (used by the app's auth screens)
+exports.isEmailRegistered = onCall(async (request) => {
+    const email = (request.data.email || "").trim().toLowerCase();
+    if (!email) return { exists: false, providers: [] };
+    try {
+        const user = await admin.auth().getUserByEmail(email);
+        return {
+            exists: true,
+            providers: user.providerData.map((p) => p.providerId), // 'password', 'google.com'
+        };
+    } catch (e) {
+        if (e.code === "auth/user-not-found") return { exists: false, providers: [] };
+        throw new HttpsError("internal", "Lookup failed");
+    }
+});
+
 // Helper: Translate a string to Filipino
 async function translateToFilipino(text) {
     if (!text || text.trim() === "") return "";

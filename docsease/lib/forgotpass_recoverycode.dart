@@ -236,7 +236,7 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                             ),
                             const SizedBox(height: 14),
                             Text(
-                              'DocsEase',
+                              'GaBayan',
                               style: GoogleFonts.inter(
                                 color: Colors.white,
                                 fontSize: 24,
