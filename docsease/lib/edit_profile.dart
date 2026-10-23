@@ -385,58 +385,6 @@ class _EditProfileState extends State<EditProfile> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Locked Password Fields
-                        Opacity(
-                          opacity: _isCodeVerified ? 1.0 : 0.4,
-                          child: IgnorePointer(
-                            ignoring: !_isCodeVerified,
-                            child: Column(
-                              children: [
-                                CustomTextField(
-                                  inputLabel: 'NEW PASSWORD',
-                                  inputHint: 'Enter your password',
-                                  inputType: TextInputType.visiblePassword,
-                                  isPassword: true,
-                                  isLoginPass: false,
-                                  controller: _newPasswordController,
-                                  validator: (value) {
-                                    if (value.isEmpty) return null;
-                                    bool hasLength = value.length >= 8;
-                                    bool hasSymbol = RegExp(r'[^a-zA-Z0-9\s]').hasMatch(value);
-                                    bool hasUppercase = RegExp(r'[A-Z]').hasMatch(value);
-                                    bool hasNumber = RegExp(r'[0-9]').hasMatch(value);
-                                    int score = (hasLength ? 1 : 0) + (hasSymbol ? 1 : 0) + (hasUppercase ? 1 : 0) + (hasNumber ? 1 : 0);
-                                    if (score < 4) return 'Please meet all the password requirements.';
-                                    hasStrongPassword = true;
-                                    return null;
-                                  },
-                                  onChanged: (value) {
-                                    setState(() { passwordText = value; invalidInput = false; });
-                                  },
-                                  forceValidate: invalidInput,
-                                  receivedPassword: passwordText,
-                                ),
-                                const SizedBox(height: 20),
-                                CustomTextField(
-                                  inputLabel: 'CONFIRM PASSWORD',
-                                  inputHint: 'Confirm your password',
-                                  inputType: TextInputType.visiblePassword,
-                                  isPassword: true,
-                                  isLoginPass: false,
-                                  controller: _confirmPasswordController,
-                                  validator: (value) {
-                                    if (value != _newPasswordController.text) return 'Passwords do not match.';
-                                    return null;
-                                  },
-                                  onChanged: (value) => setState(() => invalidInput = false),
-                                  forceValidate: invalidInput,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
                         // OTP Verification Row
                         Text(
                           'VERIFICATION CODE',
@@ -516,6 +464,58 @@ class _EditProfileState extends State<EditProfile> {
                               ),
                             ),
                           ),
+                        const SizedBox(height: 20),
+
+                        // Locked Password Fields
+                        Opacity(
+                          opacity: _isCodeVerified ? 1.0 : 0.4,
+                          child: IgnorePointer(
+                            ignoring: !_isCodeVerified,
+                            child: Column(
+                              children: [
+                                CustomTextField(
+                                  inputLabel: 'NEW PASSWORD',
+                                  inputHint: 'Enter your password',
+                                  inputType: TextInputType.visiblePassword,
+                                  isPassword: true,
+                                  isLoginPass: false,
+                                  controller: _newPasswordController,
+                                  validator: (value) {
+                                    if (value.isEmpty) return null;
+                                    bool hasLength = value.length >= 8;
+                                    bool hasSymbol = RegExp(r'[^a-zA-Z0-9\s]').hasMatch(value);
+                                    bool hasUppercase = RegExp(r'[A-Z]').hasMatch(value);
+                                    bool hasNumber = RegExp(r'[0-9]').hasMatch(value);
+                                    int score = (hasLength ? 1 : 0) + (hasSymbol ? 1 : 0) + (hasUppercase ? 1 : 0) + (hasNumber ? 1 : 0);
+                                    if (score < 4) return 'Please meet all the password requirements.';
+                                    hasStrongPassword = true;
+                                    return null;
+                                  },
+                                  onChanged: (value) {
+                                    setState(() { passwordText = value; invalidInput = false; });
+                                  },
+                                  forceValidate: invalidInput,
+                                  receivedPassword: passwordText,
+                                ),
+                                const SizedBox(height: 20),
+                                CustomTextField(
+                                  inputLabel: 'CONFIRM PASSWORD',
+                                  inputHint: 'Confirm your password',
+                                  inputType: TextInputType.visiblePassword,
+                                  isPassword: true,
+                                  isLoginPass: false,
+                                  controller: _confirmPasswordController,
+                                  validator: (value) {
+                                    if (value != _newPasswordController.text) return 'Passwords do not match.';
+                                    return null;
+                                  },
+                                  onChanged: (value) => setState(() => invalidInput = false),
+                                  forceValidate: invalidInput,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 30),
 
                         // Save Changes Button
