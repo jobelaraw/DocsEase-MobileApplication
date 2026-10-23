@@ -93,8 +93,12 @@ class FirebaseServices {
     final callable = FirebaseFunctions.instance.httpsCallable('isEmailRegistered');
     final result = await callable.call({'email': email.trim().toLowerCase()});
     final data = Map<String, dynamic>.from(result.data as Map);
-    if (data['providers'] == null) throw StateError('providers missing'); // old function deployed
-    return List<String>.from(data['providers']);
+
+    if (data['providers'] != null) {
+      return List<String>.from(data['providers']);
+    }
+    if (data['exists'] == false) return <String>[]; // brand-new email
+    throw StateError('providers missing');
   }
 
   Future<void> updateUserProfile({
@@ -192,33 +196,34 @@ class FirebaseServices {
     return userCredential;
   }
 
-  Future<UserCredential?> signUpWithGoogle() async {
-    UserCredential? userCredential = await _signInWithGoogle(
-      preCheck: (email) async {
-        final providers = await getSignInProviders(email);
-        if (providers.isNotEmpty && !providers.contains('google.com')) {
-          throw EmailPasswordAccountException();
-        }
-      },
-    );
-    User? user = userCredential?.user;
-    if (user == null) return null;
+Future<UserCredential?> signUpWithGoogle() async {
+  UserCredential? userCredential = await _signInWithGoogle(
+    preCheck: (email) async {
+      final providers = await getSignInProviders(email);
+      if (providers.isNotEmpty && !providers.contains('google.com')) {
+        throw EmailPasswordAccountException();
+      }
+    },
+  );
+  User? user = userCredential?.user;
+  if (user == null) return null;
 
-    final adminDoc = await _db.collection('admin').doc(user.uid).get();
-    if (adminDoc.exists) {
-      await _auth.signOut();
-      throw GoogleAccountIsAdminException();
-    }
+  final adminDoc = await _db.collection('admin').doc(user.uid).get();
+  if (adminDoc.exists) {
+    await _auth.signOut();
+    throw GoogleAccountIsAdminException();
+  }
 
-    final userDoc = await _db.collection('users').doc(user.uid).get();
-    if (userDoc.exists) {
-      await _auth.signOut();
-      throw GoogleAccountAlreadyUsedException();
-    }
+  final userDoc = await _db.collection('users').doc(user.uid).get();
+  if (userDoc.exists) {
+    await _auth.signOut();
+    throw GoogleAccountAlreadyUsedException();
+  }
 
-    String uniqueHistoryId = _db.collection('history').doc().id;
-    String defaultUsername = user.displayName ?? "Google User";
+  String uniqueHistoryId = _db.collection('history').doc().id;
+  String defaultUsername = user.displayName ?? "Google User";
 
+  try {
     await _db.collection('users').doc(user.uid).set({
       'user_id': user.uid,
       'username': defaultUsername,
@@ -228,9 +233,14 @@ class FirebaseServices {
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
-
-    return userCredential;
+  } catch (e) {
+    await _auth.signOut();
+    await GoogleSignIn().signOut();
+    rethrow;
   }
+
+  return userCredential;
+}
 
   Future<void> signOutUser() async {
     try {
