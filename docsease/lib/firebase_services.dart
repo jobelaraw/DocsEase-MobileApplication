@@ -463,57 +463,58 @@ class FirebaseServices {
   }
 
   // NOTIFICATION METHODS
-
-  // Streams global notifications sorted by newest first
+  // Streams user-specific notifications sorted by newest first
   Stream<List<AppNotification>> streamNotifications() {
-    return _db.collection('notifications').orderBy('timestamp', descending: true).snapshots().map((snap) {
+    User? user = _auth.currentUser;
+    if (user == null) {
+      return Stream.value([]); 
+    }
+    
+    return _db
+        .collection('users')
+        .doc(user.uid)
+        .collection('notifications')
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snap) {
       return snap.docs.map((doc) => AppNotification.fromJson(doc.id, doc.data())).toList();
     });
   }
 
-  // Streams the IDs of notifications the user has already tapped
-  Stream<List<String>> streamReadNotifications() async* {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      // Authenticated User: Stream from Firestore array
-      yield* _db.collection('users').doc(user.uid).snapshots().map((doc) {
-        if (doc.exists && doc.data() != null && doc.data()!.containsKey('read_notifications')) {
-          return List<String>.from(doc.data()!['read_notifications']);
-        }
-        return [];
-      });
-    } else {
-      // Guest User: Stream from local Hive box
-      var box = Hive.box('auth_box');
-      yield List<String>.from(box.get('guest_read_notifs', defaultValue: []));
-      yield* box.watch(key: 'guest_read_notifs').map((event) => List<String>.from(event.value ?? []));
-    }
-  }
-
-  // Marks a notification as read and hides the blue dot
+  // Marks a notification as read directly in the document
   Future<void> markNotificationAsRead(String notificationId) async {
     User? user = _auth.currentUser;
     if (user != null) {
-      await _db.collection('users').doc(user.uid).update({
-        'read_notifications': FieldValue.arrayUnion([notificationId])
-      });
-    } else {
-      var box = Hive.box('auth_box');
-      List<String> reads = List<String>.from(box.get('guest_read_notifs', defaultValue: []));
-      if (!reads.contains(notificationId)) {
-        reads.add(notificationId);
-        await box.put('guest_read_notifs', reads);
-      }
+      await _db
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications')
+          .doc(notificationId)
+          .update({'is_read': true});
+    }
+  }
+
+  // Deletes a notification permanently for the user
+  Future<void> deleteNotification(String notificationId) async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      await _db
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications')
+          .doc(notificationId)
+          .delete();
     }
   }
 }
 
-// Model for incoming notifications
+// Model for per-user notifications
 class AppNotification {
   final String id;
   final String title;
   final String body;
   final String serviceId;
+  final bool isRead;
   final DateTime timestamp;
 
   AppNotification({
@@ -521,6 +522,7 @@ class AppNotification {
     required this.title,
     required this.body,
     required this.serviceId,
+    required this.isRead,
     required this.timestamp,
   });
 
@@ -530,6 +532,7 @@ class AppNotification {
       title: json['title'] ?? 'DocsEase Update',
       body: json['body'] ?? '',
       serviceId: json['service_id'] ?? '',
+      isRead: json['is_read'] ?? false,
       timestamp: (json['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
