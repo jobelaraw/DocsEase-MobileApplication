@@ -205,6 +205,7 @@ class _SideBarState extends State<SideBar> {
   }
 
   void _handleNotificationDeepLink(AppNotification notif) async {
+    if (widget.isGuest) return; // guests have no notifications
     FirebaseServices().markNotificationAsRead(notif.id);
     
     if (notif.serviceId.isEmpty) {
@@ -296,25 +297,32 @@ class _SideBarState extends State<SideBar> {
 
   @override
   Widget build(BuildContext context) {
+    // Notifications exist only for registered users. A guest is either flagged as guest
+    // or simply not signed in to Firebase, so check both.
+    final bool hideBell = widget.isGuest || FirebaseAuth.instance.currentUser == null;
+    final bool onServicesTab = selectedIndex == 0 && currentTitle == 'Services';
+
     return WillPopScope(
       onWillPop: _handleBackNavigation,
       child: Scaffold(
         appBar: AppBar(
-          leadingWidth: 60,
-          leading: (selectedIndex == 0 && currentTitle == 'Services')
-              ? Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 6, 0, 6),
-                  child: StreamBuilder<List<AppNotification>>(
-                    stream: FirebaseServices().streamNotifications(),
-                    builder: (context, notifSnapshot) {
-                      return StreamBuilder<List<String>>(
-                        stream: FirebaseServices().streamReadNotifications(),
-                        builder: (context, readSnapshot) {
+          // No reserved space for the bell when a guest is on the Services tab
+          leadingWidth: (onServicesTab && hideBell) ? 0 : 60,
+            leading: onServicesTab
+              ? (hideBell
+                  ? const SizedBox.shrink() // Guests: no notification bell at all
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 6, 0, 6),
+                      child: StreamBuilder<List<AppNotification>>(
+                        stream: FirebaseServices().streamNotifications(),
+                        builder: (context, notifSnapshot) {
                           int unreadCount = 0;
-                          if (notifSnapshot.hasData && readSnapshot.hasData) {
-                            final notifs = notifSnapshot.data!;
-                            final readIds = readSnapshot.data!;
-                            unreadCount = notifs.where((n) => !readIds.contains(n.id)).length;
+                          List<AppNotification> activeNotifs = [];
+
+                          if (notifSnapshot.hasData) {
+                            activeNotifs = notifSnapshot.data!;
+                            // Check isRead directly from the model
+                            unreadCount = activeNotifs.where((n) => !n.isRead).length;
                           }
 
                           return Stack(
@@ -327,9 +335,8 @@ class _SideBarState extends State<SideBar> {
                                   NotificationPopupRoute.show(
                                     context: context,
                                     child: NotificationModal(
-                                      notifications: notifSnapshot.data ?? [],
-                                      readIds: readSnapshot.data ?? [],
-                                      onNotificationTap: _handleNotificationDeepLink
+                                      notifications: activeNotifs,
+                                      onNotificationTap: _handleNotificationDeepLink,
                                     ),
                                   );
                                 },
@@ -351,10 +358,8 @@ class _SideBarState extends State<SideBar> {
                             ],
                           );
                         },
-                      );
-                    },
-                  ),
-                )
+                      ),
+                    ))
               : Padding(
                   padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
                   child: IconButton(
@@ -890,13 +895,11 @@ class _SideBarState extends State<SideBar> {
 
 class NotificationModal extends StatefulWidget {
   final List<AppNotification> notifications;
-  final List<String> readIds;
   final Function(AppNotification) onNotificationTap;
 
   const NotificationModal({
     super.key,
     required this.notifications,
-    required this.readIds,
     required this.onNotificationTap,
   });
 
@@ -1020,7 +1023,7 @@ class _NotificationModalState extends State<NotificationModal> {
                       separatorBuilder: (context, index) => Divider(color: Colors.grey.shade300, height: 1, thickness: 1),
                       itemBuilder: (context, index) {
                         final notif = filteredNotifs[index];
-                        final isRead = widget.readIds.contains(notif.id);
+                        final isRead = notif.isRead; // Check read status directly from the model
 
                         return InkWell(
                           onTap: () {
