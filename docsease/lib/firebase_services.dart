@@ -196,51 +196,51 @@ class FirebaseServices {
     return userCredential;
   }
 
-Future<UserCredential?> signUpWithGoogle() async {
-  UserCredential? userCredential = await _signInWithGoogle(
-    preCheck: (email) async {
-      final providers = await getSignInProviders(email);
-      if (providers.isNotEmpty && !providers.contains('google.com')) {
-        throw EmailPasswordAccountException();
-      }
-    },
-  );
-  User? user = userCredential?.user;
-  if (user == null) return null;
+  Future<UserCredential?> signUpWithGoogle() async {
+    UserCredential? userCredential = await _signInWithGoogle(
+      preCheck: (email) async {
+        final providers = await getSignInProviders(email);
+        if (providers.isNotEmpty && !providers.contains('google.com')) {
+          throw EmailPasswordAccountException();
+        }
+      },
+    );
+    User? user = userCredential?.user;
+    if (user == null) return null;
 
-  final adminDoc = await _db.collection('admin').doc(user.uid).get();
-  if (adminDoc.exists) {
-    await _auth.signOut();
-    throw GoogleAccountIsAdminException();
+    final adminDoc = await _db.collection('admin').doc(user.uid).get();
+    if (adminDoc.exists) {
+      await _auth.signOut();
+      throw GoogleAccountIsAdminException();
+    }
+
+    final userDoc = await _db.collection('users').doc(user.uid).get();
+    if (userDoc.exists) {
+      await _auth.signOut();
+      throw GoogleAccountAlreadyUsedException();
+    }
+
+    String uniqueHistoryId = _db.collection('history').doc().id;
+    String defaultUsername = user.displayName ?? "Google User";
+
+    try {
+      await _db.collection('users').doc(user.uid).set({
+        'user_id': user.uid,
+        'username': defaultUsername,
+        'email': user.email,
+        'profile_img': user.photoURL ?? 'assets/default_profile.png',
+        'history_id': uniqueHistoryId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      await _auth.signOut();
+      await GoogleSignIn().signOut();
+      rethrow;
+    }
+
+    return userCredential;
   }
-
-  final userDoc = await _db.collection('users').doc(user.uid).get();
-  if (userDoc.exists) {
-    await _auth.signOut();
-    throw GoogleAccountAlreadyUsedException();
-  }
-
-  String uniqueHistoryId = _db.collection('history').doc().id;
-  String defaultUsername = user.displayName ?? "Google User";
-
-  try {
-    await _db.collection('users').doc(user.uid).set({
-      'user_id': user.uid,
-      'username': defaultUsername,
-      'email': user.email,
-      'profile_img': user.photoURL ?? 'assets/default_profile.png',
-      'history_id': uniqueHistoryId,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-  } catch (e) {
-    await _auth.signOut();
-    await GoogleSignIn().signOut();
-    rethrow;
-  }
-
-  return userCredential;
-}
 
   Future<void> signOutUser() async {
     try {
@@ -470,80 +470,5 @@ Future<UserCredential?> signUpWithGoogle() async {
     } catch (e) {
       rethrow;
     }
-  }
-
-  // NOTIFICATION METHODS
-  // Streams user-specific notifications sorted by newest first
-  Stream<List<AppNotification>> streamNotifications() {
-    User? user = _auth.currentUser;
-    if (user == null) {
-      return Stream.value([]); 
-    }
-    
-    return _db
-        .collection('users')
-        .doc(user.uid)
-        .collection('notifications')
-        .orderBy('timestamp', descending: true)
-        .snapshots()
-        .map((snap) {
-      return snap.docs.map((doc) => AppNotification.fromJson(doc.id, doc.data())).toList();
-    });
-  }
-
-  // Marks a notification as read directly in the document
-  Future<void> markNotificationAsRead(String notificationId) async {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      await _db
-          .collection('users')
-          .doc(user.uid)
-          .collection('notifications')
-          .doc(notificationId)
-          .update({'is_read': true});
-    }
-  }
-
-  // Deletes a notification permanently for the user
-  Future<void> deleteNotification(String notificationId) async {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      await _db
-          .collection('users')
-          .doc(user.uid)
-          .collection('notifications')
-          .doc(notificationId)
-          .delete();
-    }
-  }
-}
-
-// Model for per-user notifications
-class AppNotification {
-  final String id;
-  final String title;
-  final String body;
-  final String serviceId;
-  final bool isRead;
-  final DateTime timestamp;
-
-  AppNotification({
-    required this.id,
-    required this.title,
-    required this.body,
-    required this.serviceId,
-    required this.isRead,
-    required this.timestamp,
-  });
-
-  factory AppNotification.fromJson(String id, Map<String, dynamic> json) {
-    return AppNotification(
-      id: id,
-      title: json['title'] ?? 'DocsEase Update',
-      body: json['body'] ?? '',
-      serviceId: json['service_id'] ?? '',
-      isRead: json['is_read'] ?? false,
-      timestamp: (json['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-    );
   }
 }

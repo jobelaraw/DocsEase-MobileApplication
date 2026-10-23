@@ -3,6 +3,7 @@ import 'package:docsease/chatbot.dart';
 import 'package:docsease/app_modals.dart';
 import 'package:docsease/authentication.dart';
 import 'package:docsease/firebase_services.dart';
+import 'package:docsease/notifications.dart';
 import 'package:docsease/main.dart';
 import 'package:docsease/profile.dart';
 import 'package:docsease/services.dart';
@@ -206,7 +207,7 @@ class _SideBarState extends State<SideBar> {
 
   void _handleNotificationDeepLink(AppNotification notif) async {
     if (widget.isGuest) return; // guests have no notifications
-    FirebaseServices().markNotificationAsRead(notif.id);
+    NotificationService().markNotificationAsRead(notif.id);
     
     if (notif.serviceId.isEmpty) {
       OfficeNotificationModal.show(
@@ -314,7 +315,7 @@ class _SideBarState extends State<SideBar> {
                   : Padding(
                       padding: const EdgeInsets.fromLTRB(12, 6, 0, 6),
                       child: StreamBuilder<List<AppNotification>>(
-                        stream: FirebaseServices().streamNotifications(),
+                        stream: NotificationService().streamNotifications(),
                         builder: (context, notifSnapshot) {
                           int unreadCount = 0;
                           List<AppNotification> activeNotifs = [];
@@ -910,6 +911,82 @@ class NotificationModal extends StatefulWidget {
 class _NotificationModalState extends State<NotificationModal> {
   String _activeTab = 'Today';
 
+  // Local copy so deleted items disappear from the open modal right away
+  late List<AppNotification> _items;
+  bool _selectMode = false;
+  final Set<String> _selectedIds = {};
+  bool _deleting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _items = List.of(widget.notifications);
+  }
+
+  String get _title {
+    if (!_selectMode) return 'Notifications';
+    if (_selectedIds.isEmpty) return 'Select items';
+    return 'Selected items (${_selectedIds.length})';
+  }
+
+  void _enterSelectMode() => setState(() => _selectMode = true);
+
+  void _exitSelectMode() => setState(() {
+        _selectMode = false;
+        _selectedIds.clear();
+      });
+
+  void _toggle(String id) => setState(() {
+        _selectedIds.contains(id) ? _selectedIds.remove(id) : _selectedIds.add(id);
+      });
+
+  Future<void> _confirmAndDelete() async {
+    final count = _selectedIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete notifications?'),
+        content: Text(
+          count == 1
+              ? 'This notification will be permanently deleted.'
+              : '$count notifications will be permanently deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _deleting = true);
+    try {
+      final ids = _selectedIds.toList();
+      await NotificationService().deleteNotifications(ids);
+      if (!mounted) return;
+      setState(() {
+        _items.removeWhere((n) => ids.contains(n.id));
+        _selectMode = false;
+        _selectedIds.clear();
+      });
+    } catch (e) {
+      debugPrint('Delete notifications error: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not delete. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
+  }
+
   String _timeAgo(DateTime d) {
     Duration diff = DateTime.now().difference(d);
     if (diff.inMinutes < 1) return 'Just Now';
@@ -924,7 +1001,7 @@ class _NotificationModalState extends State<NotificationModal> {
     final startOfToday = DateTime(now.year, now.month, now.day);
     final startOfWeek = startOfToday.subtract(Duration(days: startOfToday.weekday - 1));
 
-    return widget.notifications.where((notif) {
+    final filtered = _items.where((notif) {
       if (_activeTab == 'Today') {
         return notif.timestamp.isAfter(startOfToday) || notif.timestamp.isAtSameMomentAs(startOfToday);
       } else if (_activeTab == 'This Week') {
@@ -933,6 +1010,14 @@ class _NotificationModalState extends State<NotificationModal> {
         return notif.timestamp.isBefore(startOfWeek);
       }
     }).toList();
+
+    // Unread on top, read at the bottom. Newest first inside each group.
+    filtered.sort((a, b) {
+      if (a.isRead != b.isRead) return a.isRead ? 1 : -1;
+      return b.timestamp.compareTo(a.timestamp);
+    });
+
+    return filtered;
   }
 
   @override
@@ -954,16 +1039,24 @@ class _NotificationModalState extends State<NotificationModal> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const SizedBox(width: 40), // Balance the flex
+                _selectMode
+                    ? const SizedBox(width: 24) // keeps the title centered
+                    : IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        tooltip: 'Select notifications to delete',
+                        icon: Icon(Icons.delete_outline, color: isDark ? Colors.white70 : Colors.black54),
+                        onPressed: _enterSelectMode,
+                      ),
                 Text(
-                  'Notifications',
+                  _title,
                   style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
                 ),
                 IconButton(
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   icon: Icon(Icons.close, color: isDark ? Colors.white70 : Colors.black54),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: _selectMode ? _exitSelectMode : () => Navigator.pop(context),
                 )
               ],
             ),
@@ -1024,9 +1117,14 @@ class _NotificationModalState extends State<NotificationModal> {
                       itemBuilder: (context, index) {
                         final notif = filteredNotifs[index];
                         final isRead = notif.isRead; // Check read status directly from the model
+                        final isSelected = _selectedIds.contains(notif.id);
 
                         return InkWell(
                           onTap: () {
+                            if (_selectMode) {
+                              _toggle(notif.id);
+                              return;
+                            }
                             Navigator.pop(context); 
                             widget.onNotificationTap(notif);
                           },
@@ -1035,6 +1133,18 @@ class _NotificationModalState extends State<NotificationModal> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                if (_selectMode) ...[
+                                  SizedBox(
+                                    height: 40,
+                                    child: Checkbox(
+                                      value: isSelected,
+                                      onChanged: (_) => _toggle(notif.id),
+                                      visualDensity: VisualDensity.compact,
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
                                 // Left Icon
                                 Container(
                                   width: 40,
@@ -1095,6 +1205,31 @@ class _NotificationModalState extends State<NotificationModal> {
                       },
                     ),
             ),
+
+            // Delete button: only when something is selected
+            if (_selectMode && _selectedIds.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _deleting ? null : _confirmAndDelete,
+                  child: _deleting
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text('Delete selected', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                ),
+              ),
+              const SizedBox(height: 6),
+            ],
           ],
         ),
       ),
