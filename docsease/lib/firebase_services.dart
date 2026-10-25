@@ -465,6 +465,12 @@ class FirebaseServices {
         await convoDoc.reference.delete();
       }
 
+      // delete notifications subcollection
+      final notifSnapshot = await _db.collection('users').doc(uid).collection('notifications').get();
+      for (var doc in notifSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
       await _db.collection('users').doc(uid).delete();
       await user.delete();
     } catch (e) {
