@@ -87,7 +87,7 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
         url,
         headers: {'Content-Type': 'application/json'},
         body:
-            '{ "service_id": "service_e6xjj5b", "template_id": "template_1u1on8f", "user_id": "MhxD0XeexOnz61prP", "accessToken": "ZwFXbNZRrkVkNGK4YFHWm", "template_params": { "to_email": "${widget.targetEmail}", "recovery_code": "$newCode" } }',
+            '{ "service_id": "service_2qau4rv", "template_id": "template_fsgox73", "user_id": "KA-6Zx9c2My5ohVje", "accessToken": "N-ee2mCjc4qS35RiBdh1O", "template_params": { "to_email": "${widget.targetEmail}", "recovery_code": "$newCode" } }',
       );
       if (mounted) {
         for (var c in _controllers) c.clear();
