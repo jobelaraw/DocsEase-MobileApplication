@@ -66,6 +66,11 @@
 			<string>UIInterfaceOrientationLandscapeLeft</string>
 			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
+		<key>LSApplicationQueriesSchemes</key>
+               <array>
+                  <string>tel</string>
+                  <string>mailto</string>
+               </array>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>DocsEase needs access to your gallery so you can choose a profile picture.</string>
 		<key>NSCameraUsageDescription</key>

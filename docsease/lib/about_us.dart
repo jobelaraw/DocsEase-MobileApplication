@@ -1,9 +1,56 @@
-import 'dart:async';
 import 'package:docsease/app_localizations.dart';
 import 'package:docsease/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+// ─── Colors for light / dark mode ───
+class _Palette {
+  final Color card, border, accent, text, iconBg, divider, dotInactive;
+
+  const _Palette({
+    required this.card,
+    required this.border,
+    required this.accent,
+    required this.text,
+    required this.iconBg,
+    required this.divider,
+    required this.dotInactive,
+  });
+
+  factory _Palette.of(BuildContext context) {
+    final theme = Theme.of(context);
+    if (theme.brightness == Brightness.dark) {
+      return _Palette(
+        card: theme.colorScheme.primary,
+        border: Colors.white24,
+        accent: const Color(0xFF93C5FD),
+        text: Colors.white,
+        iconBg: const Color(0xFFDBEAFE),
+        divider: Colors.white24,
+        dotInactive: Colors.white24,
+      );
+    }
+    return const _Palette(
+      card: Color(0xFFF7FBFF),
+      border: Color(0xFF7FA6F0),
+      accent: Color(0xFF3B73E0),
+      text: Colors.black87,
+      iconBg: Color(0xFFDBEAFE),
+      divider: Colors.black54,
+      dotInactive: Color(0xFFD0D0D0),
+    );
+  }
+}
+
+class _Offer {
+  final String title;
+  final String description;
+  final String asset;
+
+  const _Offer(this.title, this.description, this.asset);
+}
 
 class AboutUsScreen extends StatefulWidget {
   const AboutUsScreen({super.key});
@@ -13,539 +60,516 @@ class AboutUsScreen extends StatefulWidget {
 }
 
 class _AboutUsScreenState extends State<AboutUsScreen> {
-  final PageController _imageController = PageController();
-  int _imagePage = 0;
-  Timer? _autoSlideTimer;
-
-  final List<Map<String, String>> _developers = [
-    {
-      'name': 'Jobel R. Araw',
-      'role': 'Project Manager',
-      'image': 'assets/jobel.png',
-      'roleIcon': 'assets/projectmanager_icon.png',
-    },
-    {
-      'name': 'Jester Von G. Resma',
-      'role': 'Developer',
-      'image': 'assets/von.png',
-      'roleIcon': 'assets/developer_icon.png',
-    },
-    {
-      'name': 'Meagan S. Enguerra',
-      'role': 'UI/UX Designer',
-      'image': 'assets/meagan.png',
-      'roleIcon': 'assets/designer_icon.png',
-    },
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _startAutoSlide();
-  }
-
-  void _startAutoSlide() {
-    _autoSlideTimer?.cancel();
-    _autoSlideTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      final nextPage = (_imagePage + 1) % 3;
-      _imageController.animateToPage(
-        nextPage,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-    });
-  }
+  final PageController _pageController = PageController();
+  int _page = 0;
 
   @override
   void dispose() {
-    _autoSlideTimer?.cancel();
-    _imageController.dispose();
+    _pageController.dispose();
     super.dispose();
+  }
+
+  void _goToPage(int i) {
+    _pageController.animateToPage(
+      i,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final lang = Provider.of<SettingsProvider>(context).language;
     String tr(String key) => AppLocalizations.translate(key, lang);
+    final p = _Palette.of(context);
+
+    final offers = <_Offer>[
+      _Offer(
+        tr('Requirements & Procedures'),
+        tr(
+          'Provides clear lists of prerequisites, and a detailed checklist of requirements and step-by-step procedures for each municipal service at Biñan City Hall, with built-in local offline caching so you can view all transaction guides even without an internet connection.',        ),
+        'assets/req.png',
+      ),
+      _Offer(
+        tr('AI Chatbot Assistance'),
+        tr(
+          'Features an intelligent chatbot specialized in answering inquiries about Biñan City Hall document processes, offering quick-access buttons, speech-to-text accessibility, and a complete chat history manager that lets you search, add, delete, and view previous conversations instantly.',        ),
+        'assets/ai.png',
+      ),
+      _Offer(
+        tr('AR Indoor Navigation'),
+        tr(
+          'Helps users navigate inside Biñan City Hall by scanning wall-mounted QR calibration codes and following augmented reality directional pathways to offices and windows, complete with an interactive 2D map fallback interface that automatically activates for smartphones lacking AR hardware support.',        ),
+        'assets/ar.png',
+      ),
+      _Offer(
+        tr('Progress Tracker'),
+        tr(
+          'Allows you to monitor your active municipal applications and multi-service transactions simultaneously through real-time status updates, manual step-by-step digital checklists, progress percentages, and complete archiving securely accessible inside your profile\'s Service History.',        ),
+        'assets/progress.png',
+      ),
+    ];
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 25),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Image Slider Section
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.40),
-                          blurRadius: 20,
-                          spreadRadius: 4,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ─── Slider card (logo + title  <->  description) ───
+            _buildSlider(p, tr),
+            const SizedBox(height: 12),
+            _buildDots(p),
+            const SizedBox(height: 28),
+
+            // ─── Mission ───
+            _SectionCard(
+              p: p,
+              child: _Collapsible(
+                chevronColor: p.text,
+                header: Text(
+                  tr('Our Mission'),
+                  style: GoogleFonts.inter(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: p.accent,
+                  ),
+                ),
+                body: Padding(
+                  padding: const EdgeInsets.only(top: 12, bottom: 4),
+                  child: Text(
+                    tr(
+                      'To empower the citizens of Biñan by providing a reliable mobile guide that delivers clear requirements, step-by-step procedures, intelligent chatbot assistance, and office navigation to simplify the preparation of public service transactions.',
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(30),
-                      child: Stack(
-                        children: [
-                          Positioned.fill(
-                            child: PageView.builder(
-                              controller: _imageController,
-                              itemCount: 3,
-                              onPageChanged: (i) {
-                                setState(() => _imagePage = i);
-                                _startAutoSlide();
-                              },
-                              itemBuilder: (context, index) {
-                                final images = [
-                                  'assets/cityhall.jpg',
-                                  'assets/cityhall1.jpg',
-                                  'assets/cityhall2.jpg',
-                                ];
-                                return Image.asset(
-                                  images[index],
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  errorBuilder: (_, __, ___) =>
-                                      Container(color: const Color(0xFF7A9BB5)),
-                                );
-                              },
-                            ),
-                          ),
-                          Positioned.fill(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.black.withOpacity(0.45),
-                                    Colors.black.withOpacity(0.80),
-                                  ],
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(fontSize: 13, height: 1.4, color: p.text),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // ─── Vision ───
+            _SectionCard(
+              p: p,
+              child: _Collapsible(
+                chevronColor: p.text,
+                header: Text(
+                  tr('Our Vision'),
+                  style: GoogleFonts.inter(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: p.accent,
+                  ),
+                ),
+                body: Padding(
+                  padding: const EdgeInsets.only(top: 12, bottom: 4),
+                  child: Text(
+                    tr(
+                      'A well-informed and digitally supported community where every citizen can navigate Biñan City Hall services with clarity, confidence, and ease.',
+                    ),
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(fontSize: 13, height: 1.4, color: p.text),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 28),
+
+            // ─── What GaBayan Offers ───
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: _offersTitle(tr('What GaBayan Offers'), p),
+            ),
+            const SizedBox(height: 12),
+            _SectionCard(
+              p: p,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: Column(
+                children: [
+                  for (int i = 0; i < offers.length; i++) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: _Collapsible(
+                        initiallyExpanded: false,
+                        chevronColor: p.text,
+                        header: Row(
+                          children: [
+                            _IconBox(asset: offers[i].asset, p: p),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                offers[i].title,
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: p.text,
                                 ),
                               ),
                             ),
+                          ],
+                        ),
+                        body: Padding(
+                          padding: const EdgeInsets.only(top: 10, left: 2),
+                          child: Text(
+                            offers[i].description,
+                            style: GoogleFonts.inter(fontSize: 12, height: 1.4, color: p.text),
                           ),
-                          Container(
-                            width: double.infinity,
-                            constraints: const BoxConstraints(minHeight: 260),
-                            padding: const EdgeInsets.all(25),
-                            alignment: Alignment.bottomLeft,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'GaBayan',
-                                  style: GoogleFonts.inter(
-                                    color: const Color(0xFF93C5FD),
-                                    fontSize: 35,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 15),
-                                Text(
-                                  tr(
-                                    'A mobile assistant designed to help citizens navigate government services more easily in Binan City Hall. It provides clear information, guided steps, and smart navigation to simplify document processing in government offices.',
-                                  ),
-                                  style: GoogleFonts.inter(
-                                    color: Colors.white,
-                                    fontSize: 16.5,
-                                    height: 1.5,
-                                  ),
-                                ),
-                              ],
+                        ),
+                      ),
+                    ),
+                    if (i != offers.length - 1)
+                      Divider(height: 1, thickness: 0.5, color: p.divider),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+
+// ─── Contact Us ───
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: Text(
+                tr('Contact Us'),
+                style: GoogleFonts.inter(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: p.text,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _SectionCard(
+              p: p,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: Column(
+                children: [
+                  // ─── EMAIL (Clickable) ───
+                  InkWell(
+                    onTap: () async {
+                      final Uri emailLaunchUri = Uri(scheme: 'mailto', path: 'gabayan.noreply@gmail.com');
+                      if (await canLaunchUrl(emailLaunchUri)) {
+                        await launchUrl(emailLaunchUri);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Row(
+                        children: [
+                          _IconBox(
+                            asset: 'assets/email_icon.png',
+                            p: p,
+                          ),
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: Text(
+                              'gabayan.noreply@gmail.com',
+                              style: GoogleFonts.inter(fontSize: 14, color: p.text),
                             ),
                           ),
+                          // Arrow Icon para sa Email
+                          Icon(Icons.chevron_right, color: p.text),
                         ],
                       ),
                     ),
                   ),
-
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(3, (i) {
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: _imagePage == i ? 10 : 8,
-                        height: _imagePage == i ? 10 : 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _imagePage == i ? const Color(0xFF2B6FD4) : Colors.grey.shade400,
-                        ),
-                      );
-                    }),
-                  ),
-
-                  const SizedBox(height: 40),
-
-                  // Stats Row
-                  IntrinsicHeight(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            '15k +',
-                            tr('Active Users'),
-                            Theme.of(context).brightness == Brightness.dark
-                                ? Theme.of(context).colorScheme.tertiary
-                                : const Color(0xFF2B6FD4),
-                            Colors.white,
-                            Colors.white70,
+                  Divider(height: 1, thickness: 0.8, color: p.divider),
+                  // ─── PHONE NUMBER (Clickable) ───
+                  InkWell(
+                    onTap: () async {
+                      final Uri phoneLaunchUri = Uri(scheme: 'tel', path: '09949634252'); // Tinanggal ang spaces sa number
+                      if (await canLaunchUrl(phoneLaunchUri)) {
+                        await launchUrl(phoneLaunchUri);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Row(
+                        children: [
+                          _IconBox(
+                            asset: 'assets/contact_icon.png',
+                            p: p,
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatCard(
-                            '4.9',
-                            tr('App Store Rating'),
-                            Theme.of(context).brightness == Brightness.dark
-                                ? Theme.of(context).colorScheme.primary
-                                : const Color(0xFFADD0EC),
-                            Theme.of(context).brightness == Brightness.dark
-                                ? Theme.of(context).colorScheme.onPrimary
-                                : Colors.black87,
-                            Theme.of(context).brightness == Brightness.dark
-                                ? Theme.of(context).colorScheme.onPrimary
-                                : Colors.black87,
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: Text(
+                              '0994 963 4252',
+                              style: GoogleFonts.inter(fontSize: 14, color: p.text),
+                            ),
                           ),
-                        ),
-                      ],
+                          // Arrow Icon para sa Phone
+                          Icon(Icons.chevron_right, color: p.text),
+                        ],
+                      ),
                     ),
                   ),
-
-                  const SizedBox(height: 45),
-
-                  // Team Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        tr('The Team'),
-                        style: GoogleFonts.inter(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Theme.of(context).colorScheme.onPrimary
-                              : Colors.black87,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Theme.of(context).colorScheme.primary
-                              : const Color(0xFFADD0EC),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          tr('Creators'),
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? Theme.of(context).colorScheme.onPrimary
-                                : Colors.white,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Developers List
-                  Column(children: _developers.map((dev) => _buildDevTile(dev)).toList()),
-
-                  const SizedBox(height: 24),
-
-                  // Contact Section
-                  Text(
-                    tr('Connect With Us'),
-                    style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Theme.of(context).colorScheme.onPrimary
-                          : Colors.black87,
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  _ContactTile(
-                    iconAsset: 'assets/email_icon.png',
-                    fallbackIcon: Icons.mail_outline,
-                    label: 'docsease.noreply@gmail.com',
-                    fontSize: 16,
-                  ),
-                  const SizedBox(height: 10),
-
-                  _ContactTile(
-                    iconAsset: 'assets/contact_icon.png',
-                    fallbackIcon: Icons.phone_outlined,
-                    label: '0983 124 1247',
-                    fontSize: 16,
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Social Icons
-                  // Row(
-                  //   mainAxisAlignment: MainAxisAlignment.center,
-                  //   children: [
-                  //     _SocialCircle(iconAsset: 'assets/fb_icon.png', fallbackIcon: Icons.facebook),
-                  //     const SizedBox(width: 12),
-                  //     _SocialCircle(
-                  //       iconAsset: 'assets/share_icon.png',
-                  //       fallbackIcon: Icons.share_outlined,
-                  //     ),
-                  //     const SizedBox(width: 12),
-                  //     _SocialCircle(
-                  //       iconAsset: 'assets/connect_icon.png',
-                  //       fallbackIcon: Icons.chat_bubble_outline,
-                  //     ),
-                  //   ],
-                  // ),
-                  // const SizedBox(height: 30),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String val, String label, Color bg, Color textCol, Color subCol) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 5,
-            spreadRadius: 1,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            val,
-            style: GoogleFonts.inter(color: textCol, fontSize: 30, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          Text(label, style: GoogleFonts.inter(color: subCol, fontSize: 15)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDevTile(Map<String, String> dev) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? Theme.of(context).colorScheme.primary
-            : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Theme.of(context).colorScheme.surface
-              : const Color(0xFFCDD8E3),
-          width: 1.0,
+          ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
-      child: Row(
-        children: [
-          // Circle avatar
-          Container(
-            width: 62,
-            height: 62,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFFD0DDE8),
-              border: Border.all(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : Colors.grey.shade300,
-                width: 1.5,
-              ),
-            ),
-            child: ClipOval(
-              child: Image.asset(
-                dev['image']!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    const Icon(Icons.person, size: 30, color: Colors.white70),
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          // Name and role
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    );
+  }
+
+  // Slider: page 0 = logo + title, page 1 = description text
+  Widget _buildSlider(_Palette p, String Function(String) tr) {
+    final height = MediaQuery.textScalerOf(context).scale(200);
+
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: p.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: p.border, width: 1),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: PageView(
+          controller: _pageController,
+          onPageChanged: (i) => setState(() => _page = i),
+          children: [
+            // Page 1: logo + title
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  dev['name']!,
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : Colors.black87,
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                    border: Border.all(color: const Color(0xFF1B3A6B), width: 1),
+                  ),
+                  child: ClipOval(
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Image.asset(
+                        'assets/logo.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 12),
                 Text(
-                  dev['role']!,
+                  'GaBayan',
                   style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.onSurface
-                        : Colors.black54,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: p.accent,
                   ),
+                ),
+                Text(
+                  tr('version 1.0'),
+                  style: GoogleFonts.inter(fontSize: 11, color: p.accent),
                 ),
               ],
             ),
+
+            // Page 2: app description
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Center(
+                child: Text(
+                  tr(
+                    'A mobile assistant designed to help citizens easily navigate government services by providing clear requirement lists, step-by-step procedures, an AI chatbot, and indoor navigation for Biñan City Hall, empowering users with accurate guidance for their local government transactions.',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(fontSize: 14, height: 1.35, color: p.text),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDots(_Palette p) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(2, (i) {
+        final active = _page == i;
+        return GestureDetector(
+          onTap: () => _goToPage(i),
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              width: active ? 10 : 8,
+              height: active ? 10 : 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: active ? p.accent : p.dotInactive,
+              ),
+            ),
           ),
-          // Role icon
-          Image.asset(
-            dev['roleIcon']!,
-            width: 26,
-            height: 26,
-            color: const Color(0xFF2B6FD4),
-            errorBuilder: (_, __, ___) =>
-                const Icon(Icons.work_outline, size: 24, color: Color(0xFF2B6FD4)),
-          ),
+        );
+      }),
+    );
+  }
+
+  // Title where the word "GaBayan" is blue (works for English and Filipino)
+  Widget _offersTitle(String text, _Palette p) {
+    final base = GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.bold, color: p.text);
+    final parts = text.split('GaBayan');
+    if (parts.length != 2) return Text(text, style: base);
+    return Text.rich(
+      TextSpan(
+        style: base,
+        children: [
+          TextSpan(text: parts[0]),
+          TextSpan(text: 'GaBayan', style: TextStyle(color: p.accent)),
+          TextSpan(text: parts[1]),
         ],
       ),
     );
   }
 }
 
-// ─── Contact Tile ───
-class _ContactTile extends StatelessWidget {
-  final String iconAsset;
-  final IconData fallbackIcon;
-  final String label;
-  final double fontSize;
+// ─── Rounded bordered card ───
+class _SectionCard extends StatelessWidget {
+  final _Palette p;
+  final Widget child;
+  final EdgeInsetsGeometry padding;
 
-  const _ContactTile({
-    required this.iconAsset,
-    required this.fallbackIcon,
-    required this.label,
-    this.fontSize = 14,
+  const _SectionCard({
+    required this.p,
+    required this.child,
+    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      padding: padding,
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Theme.of(context).colorScheme.surface
-              : const Color(0xFFCDD8E3),
-          width: 1.0,
-        ),
+        color: p.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: p.border, width: 1),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Theme.of(context).colorScheme.tertiary
-                  : const Color(0xFFDEEAF4),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Image.asset(
-                iconAsset,
-                color: const Color(0xFF2B6FD4),
-                errorBuilder: (_, __, ___) =>
-                    Icon(fallbackIcon, size: 22, color: const Color(0xFF2B6FD4)),
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: fontSize,
+      child: child,
+    );
+  }
+}
+
+// ─── Small square icon holder (png goes here later) ───
+class _IconBox extends StatelessWidget {
+  final String asset;
+  final _Palette p;
+
+  const _IconBox({required this.asset, required this.p});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(color: p.iconBg, borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Image.asset(
+          asset,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.black
+              : p.text,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) =>
+              Icon(
+                Icons.broken_image,
+                size: 24,
                 color: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : const Color(0xFF2B6FD4),
-                fontWeight: FontWeight.w500,
+                    ? Colors.black
+                    : p.text,
               ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-// ─── Social Circle ───
-// ignore: unused_element
-class _SocialCircle extends StatelessWidget {
-  final String iconAsset;
-  final IconData fallbackIcon;
+// ─── Smooth collapsible (header + chevron, animated body) ───
+class _Collapsible extends StatefulWidget {
+  final Widget header;
+  final Widget body;
+  final Color chevronColor;
+  final bool initiallyExpanded;
 
-  const _SocialCircle({required this.iconAsset, required this.fallbackIcon});
+  const _Collapsible({
+    required this.header,
+    required this.body,
+    required this.chevronColor,
+    this.initiallyExpanded = true,
+  });
+
+  @override
+  State<_Collapsible> createState() => _CollapsibleState();
+}
+
+class _CollapsibleState extends State<_Collapsible> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _anim;
+  late final Animation<double> _chevronTurns;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+      value: widget.initiallyExpanded ? 1.0 : 0.0,
+    );
+    _anim = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    // Same as the design: open = arrow down, closed = arrow up
+    _chevronTurns = Tween<double>(begin: 0.5, end: 0.0).animate(_anim);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    if (_controller.status == AnimationStatus.completed ||
+        _controller.status == AnimationStatus.forward) {
+      _controller.reverse();
+    } else {
+      _controller.forward();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 50,
-      height: 50,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: const Color(0xFFF0F4F8),
-        border: Border.all(color: const Color(0xFFCDD8E3), width: 1.0),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Image.asset(
-          iconAsset,
-          color: const Color(0xFF2B6FD4),
-          errorBuilder: (_, __, ___) =>
-              Icon(fallbackIcon, size: 22, color: const Color(0xFF2B6FD4)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          onTap: _toggle,
+          borderRadius: BorderRadius.circular(8),
+          child: Row(
+            children: [
+              Expanded(child: widget.header),
+              RotationTransition(
+                turns: _chevronTurns,
+                child: Icon(Icons.arrow_drop_down, size: 32, color: widget.chevronColor),
+              ),
+            ],
+          ),
         ),
-      ),
+        SizeTransition(
+          sizeFactor: _anim,
+          axisAlignment: -1.0,
+          child: FadeTransition(opacity: _anim, child: widget.body),
+        ),
+      ],
     );
   }
 }

@@ -20,7 +20,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:hive/hive.dart';
 import 'dart:async';
-
+import 'package:docsease/faq.dart';
 import 'package:provider/provider.dart';
 
 class SideBar extends StatefulWidget {
@@ -37,7 +37,8 @@ class _SideBarState extends State<SideBar> {
   String currentTitle = 'Services';
 
   final List<int> _tabHistory = [0];
-  final List<String> _tabTitles = ['Services', 'Profile', 'About', 'Settings'];
+  final List<String> _tabTitles = ['Services', 'Profile', 'About', 'Settings', 'Support & FAQs'];
+
 
   final GlobalKey<NavigatorState> _servicesNavKey = GlobalKey<NavigatorState>();
   final GlobalKey<NavigatorState> _profileNavKey = GlobalKey<NavigatorState>();
@@ -103,6 +104,7 @@ class _SideBarState extends State<SideBar> {
       ),
       const AboutUsScreen(),
       const SettingsScreen(),
+      const FaqScreen(),
     ];
   }
 
@@ -361,13 +363,23 @@ class _SideBarState extends State<SideBar> {
                         },
                       ),
                     ))
-              : Padding(
-                  padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
-                  child: IconButton(
-                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onPrimary),
-                    onPressed: _handleBackNavigation, 
-                  ),
-                ),
+                : (selectedIndex == 2
+            // "?" button: only on the About tab
+                ? Padding(
+              padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
+              child: IconButton(
+                icon: Icon(Icons.help_outline_rounded,
+                    size: 28, color: Theme.of(context).colorScheme.onPrimary),
+                onPressed: () => _executeDrawerSwitch(4),
+              ),
+            )
+                : Padding(
+              padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
+              child: IconButton(
+                icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onPrimary),
+                onPressed: _handleBackNavigation,
+              ),
+            )),
           centerTitle: (selectedIndex == 0 && currentTitle == 'Chatbot') ? false : true,
           titleSpacing: 0,
           title: selectedIndex == 0 && currentTitle == 'Chatbot'
