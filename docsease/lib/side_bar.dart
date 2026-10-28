@@ -37,8 +37,7 @@ class _SideBarState extends State<SideBar> {
   String currentTitle = 'Services';
 
   final List<int> _tabHistory = [0];
-  final List<String> _tabTitles = ['Services', 'Profile', 'About', 'Settings', 'Support & FAQs'];
-
+  final List<String> _tabTitles = ['Services', 'Profile', 'About', 'Settings', 'Support & FAQs' /*,'Navigate'*/ ];
 
   final GlobalKey<NavigatorState> _servicesNavKey = GlobalKey<NavigatorState>();
   final GlobalKey<NavigatorState> _profileNavKey = GlobalKey<NavigatorState>();
@@ -62,8 +61,8 @@ class _SideBarState extends State<SideBar> {
     Provider.of<SettingsProvider>(context, listen: false).loadSettings();
 
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
-      List<ConnectivityResult> results,
-    ) {
+        List<ConnectivityResult> results,
+        ) {
       if (mounted) {
         setState(() {
           isOnline = !results.contains(ConnectivityResult.none);
@@ -105,6 +104,7 @@ class _SideBarState extends State<SideBar> {
       const AboutUsScreen(),
       const SettingsScreen(),
       const FaqScreen(),
+      // const NavigateScreen(),
     ];
   }
 
@@ -170,12 +170,12 @@ class _SideBarState extends State<SideBar> {
             _executeDrawerSwitch(targetIndex);
           },
           onSecondary: () {
-            Navigator.of(context).pop(); 
+            Navigator.of(context).pop();
           },
         );
-        return; 
+        return;
       }
-      settingsProvider.revertDarkModePreview(); 
+      settingsProvider.revertDarkModePreview();
     }
 
     _executeDrawerSwitch(targetIndex);
@@ -210,7 +210,7 @@ class _SideBarState extends State<SideBar> {
   void _handleNotificationDeepLink(AppNotification notif) async {
     if (widget.isGuest) return; // guests have no notifications
     NotificationService().markNotificationAsRead(notif.id);
-    
+
     if (notif.serviceId.isEmpty) {
       OfficeNotificationModal.show(
         context,
@@ -259,7 +259,7 @@ class _SideBarState extends State<SideBar> {
     }
 
     if (handledByNested) {
-      return false; 
+      return false;
     }
 
     if (_tabHistory.length > 1) {
@@ -274,8 +274,8 @@ class _SideBarState extends State<SideBar> {
               settingsProvider.revertDarkModePreview();
               setState(() {
                 _previousIndex = selectedIndex;
-                _tabHistory.removeLast(); 
-                selectedIndex = _tabHistory.last; 
+                _tabHistory.removeLast();
+                selectedIndex = _tabHistory.last;
                 currentTitle = _tabTitles[selectedIndex];
               });
             },
@@ -289,8 +289,8 @@ class _SideBarState extends State<SideBar> {
       }
       setState(() {
         _previousIndex = selectedIndex;
-        _tabHistory.removeLast(); 
-        selectedIndex = _tabHistory.last; 
+        _tabHistory.removeLast();
+        selectedIndex = _tabHistory.last;
         currentTitle = _tabTitles[selectedIndex];
       });
       return false;
@@ -311,194 +311,194 @@ class _SideBarState extends State<SideBar> {
         appBar: AppBar(
           // No reserved space for the bell when a guest is on the Services tab
           leadingWidth: (onServicesTab && hideBell) ? 0 : 60,
-            leading: onServicesTab
+          leading: onServicesTab
               ? (hideBell
-                  ? const SizedBox.shrink() // Guests: no notification bell at all
-                  : Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 6, 0, 6),
-                      child: StreamBuilder<List<AppNotification>>(
-                        stream: NotificationService().streamNotifications(),
-                        builder: (context, notifSnapshot) {
-                          int unreadCount = 0;
-                          List<AppNotification> activeNotifs = [];
+              ? const SizedBox.shrink() // Guests: no notification bell at all
+              : Padding(
+            padding: const EdgeInsets.fromLTRB(12, 6, 0, 6),
+            child: StreamBuilder<List<AppNotification>>(
+              stream: NotificationService().streamNotifications(),
+              builder: (context, notifSnapshot) {
+                int unreadCount = 0;
+                List<AppNotification> activeNotifs = [];
 
-                          if (notifSnapshot.hasData) {
-                            activeNotifs = notifSnapshot.data!;
-                            // Check isRead directly from the model
-                            unreadCount = activeNotifs.where((n) => !n.isRead).length;
-                          }
+                if (notifSnapshot.hasData) {
+                  activeNotifs = notifSnapshot.data!;
+                  // Check isRead directly from the model
+                  unreadCount = activeNotifs.where((n) => !n.isRead).length;
+                }
 
-                          return Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              IconButton(
-                                splashRadius: 20.0,
-                                icon: Icon(Icons.notifications_none_rounded, color: Theme.of(context).colorScheme.onPrimary, size: 26),
-                                onPressed: () {
-                                  NotificationPopupRoute.show(
-                                    context: context,
-                                    child: NotificationModal(
-                                      notifications: activeNotifs,
-                                      onNotificationTap: _handleNotificationDeepLink,
-                                    ),
-                                  );
-                                },
-                              ),
-                              if (unreadCount > 0)
-                                Positioned(
-                                  top: 10,
-                                  right: 8,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(3),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFEF4444),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: Theme.of(context).colorScheme.primary, width: 1.5),
-                                    ),
-                                    constraints: const BoxConstraints(minWidth: 10, minHeight: 10),
-                                  ),
-                                ),
-                            ],
-                          );
-                        },
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      splashRadius: 20.0,
+                      icon: Icon(Icons.notifications_none_rounded, color: Theme.of(context).colorScheme.onPrimary, size: 26),
+                      onPressed: () {
+                        NotificationPopupRoute.show(
+                          context: context,
+                          child: NotificationModal(
+                            notifications: activeNotifs,
+                            onNotificationTap: _handleNotificationDeepLink,
+                          ),
+                        );
+                      },
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        top: 10,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Theme.of(context).colorScheme.primary, width: 1.5),
+                          ),
+                          constraints: const BoxConstraints(minWidth: 10, minHeight: 10),
+                        ),
                       ),
-                    ))
-                : (selectedIndex == 2
-            // "?" button: only on the About tab
-                ? Padding(
-              padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
-              child: IconButton(
-                icon: Icon(Icons.help_outline_rounded,
-                    size: 28, color: Theme.of(context).colorScheme.onPrimary),
-                onPressed: () => _executeDrawerSwitch(4),
-              ),
-            )
-                : Padding(
-              padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
-              child: IconButton(
-                icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onPrimary),
-                onPressed: _handleBackNavigation,
-              ),
-            )),
+                  ],
+                );
+              },
+            ),
+          ))
+              : (selectedIndex == 2
+          // "?" button: only on the About tab
+              ? Padding(
+            padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
+            child: IconButton(
+              icon: Icon(Icons.help_outline_rounded,
+                  size: 28, color: Theme.of(context).colorScheme.onPrimary),
+              onPressed: () => _executeDrawerSwitch(4),
+            ),
+          )
+              : Padding(
+            padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
+            child: IconButton(
+              icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onPrimary),
+              onPressed: _handleBackNavigation,
+            ),
+          )),
           centerTitle: (selectedIndex == 0 && currentTitle == 'Chatbot') ? false : true,
           titleSpacing: 0,
           title: selectedIndex == 0 && currentTitle == 'Chatbot'
               ? Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(width: 9),
-                    Stack(
+            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(width: 9),
+              Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    child: ClipOval(
+                      child: Image.asset(
+                        Theme.of(context).brightness == Brightness.dark
+                            ? 'assets/chatbot_darkmode.png'
+                            : 'assets/chatbot_icon.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: isOnline
+                        ? Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF39D236),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 1.5,
+                        ),
+                      ),
+                    )
+                        : Stack(
                       children: [
-                        CircleAvatar(
-                          radius: 20,
-                          child: ClipOval(
-                            child: Image.asset(
-                              Theme.of(context).brightness == Brightness.dark
-                                  ? 'assets/chatbot_darkmode.png'
-                                  : 'assets/chatbot_icon.png',
-                              fit: BoxFit.contain,
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: Colors.grey,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 1.5,
                             ),
                           ),
                         ),
                         Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: isOnline
-                              ? Container(
-                                  width: 12,
-                                  height: 12,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF39D236),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Theme.of(context).colorScheme.primary,
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                )
-                              : Stack(
-                                  children: [
-                                    Container(
-                                      width: 12,
-                                      height: 12,
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Theme.of(context).colorScheme.primary,
-                                          width: 1.5,
-                                        ),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      top: 4,
-                                      left: 4,
-                                      child: Container(
-                                        width: 4,
-                                        height: 4,
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).colorScheme.primary,
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                          top: 4,
+                          left: 4,
+                          child: Container(
+                            width: 4,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(width: 10),
-                    Flexible(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            "GaBayan Bot",
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            isOnline
-                                ? AppLocalizations.translate(
-                                    'Online Assistant',
-                                    Provider.of<SettingsProvider>(context).language,
-                                  )
-                                : AppLocalizations.translate(
-                                    'Offline - Waiting for network...',
-                                    Provider.of<SettingsProvider>(context).language,
-                                  ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
-                              color: Colors.white60,
-                              fontSize: 11,
-                              fontWeight: FontWeight.normal,
-                            ),
-                          ),
-                        ],
+                  ),
+                ],
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "GaBayan Bot",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isOnline
+                          ? AppLocalizations.translate(
+                        'Online Assistant',
+                        Provider.of<SettingsProvider>(context).language,
+                      )
+                          : AppLocalizations.translate(
+                        'Offline - Waiting for network...',
+                        Provider.of<SettingsProvider>(context).language,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        color: Colors.white60,
+                        fontSize: 11,
+                        fontWeight: FontWeight.normal,
                       ),
                     ),
                   ],
-                )
-              : Text(
-                  AppLocalizations.translate(
-                    currentTitle,
-                    Provider.of<SettingsProvider>(context).language,
-                  ),
-                  style: GoogleFonts.inter(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
                 ),
+              ),
+            ],
+          )
+              : Text(
+            AppLocalizations.translate(
+              currentTitle,
+              Provider.of<SettingsProvider>(context).language,
+            ),
+            style: GoogleFonts.inter(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
           actions: [
             // --- SEARCH + NEW CHAT / CHAT HISTORY (chatbot only) ---
             if (selectedIndex == 0 && currentTitle == 'Chatbot') ...[
@@ -565,18 +565,18 @@ class _SideBarState extends State<SideBar> {
                             padding: MediaQuery.of(context).padding.top < 20
                                 ? const EdgeInsets.all(20)
                                 : EdgeInsets.fromLTRB(
-                                    20,
-                                    MediaQuery.of(context).padding.top + 20,
-                                    20,
-                                    20,
-                                  ),
+                              20,
+                              MediaQuery.of(context).padding.top + 20,
+                              20,
+                              20,
+                            ),
                             decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary),
                             child: StreamBuilder<DocumentSnapshot>(
                               stream: FirebaseAuth.instance.currentUser != null
                                   ? FirebaseFirestore.instance
-                                        .collection('users')
-                                        .doc(FirebaseAuth.instance.currentUser!.uid)
-                                        .snapshots()
+                                  .collection('users')
+                                  .doc(FirebaseAuth.instance.currentUser!.uid)
+                                  .snapshots()
                                   : null,
                               builder: (context, snapshot) {
                                 if (widget.isGuest) {
@@ -645,33 +645,33 @@ class _SideBarState extends State<SideBar> {
                                       child: ClipOval(
                                         child: hasDefaultProfile
                                             ? Image.asset(
-                                                currentProfile,
-                                                width: 75,
-                                                height: 75,
-                                                fit: BoxFit.cover,
-                                              )
+                                          currentProfile,
+                                          width: 75,
+                                          height: 75,
+                                          fit: BoxFit.cover,
+                                        )
                                             : Image.network(
-                                                currentProfile,
+                                          currentProfile,
+                                          width: 75,
+                                          height: 75,
+                                          fit: BoxFit.cover,
+                                          loadingBuilder: (context, child, loadingProgress) {
+                                            if (loadingProgress == null) return child;
+                                            return _ShimmerEffect(
+                                              child: Container(
                                                 width: 75,
                                                 height: 75,
-                                                fit: BoxFit.cover,
-                                                loadingBuilder: (context, child, loadingProgress) {
-                                                  if (loadingProgress == null) return child;
-                                                  return _ShimmerEffect(
-                                                    child: Container(
-                                                      width: 75,
-                                                      height: 75,
-                                                      color: Colors.white.withValues(alpha: 0.5),
-                                                    ),
-                                                  );
-                                                },
-                                                errorBuilder: (_, __, ___) => Image.asset(
-                                                  'assets/default_profile.png',
-                                                  width: 75,
-                                                  height: 75,
-                                                  fit: BoxFit.cover,
-                                                ),
+                                                color: Colors.white.withValues(alpha: 0.5),
                                               ),
+                                            );
+                                          },
+                                          errorBuilder: (_, __, ___) => Image.asset(
+                                            'assets/default_profile.png',
+                                            width: 75,
+                                            height: 75,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(height: 10),
@@ -745,7 +745,7 @@ class _SideBarState extends State<SideBar> {
                                             MaterialPageRoute(
                                               builder: (context) => const AuthWrapper(),
                                             ),
-                                            (route) => false,
+                                                (route) => false,
                                           );
                                           Navigator.of(context).push(
                                             MaterialPageRoute(
@@ -759,6 +759,34 @@ class _SideBarState extends State<SideBar> {
                                     Navigator.pop(context);
                                     Future.delayed(const Duration(milliseconds: 50), () {
                                       if (mounted) _handleDrawerNavigation(1);
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: 13),
+                                // ─── NAVIGATE OFFICE/ROOM (AR placeholder) ───
+                                SideBarOption(
+                                  selectedImage: 'assets/navigate_icon.png',
+                                  unselectedImage: 'assets/navigate_outlined_icon.png',
+                                  iconScale: 1.3,
+                                  optionName: AppLocalizations.translate(
+                                    'Navigate',
+                                    Provider.of<SettingsProvider>(context).language,
+                                  ),
+                                  isSelected: false,
+                                  onTapAction: () {
+                                    Navigator.pop(context);
+                                    Future.delayed(const Duration(milliseconds: 50), () {
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            AppLocalizations.translate(
+                                              'Coming soon',
+                                              Provider.of<SettingsProvider>(context, listen: false).language,
+                                            ),
+                                          ),
+                                        ),
+                                      );
                                     });
                                   },
                                 ),
@@ -822,7 +850,7 @@ class _SideBarState extends State<SideBar> {
                               isGuest: widget.isGuest,
                               onPrimary: () async {
                                 settingsProvider.revertDarkModePreview();
-                                nav.pop(); 
+                                nav.pop();
 
                                 if (widget.isGuest) {
                                   Hive.box('auth_box').put('continueGuest', false);
@@ -844,7 +872,7 @@ class _SideBarState extends State<SideBar> {
 
                                 nav.pushAndRemoveUntil(
                                   MaterialPageRoute(builder: (context) => const AuthWrapper()),
-                                  (route) => false,
+                                      (route) => false,
                                 );
                                 nav.push(
                                   MaterialPageRoute(builder: (context) => const Authentication()),
@@ -944,13 +972,13 @@ class _NotificationModalState extends State<NotificationModal> {
   void _enterSelectMode() => setState(() => _selectMode = true);
 
   void _exitSelectMode() => setState(() {
-        _selectMode = false;
-        _selectedIds.clear();
-      });
+    _selectMode = false;
+    _selectedIds.clear();
+  });
 
   void _toggle(String id) => setState(() {
-        _selectedIds.contains(id) ? _selectedIds.remove(id) : _selectedIds.add(id);
-      });
+    _selectedIds.contains(id) ? _selectedIds.remove(id) : _selectedIds.add(id);
+  });
 
   Future<void> _confirmAndDelete() async {
     final count = _selectedIds.length;
@@ -1054,12 +1082,12 @@ class _NotificationModalState extends State<NotificationModal> {
                 _selectMode
                     ? const SizedBox(width: 24) // keeps the title centered
                     : IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        tooltip: 'Select notifications to delete',
-                        icon: Icon(Icons.delete_outline, color: isDark ? Colors.white70 : Colors.black54),
-                        onPressed: _enterSelectMode,
-                      ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  tooltip: 'Select notifications to delete',
+                  icon: Icon(Icons.delete_outline, color: isDark ? Colors.white70 : Colors.black54),
+                  onPressed: _enterSelectMode,
+                ),
                 Text(
                   _title,
                   style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
@@ -1090,12 +1118,12 @@ class _NotificationModalState extends State<NotificationModal> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         decoration: BoxDecoration(
-                          color: isActive 
-                              ? (isDark ? Theme.of(context).colorScheme.secondary : Colors.white) 
+                          color: isActive
+                              ? (isDark ? Theme.of(context).colorScheme.secondary : Colors.white)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
-                          boxShadow: isActive 
-                              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 2))] 
+                          boxShadow: isActive
+                              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 2))]
                               : [],
                         ),
                         child: Center(
@@ -1120,102 +1148,102 @@ class _NotificationModalState extends State<NotificationModal> {
             Expanded(
               child: filteredNotifs.isEmpty
                   ? Center(
-                      child: Text('No notifications', style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 13)),
-                    )
+                child: Text('No notifications', style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 13)),
+              )
                   : ListView.separated(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: filteredNotifs.length,
-                      separatorBuilder: (context, index) => Divider(color: Colors.grey.shade300, height: 1, thickness: 1),
-                      itemBuilder: (context, index) {
-                        final notif = filteredNotifs[index];
-                        final isRead = notif.isRead; // Check read status directly from the model
-                        final isSelected = _selectedIds.contains(notif.id);
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: filteredNotifs.length,
+                separatorBuilder: (context, index) => Divider(color: Colors.grey.shade300, height: 1, thickness: 1),
+                itemBuilder: (context, index) {
+                  final notif = filteredNotifs[index];
+                  final isRead = notif.isRead; // Check read status directly from the model
+                  final isSelected = _selectedIds.contains(notif.id);
 
-                        return InkWell(
-                          onTap: () {
-                            if (_selectMode) {
-                              _toggle(notif.id);
-                              return;
-                            }
-                            Navigator.pop(context); 
-                            widget.onNotificationTap(notif);
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            child: Row(
+                  return InkWell(
+                    onTap: () {
+                      if (_selectMode) {
+                        _toggle(notif.id);
+                        return;
+                      }
+                      Navigator.pop(context);
+                      widget.onNotificationTap(notif);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_selectMode) ...[
+                            SizedBox(
+                              height: 40,
+                              child: Checkbox(
+                                value: isSelected,
+                                onChanged: (_) => _toggle(notif.id),
+                                visualDensity: VisualDensity.compact,
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          // Left Icon
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: UIHelper.getBgColorForService(notif.title).withValues(alpha: 0.3), // Soften background
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(UIHelper.getIconForService(notif.title), size: 20, color: Colors.black87),
+                          ),
+                          const SizedBox(width: 12),
+                          // Text Content
+                          Expanded(
+                            child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (_selectMode) ...[
-                                  SizedBox(
-                                    height: 40,
-                                    child: Checkbox(
-                                      value: isSelected,
-                                      onChanged: (_) => _toggle(notif.id),
-                                      visualDensity: VisualDensity.compact,
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    if (!isRead)
+                                      Container(
+                                        margin: const EdgeInsets.only(right: 6),
+                                        width: 6,
+                                        height: 6,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF2563EB),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    Expanded(
+                                      child: Text(
+                                        notif.title,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? Colors.white : Colors.black87,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                ],
-                                // Left Icon
-                                Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: UIHelper.getBgColorForService(notif.title).withValues(alpha: 0.3), // Soften background
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(UIHelper.getIconForService(notif.title), size: 20, color: Colors.black87),
+                                    Text(
+                                      _timeAgo(notif.timestamp),
+                                      style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 12),
-                                // Text Content
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        crossAxisAlignment: CrossAxisAlignment.center,
-                                        children: [
-                                          if (!isRead)
-                                            Container(
-                                              margin: const EdgeInsets.only(right: 6),
-                                              width: 6,
-                                              height: 6,
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF2563EB),
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                          Expanded(
-                                            child: Text(
-                                              notif.title,
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: isDark ? Colors.white : Colors.black87,
-                                              ),
-                                            ),
-                                          ),
-                                          Text(
-                                            _timeAgo(notif.timestamp),
-                                            style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        notif.body,
-                                        style: GoogleFonts.inter(fontSize: 12, height: 1.4, color: isDark ? Colors.white70 : const Color(0xFF4B5563)),
-                                      ),
-                                    ],
-                                  ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  notif.body,
+                                  style: GoogleFonts.inter(fontSize: 12, height: 1.4, color: isDark ? Colors.white70 : const Color(0xFF4B5563)),
                                 ),
                               ],
                             ),
                           ),
-                        );
-                      },
+                        ],
+                      ),
                     ),
+                  );
+                },
+              ),
             ),
 
             // Delete button: only when something is selected
@@ -1233,10 +1261,10 @@ class _NotificationModalState extends State<NotificationModal> {
                   onPressed: _deleting ? null : _confirmAndDelete,
                   child: _deleting
                       ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
                       : Text('Delete selected', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
                 ),
               ),
@@ -1256,6 +1284,7 @@ class SideBarOption extends StatelessWidget {
   final String optionName;
   final bool isSelected;
   final VoidCallback onTapAction;
+  final double iconScale;
 
   const SideBarOption({
     super.key,
@@ -1264,6 +1293,7 @@ class SideBarOption extends StatelessWidget {
     required this.optionName,
     required this.isSelected,
     required this.onTapAction,
+    this.iconScale = 1.0,
   });
 
   @override
@@ -1284,28 +1314,41 @@ class SideBarOption extends StatelessWidget {
         borderRadius: BorderRadius.circular(15),
         onTap: onTapAction,
         child: Container(
-          height: 50,
-          padding: const EdgeInsets.only(left: 15, right: 15),
+          constraints: const BoxConstraints(minHeight: 50),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Image.asset(
-                isSelected ? selectedImage : unselectedImage,
+              SizedBox(
                 width: 25,
                 height: 25,
-                color: currentColor,
-                fit: BoxFit.contain,
+                child: Transform.scale(
+                  scale: iconScale,
+                  child: Image.asset(
+                    isSelected ? selectedImage : unselectedImage,
+                    width: 25,
+                    height: 25,
+                    color: currentColor,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) =>
+                        Icon(Icons.explore_outlined, size: 25, color: currentColor),
+                  ),
+                ),
               ),
               const SizedBox(width: 15),
-              Text(
-                optionName,
-                style: isSelected
-                    ? GoogleFonts.archivoBlack(fontSize: 15, color: currentColor)
-                    : GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        color: currentColor,
-                      ),
+              Expanded(
+                child: Text(
+                  optionName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: isSelected
+                      ? GoogleFonts.archivoBlack(fontSize: 15, color: currentColor)
+                      : GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                    color: currentColor,
+                  ),
+                ),
               ),
             ],
           ),

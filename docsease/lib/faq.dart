@@ -329,8 +329,8 @@ class _FaqItemState extends State<_FaqItem> with SingleTickerProviderStateMixin 
                 child: Text(
                   widget.question,
                   style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                     color: widget.textColor,
                   ),
                 ),
@@ -351,7 +351,7 @@ class _FaqItemState extends State<_FaqItem> with SingleTickerProviderStateMixin 
               padding: const EdgeInsets.only(top: 10, left: 2, right: 2),
               child: Text.rich(
                 TextSpan(
-                  style: GoogleFonts.inter(fontSize: 12.5, height: 1.4, color: widget.textColor),
+                  style: GoogleFonts.inter(fontSize: 12, height: 1.4, color: widget.textColor),
                   children: [
                     TextSpan(
                       text: '${widget.answerLabel} ',

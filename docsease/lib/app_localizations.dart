@@ -4,9 +4,11 @@ class AppLocalizations {
     'Filipino': {
       // Side bar / Navigation
       'Home': 'Home',
-      'Profile': 'Profile',
-      'About': 'About',
-      'Settings': 'Settings',
+      'Profile': 'Aking Profile',
+      'Navigate': 'Mag-navigate',
+      'About': 'Impormasyon',
+      'Settings': 'Mga Setting',
+      'Support & FAQs': 'Mga FAQ',
       'Citizen User': 'Mamamayan',
       'Logout': 'Mag-logout',
       'Exit': 'Mag-exit',
