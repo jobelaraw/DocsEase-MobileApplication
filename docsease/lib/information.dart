@@ -1003,20 +1003,14 @@ class _StepItem extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: isDark
-                                    ? cs.tertiary
-                                    : const Color(0xFF2458B8),
-                                foregroundColor: isDark
-                                    ? cs.onTertiary
-                                    : Colors.white,
+                                backgroundColor: const Color(0xFF2458B8),
+                                foregroundColor: Colors.white,
                                 elevation: 0,
-                                padding:
-                                const EdgeInsets.symmetric(
+                                padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
                                 ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                  BorderRadius.circular(11),
+                                  borderRadius: BorderRadius.circular(11),
                                 ),
                                 textStyle: GoogleFonts.inter(
                                   fontSize: 12,
@@ -1050,11 +1044,9 @@ class _StepItem extends StatelessWidget {
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF2458B8),
-                              foregroundColor: isDark
-                                  ? Colors.black
-                                  : Colors.white,
+                                  ? const Color(0xFF527A43)
+                                  : const Color(0xFF15803D),
+                              foregroundColor: Colors.white,
                               elevation: 0,
                               padding:
                               const EdgeInsets.symmetric(
