@@ -204,6 +204,7 @@ class AppLocalizations {
       'Requirements Checklist': 'Talaan ng mga Kinakailangan',
       'Step-by-Step Guide': 'Sunod-sunod na Gabay',
       'Mark As Done': 'Markahan Bilang Tapos',
+      'Start Navigation': 'Simulan ang Nabigasyon',
       'Fee': 'Bayarin',
       'Processing Time': 'Tagal ng Pagproseso',
       'Person In-charge': 'Taong Namamahala',
@@ -212,6 +213,22 @@ class AppLocalizations {
       'OFFICE SCHEDULE': 'ORAS NG OPISINA',
       'OPEN NOW': 'BUKAS NGAYON',
       'Secure at': 'Kunin sa',
+
+      'Type of Transaction': 'Uri ng Transaksyon',
+      'Who may avail': 'Sino ang maaaring mag-avail',
+      'Total Fees': 'Kabuuang Bayarin',
+      'Total Processing Time': 'Kabuuang Tagal ng Pagproseso',
+      'What the agency does': 'Ano ang ginagawa ng opisina',
+
+      'Office Information': 'Impormasyon ng Opisina',
+      'CONTACT INFORMATION': 'IMPORMASYON SA PAKIKIPAG-UGNAYAN',
+      'CLOSED NOW': 'SARADO NA',
+      'No information available.': 'Walang available na impormasyon.',
+      'Monday - Friday': 'Lunes - Biyernes',
+      'Not Applicable': 'Hindi Naaangkop',
+      'Prepare these documents before your visit.': 'Ihanda ang mga dokumentong ito bago ang iyong pagbisita.',
+      'Follow each step to complete your transaction.': 'Sundin ang bawat hakbang upang makumpleto ang iyong transaksyon.',
+      'Find the office and contact details.': 'Hanapin ang opisina at mga detalye ng pakikipag-ugnayan.',
 
       'A mobile assistant designed to help citizens navigate government services more easily in Binan City Hall. It provides clear information, guided steps, and smart navigation to simplify document processing in government offices.':
           'Isang mobile assistant na idinisenyo upang tulungan ang mga mamamayan na mas madaling mag-navigate sa mga serbisyo ng gobyerno sa Binan City Hall. Nagbibigay ito ng malinaw na impormasyon, mga gabay na hakbang, at matalinong nabigasyon upang gawing simple ang pagproseso ng mga dokumento sa mga tanggapan ng gobyerno.',

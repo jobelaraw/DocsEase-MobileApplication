@@ -1,4 +1,30 @@
+
 import 'package:flutter/material.dart';
+
+/// Safely converts a Firestore value into a List<String>.
+/// Accepts a List or a newline-separated String.
+List<String> _stringList(dynamic value) {
+  if (value == null) return [];
+
+  if (value is List) {
+    return value
+        .map((e) => e.toString().trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+
+  if (value is String) {
+    return value
+        .split('\n')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+
+  return [];
+}
+
+String _stringValue(dynamic value) => value?.toString() ?? '';
 
 class Office {
   final String officeId;
@@ -22,23 +48,31 @@ class Office {
   });
 
   String getOfficeName(String language) {
-    if (language == 'Filipino' && officeNameFil.isNotEmpty) return officeNameFil;
+    if (language == 'Filipino' && officeNameFil.isNotEmpty) {
+      return officeNameFil;
+    }
     return officeName;
   }
 
   factory Office.fromJson(Map<String, dynamic> json) {
     return Office(
-      officeId: json['office_id'] ?? '',
-      officeName: json['office_name'] ?? '',
-      officeNameFil: json['office_name_fil'] ?? '',
-      location: json['location'] ?? 'City Hall',
-      schedule: json['schedule'] ?? '',
-      contactPhone: json['contact_phone'] ?? '',
-      contactEmail: json['contact_email'] ?? '',
-      services:
-          (json['services'] as List<dynamic>?)
-              ?.map((e) => ServiceDetail.fromJson(e as Map<String, dynamic>, json))
-              .toList() ??
+      officeId: _stringValue(json['office_id']),
+      officeName: _stringValue(json['office_name']),
+      officeNameFil: _stringValue(json['office_name_fil']),
+      location: _stringValue(json['location']).isNotEmpty
+          ? _stringValue(json['location'])
+          : 'City Hall',
+      schedule: _stringValue(json['schedule']),
+      contactPhone: _stringValue(json['contact_phone']),
+      contactEmail: _stringValue(json['contact_email']),
+      services: (json['services'] as List<dynamic>?)
+          ?.map(
+            (e) => ServiceDetail.fromJson(
+          Map<String, dynamic>.from(e as Map),
+          json,
+        ),
+      )
+          .toList() ??
           [],
     );
   }
@@ -58,6 +92,15 @@ class ServiceDetail {
   final String contactEmail;
   final String cost;
 
+  // Legacy service-level fields kept for compatibility with existing screens.
+  final String transactionType;
+  final String whoMayAvail;
+  final String whoMayAvailFil;
+  final String totalFee;
+  final String totalFeeFil;
+  final String totalProcessingTime;
+  final String totalProcessingTimeFil;
+
   ServiceDetail({
     required this.serviceId,
     required this.title,
@@ -71,6 +114,13 @@ class ServiceDetail {
     required this.contactPhone,
     required this.contactEmail,
     required this.cost,
+    this.transactionType = '',
+    this.whoMayAvail = '',
+    this.whoMayAvailFil = '',
+    this.totalFee = '',
+    this.totalFeeFil = '',
+    this.totalProcessingTime = '',
+    this.totalProcessingTimeFil = '',
   });
 
   String getTitle(String language) {
@@ -79,43 +129,98 @@ class ServiceDetail {
   }
 
   String getDescription(String language) {
-    if (language == 'Filipino' && descriptionFil.isNotEmpty) return descriptionFil;
+    if (language == 'Filipino' && descriptionFil.isNotEmpty) {
+      return descriptionFil;
+    }
     return description;
   }
 
+  // Legacy getters retained to avoid breaking existing code.
+  String getWhoMayAvail(String language) {
+    if (language == 'Filipino' && whoMayAvailFil.isNotEmpty) {
+      return whoMayAvailFil;
+    }
+    return whoMayAvail;
+  }
+
+  String getTotalFee(String language) {
+    if (language == 'Filipino' && totalFeeFil.isNotEmpty) {
+      return totalFeeFil;
+    }
+    return totalFee;
+  }
+
+  String getTotalProcessingTime(String language) {
+    if (language == 'Filipino' && totalProcessingTimeFil.isNotEmpty) {
+      return totalProcessingTimeFil;
+    }
+    return totalProcessingTime;
+  }
+
   List<ServiceTab> getTabs(String language) {
-    if (language == 'Filipino' && tabsFil.isNotEmpty) return tabsFil;
+    if (language == 'Filipino' && tabsFil.isNotEmpty) {
+      return tabsFil;
+    }
     return tabs;
   }
 
-  factory ServiceDetail.fromJson(Map<String, dynamic> json, Map<String, dynamic> officeJson) {
+  factory ServiceDetail.fromJson(
+      Map<String, dynamic> json,
+      Map<String, dynamic> officeJson,
+      ) {
     return ServiceDetail(
-      serviceId: json['service_id'] ?? '',
-      title: json['service_name'] ?? '',
-      titleFil: json['service_name_fil'] ?? '',
-      description: json['description'] ?? '',
-      descriptionFil: json['description_fil'] ?? '',
-      tabs:
-          (json['tabs'] as List<dynamic>?)
-              ?.map(
-                (e) =>
-                    ServiceTab.fromJson(e as Map<String, dynamic>, officeJson['office_name'] ?? ''),
-              )
-              .toList() ??
+      serviceId: _stringValue(json['service_id']),
+      title: _stringValue(json['service_name']),
+      titleFil: _stringValue(json['service_name_fil']),
+      description: _stringValue(json['description']),
+      descriptionFil: _stringValue(json['description_fil']),
+      tabs: (json['tabs'] as List<dynamic>?)
+          ?.map(
+            (e) => ServiceTab.fromJson(
+          Map<String, dynamic>.from(e as Map),
+          _stringValue(officeJson['office_name']),
+        ),
+      )
+          .toList() ??
           [],
-      tabsFil:
-          (json['tabs_fil'] as List<dynamic>?)
-              ?.map(
-                (e) =>
-                    ServiceTab.fromFilJson(e as Map<String, dynamic>, officeJson['office_name_fil'] ?? officeJson['office_name'] ?? ''),
-              )
-              .toList() ??
+      tabsFil: (json['tabs_fil'] as List<dynamic>?)
+          ?.map(
+            (e) => ServiceTab.fromFilJson(
+          Map<String, dynamic>.from(e as Map),
+          _stringValue(
+            officeJson['office_name_fil'] ??
+                officeJson['office_name'],
+          ),
+        ),
+      )
+          .toList() ??
           [],
-      location: json['location'] ?? officeJson['location'] ?? 'City Hall',
+      location: _stringValue(
+        json['location'] ?? officeJson['location'],
+      ).isNotEmpty
+          ? _stringValue(json['location'] ?? officeJson['location'])
+          : 'City Hall',
       duration: '',
-      contactPhone: json['contact_phone'] ?? officeJson['contact_phone'] ?? '',
-      contactEmail: json['contact_email'] ?? officeJson['contact_email'] ?? '',
+      contactPhone: _stringValue(
+        json['contact_phone'] ?? officeJson['contact_phone'],
+      ),
+      contactEmail: _stringValue(
+        json['contact_email'] ?? officeJson['contact_email'],
+      ),
       cost: '',
+
+      // Retain support for older Firestore documents.
+      transactionType: _stringValue(json['transaction_type']),
+      whoMayAvail: _stringValue(json['who_may_avail']),
+      whoMayAvailFil: _stringValue(json['who_may_avail_fil']),
+      totalFee: _stringValue(json['total_fee']),
+      totalFeeFil: _stringValue(json['total_fee_fil']),
+      totalProcessingTime: _stringValue(
+        json['total_processing_time'],
+      ),
+      totalProcessingTimeFil: _stringValue(
+        json['total_processing_time_fil'],
+      ),
     );
   }
 }
@@ -125,75 +230,187 @@ class ServiceTab {
   final List<RequirementItem> requirements;
   final List<ServiceStep> steps;
 
-  ServiceTab({required this.name, required this.requirements, required this.steps});
+  // These fields now belong to each individual tab.
+  final String transactionType;
+  final String whoMayAvail;
+  final String whoMayAvailFil;
+  final String totalFee;
+  final String totalFeeFil;
+  final String totalProcessingTime;
+  final String totalProcessingTimeFil;
 
-  factory ServiceTab.fromJson(Map<String, dynamic> json, String officeName) {
+  ServiceTab({
+    required this.name,
+    required this.requirements,
+    required this.steps,
+    this.transactionType = '',
+    this.whoMayAvail = '',
+    this.whoMayAvailFil = '',
+    this.totalFee = '',
+    this.totalFeeFil = '',
+    this.totalProcessingTime = '',
+    this.totalProcessingTimeFil = '',
+  });
+
+  String getWhoMayAvail(String language) {
+    if (language == 'Filipino' && whoMayAvailFil.isNotEmpty) {
+      return whoMayAvailFil;
+    }
+    return whoMayAvail;
+  }
+
+  String getTotalFee(String language) {
+    if (language == 'Filipino' && totalFeeFil.isNotEmpty) {
+      return totalFeeFil;
+    }
+    return totalFee;
+  }
+
+  String getTotalProcessingTime(String language) {
+    if (language == 'Filipino' &&
+        totalProcessingTimeFil.isNotEmpty) {
+      return totalProcessingTimeFil;
+    }
+    return totalProcessingTime;
+  }
+
+  factory ServiceTab.fromJson(
+      Map<String, dynamic> json,
+      String officeName,
+      ) {
     return ServiceTab(
-      name: json['tab_name'] ?? '',
-      requirements:
-          (json['requirements'] as List<dynamic>?)
-              ?.map((e) => RequirementItem.fromJson(e as Map<String, dynamic>))
-              .toList() ??
+      name: _stringValue(json['tab_name']),
+      transactionType: _stringValue(json['transaction_type']),
+      whoMayAvail: _stringValue(json['who_may_avail']),
+      whoMayAvailFil: _stringValue(json['who_may_avail_fil']),
+      totalFee: _stringValue(json['total_fee']),
+      totalFeeFil: _stringValue(json['total_fee_fil']),
+      totalProcessingTime: _stringValue(
+        json['total_processing_time'],
+      ),
+      totalProcessingTimeFil: _stringValue(
+        json['total_processing_time_fil'],
+      ),
+      requirements: (json['requirements'] as List<dynamic>?)
+          ?.map(
+            (e) => RequirementItem.fromJson(
+          Map<String, dynamic>.from(e as Map),
+        ),
+      )
+          .toList() ??
           [],
-      steps:
-          (json['procedures'] as List<dynamic>?)
-              ?.map((e) => ServiceStep.fromJson(e as Map<String, dynamic>, officeName))
-              .toList() ??
+      steps: (json['procedures'] as List<dynamic>?)
+          ?.map(
+            (e) => ServiceStep.fromJson(
+          Map<String, dynamic>.from(e as Map),
+          officeName,
+        ),
+      )
+          .toList() ??
           [],
     );
   }
 
-  factory ServiceTab.fromFilJson(Map<String, dynamic> json, String officeName) {
-    // Debug: check what's in the JSON
-    print('=== fromFilJson keys: ${json.keys.toList()}');
-    print('=== procedures_fil exists: ${json.containsKey('procedures_fil')}');
-    if (json['procedures_fil'] != null) {
-      final first = (json['procedures_fil'] as List).isNotEmpty ? (json['procedures_fil'] as List).first : null;
-      print('=== first procedures_fil item keys: ${first?.keys?.toList()}');
-      print('=== first procedures_fil item: $first');
-    }
-    // Build Filipino steps by merging translated text with original data
-    List<ServiceStep> filSteps = [];
-    final origProcedures = json['procedures'] as List<dynamic>? ?? [];
-    final filProcedures = json['procedures_fil'] as List<dynamic>? ?? [];
+  factory ServiceTab.fromFilJson(
+      Map<String, dynamic> json,
+      String officeName,
+      ) {
+    final origProcedures =
+        json['procedures'] as List<dynamic>? ?? [];
+    final filProcedures =
+        json['procedures_fil'] as List<dynamic>? ?? [];
+
+    final filSteps = <ServiceStep>[];
 
     for (int i = 0; i < origProcedures.length; i++) {
-      final orig = origProcedures[i] as Map<String, dynamic>;
-      final fil = i < filProcedures.length ? filProcedures[i] as Map<String, dynamic> : {};
-      filSteps.add(ServiceStep(
-        title: fil['process_name_fil'] ?? orig['process_name'] ?? '',
-        office: officeName,
-        instruction: fil['process_description_fil'] ?? orig['process_description'] ?? '',
-        fee: orig['fee']?.toString() ?? 'None',
-        processingTime: fil['processing_time_fil'] ?? orig['processing_time'] ?? '',
-        personsInCharge:
-            (orig['person_in_charge'] as String?)
-                ?.split(',')
-                .map((e) => e.trim())
-                .where((e) => e.isNotEmpty)
-                .toList() ??
-            [],
-        // Links aren't translated, so always take them from the original step.
-        onlineLink: orig['online_link'] ?? '',
-      ));
+      final orig = Map<String, dynamic>.from(
+        origProcedures[i] as Map,
+      );
+      final fil = i < filProcedures.length
+          ? Map<String, dynamic>.from(filProcedures[i] as Map)
+          : <String, dynamic>{};
+
+      final filActions = _stringList(fil['agency_actions_fil']);
+      final filNotes = _stringValue(fil['notes_fil']).trim();
+
+      filSteps.add(
+        ServiceStep(
+          title: _stringValue(
+            fil['process_name_fil'] ?? orig['process_name'],
+          ),
+          office: officeName,
+          instruction: _stringValue(
+            fil['process_description_fil'] ??
+                orig['process_description'],
+          ),
+          fee: _stringValue(orig['fee']).isNotEmpty
+              ? _stringValue(orig['fee'])
+              : 'None',
+          processingTime: _stringValue(
+            fil['processing_time_fil'] ??
+                orig['processing_time'],
+          ),
+          personsInCharge: _stringValue(orig['person_in_charge'])
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList(),
+          onlineLink: _stringValue(orig['online_link']),
+          navigateTo: _stringValue(orig['navigate_to']),
+          agencyActions: filActions.isNotEmpty
+              ? filActions
+              : _stringList(orig['agency_actions']),
+          notes: filNotes.isNotEmpty
+              ? filNotes
+              : _stringValue(orig['notes']).trim(),
+        ),
+      );
     }
 
-    // Build Filipino requirements by merging
-    List<RequirementItem> filReqs = [];
     final origReqs = json['requirements'] as List<dynamic>? ?? [];
-    final filReqsList = json['requirements_fil'] as List<dynamic>? ?? [];
+    final filReqsList =
+        json['requirements_fil'] as List<dynamic>? ?? [];
+    final filReqs = <RequirementItem>[];
 
     for (int i = 0; i < origReqs.length; i++) {
-      final orig = origReqs[i] as Map<String, dynamic>;
-      final fil = i < filReqsList.length ? filReqsList[i] as Map<String, dynamic> : {};
-      filReqs.add(RequirementItem(
-        title: fil['requirement_name_fil'] ?? orig['requirement_name'] ?? '',
-        secureAt: fil['secure_at_fil'] ?? orig['secure_at'] ?? '',
-      ));
+      final orig = Map<String, dynamic>.from(origReqs[i] as Map);
+      final fil = i < filReqsList.length
+          ? Map<String, dynamic>.from(filReqsList[i] as Map)
+          : <String, dynamic>{};
+
+      filReqs.add(
+        RequirementItem(
+          title: _stringValue(
+            fil['requirement_name_fil'] ??
+                orig['requirement_name'],
+          ),
+          secureAt: _stringValue(
+            fil['secure_at_fil'] ?? orig['secure_at'],
+          ),
+        ),
+      );
     }
 
     return ServiceTab(
-      name: json['tab_name_fil'] ?? json['tab_name'] ?? '',
+      name: _stringValue(
+        json['tab_name_fil'] ?? json['tab_name'],
+      ),
+      transactionType: _stringValue(json['transaction_type']),
+      whoMayAvail: _stringValue(json['who_may_avail']),
+      whoMayAvailFil: _stringValue(
+        json['who_may_avail_fil'] ?? json['who_may_avail'],
+      ),
+      totalFee: _stringValue(json['total_fee']),
+      totalFeeFil: _stringValue(
+        json['total_fee_fil'] ?? json['total_fee'],
+      ),
+      totalProcessingTime: _stringValue(
+        json['total_processing_time'],
+      ),
+      totalProcessingTimeFil: _stringValue(
+        json['total_processing_time_fil'] ??
+            json['total_processing_time'],
+      ),
       requirements: filReqs,
       steps: filSteps,
     );
@@ -208,6 +425,9 @@ class ServiceStep {
   final String processingTime;
   final List<String> personsInCharge;
   final String onlineLink;
+  final String navigateTo;
+  final List<String> agencyActions;
+  final String notes;
 
   ServiceStep({
     required this.title,
@@ -217,45 +437,71 @@ class ServiceStep {
     this.processingTime = '',
     this.personsInCharge = const [],
     this.onlineLink = '',
+    this.navigateTo = '',
+    this.agencyActions = const [],
+    this.notes = '',
   });
 
-  factory ServiceStep.fromJson(Map<String, dynamic> json, String officeName) {
-    String feeStr = json['fee']?.toString() ?? 'None';
-    if (feeStr == '0') feeStr = 'None';
+  factory ServiceStep.fromJson(
+      Map<String, dynamic> json,
+      String officeName,
+      ) {
+    String feeStr = _stringValue(json['fee']);
+    if (feeStr.isEmpty || feeStr == '0') feeStr = 'None';
 
     return ServiceStep(
-      title: json['process_name'] ?? '',
+      title: _stringValue(json['process_name']),
       office: officeName,
-      instruction: json['process_description'] ?? '',
-      fee: json['fee'],
-      processingTime: json['processing_time'] ?? '',
-      personsInCharge:
-          (json['person_in_charge'] as String?)
-              ?.split(',')
-              .map((e) => e.trim())
-              .where((e) => e.isNotEmpty)
-              .toList() ??
-          [],
-      onlineLink: json['online_link'] ?? '',
+      instruction: _stringValue(json['process_description']),
+      fee: feeStr,
+      processingTime: _stringValue(json['processing_time']),
+      personsInCharge: _stringValue(json['person_in_charge'])
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList(),
+      onlineLink: _stringValue(json['online_link']),
+      navigateTo: _stringValue(json['navigate_to']),
+      agencyActions: _stringList(json['agency_actions']),
+      notes: _stringValue(json['notes']).trim(),
     );
   }
 
-  factory ServiceStep.fromFilJson(Map<String, dynamic> json, String officeName) {
+  factory ServiceStep.fromFilJson(
+      Map<String, dynamic> json,
+      String officeName,
+      ) {
+    final filActions = _stringList(json['agency_actions_fil']);
+    final filNotes = _stringValue(json['notes_fil']).trim();
+
     return ServiceStep(
-      title: json['process_name_fil'] ?? json['process_name'] ?? '',
+      title: _stringValue(
+        json['process_name_fil'] ?? json['process_name'],
+      ),
       office: officeName,
-      instruction: json['process_description_fil'] ?? json['process_description'] ?? '',
-      fee: json['fee']?.toString() ?? 'None',
-      processingTime: json['processing_time'] ?? '',
-      personsInCharge:
-          (json['person_in_charge'] as String?)
-              ?.split(',')
-              .map((e) => e.trim())
-              .where((e) => e.isNotEmpty)
-              .toList() ??
-          [],
-      // Links aren't translated, so always fall back to the original field.
-      onlineLink: json['online_link'] ?? '',
+      instruction: _stringValue(
+        json['process_description_fil'] ??
+            json['process_description'],
+      ),
+      fee: _stringValue(json['fee']).isNotEmpty
+          ? _stringValue(json['fee'])
+          : 'None',
+      processingTime: _stringValue(
+        json['processing_time_fil'] ?? json['processing_time'],
+      ),
+      personsInCharge: _stringValue(json['person_in_charge'])
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList(),
+      onlineLink: _stringValue(json['online_link']),
+      navigateTo: _stringValue(json['navigate_to']),
+      agencyActions: filActions.isNotEmpty
+          ? filActions
+          : _stringList(json['agency_actions']),
+      notes: filNotes.isNotEmpty
+          ? filNotes
+          : _stringValue(json['notes']).trim(),
     );
   }
 }
@@ -264,32 +510,44 @@ class RequirementItem {
   final String title;
   final String secureAt;
 
-  RequirementItem({required this.title, required this.secureAt});
+  RequirementItem({
+    required this.title,
+    required this.secureAt,
+  });
 
   factory RequirementItem.fromJson(Map<String, dynamic> json) {
     return RequirementItem(
-      title: json['requirement_name'] ?? '',
-      secureAt: json['secure_at'] ?? '',
+      title: _stringValue(json['requirement_name']),
+      secureAt: _stringValue(json['secure_at']),
     );
   }
 
-  factory RequirementItem.fromFilJson(Map<String, dynamic> json) {
+  factory RequirementItem.fromFilJson(
+      Map<String, dynamic> json,
+      ) {
     return RequirementItem(
-      title: json['requirement_name_fil'] ?? json['requirement_name'] ?? '',
-      secureAt: json['secure_at_fil'] ?? json['secure_at'] ?? '',
+      title: _stringValue(
+        json['requirement_name_fil'] ?? json['requirement_name'],
+      ),
+      secureAt: _stringValue(
+        json['secure_at_fil'] ?? json['secure_at'],
+      ),
     );
   }
 }
 
 class UIHelper {
-  // Dynamically assigns an icon based on keywords in the service name
   static IconData getIconForService(String serviceName) {
     final lower = serviceName.toLowerCase();
 
-    if (lower.contains('business') || lower.contains('permit') || lower.contains('license')) {
+    if (lower.contains('business') ||
+        lower.contains('permit') ||
+        lower.contains('license')) {
       return Icons.store;
     }
-    if (lower.contains('tax') || lower.contains('fee') || lower.contains('clearance')) {
+    if (lower.contains('tax') ||
+        lower.contains('fee') ||
+        lower.contains('clearance')) {
       return Icons.receipt_long;
     }
     if (lower.contains('construction') ||
@@ -297,41 +555,55 @@ class UIHelper {
         lower.contains('occupancy')) {
       return Icons.construction;
     }
-    if (lower.contains('health') || lower.contains('medical') || lower.contains('hospital')) {
+    if (lower.contains('health') ||
+        lower.contains('medical') ||
+        lower.contains('hospital')) {
       return Icons.health_and_safety;
     }
-    if (lower.contains('marriage') || lower.contains('civil') || lower.contains('birth')) {
+    if (lower.contains('marriage') ||
+        lower.contains('civil') ||
+        lower.contains('birth')) {
       return Icons.volunteer_activism;
     }
-    if (lower.contains('child') || lower.contains('student')) return Icons.child_care;
-    if (lower.contains('environmental') || lower.contains('tree') || lower.contains('waste')) {
+    if (lower.contains('child') || lower.contains('student')) {
+      return Icons.child_care;
+    }
+    if (lower.contains('environmental') ||
+        lower.contains('tree') ||
+        lower.contains('waste')) {
       return Icons.eco;
     }
-    if (lower.contains('agriculture') || lower.contains('fish')) return Icons.agriculture;
-    if (lower.contains('ict') || lower.contains('tech') || lower.contains('online')) {
+    if (lower.contains('agriculture') || lower.contains('fish')) {
+      return Icons.agriculture;
+    }
+    if (lower.contains('ict') ||
+        lower.contains('tech') ||
+        lower.contains('online')) {
       return Icons.computer;
     }
-    if (lower.contains('legal') || lower.contains('contract') || lower.contains('court')) {
+    if (lower.contains('legal') ||
+        lower.contains('contract') ||
+        lower.contains('court')) {
       return Icons.gavel;
     }
-    if (lower.contains('cctv') || lower.contains('safety') || lower.contains('order')) {
+    if (lower.contains('cctv') ||
+        lower.contains('safety') ||
+        lower.contains('order')) {
       return Icons.security;
     }
 
-    return Icons.article; // Default fallback icon
+    return Icons.article;
   }
 
-  // Generates a consistent, visually pleasing pastel background color based on the service name
   static Color getBgColorForService(String serviceName) {
-    int hash = serviceName.hashCode;
+    final hash = serviceName.hashCode;
+    final hue = (hash % 360).abs().toDouble();
 
-    // Map the hash to a valid Hue degree on the color wheel (0 to 360).
-    // .abs() ensures the result is never a negative number.
-    double hue = (hash % 360).abs().toDouble();
-
-    // Mix with white to create a pastel color
-    // Set Saturation to 0.85 (85%) so the color remains vibrant and rich.
-    // Set Lightness to 0.75 (75%) so it acts as a bright background without being pale.
-    return HSLColor.fromAHSL(1.0, hue, 0.85, 0.75).toColor();
+    return HSLColor.fromAHSL(
+      1.0,
+      hue,
+      0.85,
+      0.75,
+    ).toColor();
   }
 }

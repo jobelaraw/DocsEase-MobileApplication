@@ -1,62 +1,87 @@
 import 'package:docsease/app_modals.dart';
 import 'package:docsease/authentication.dart';
 import 'package:docsease/main.dart';
+import 'package:docsease/info_model.dart';
+import 'package:docsease/app_localizations.dart';
+import 'package:docsease/settings_provider.dart';
+import 'package:docsease/information_additions.dart';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:docsease/info_model.dart';
-import 'package:docsease/app_localizations.dart';
-import 'package:docsease/settings_provider.dart';
 import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:math';
 
 class InformationScreen extends StatefulWidget {
   final ServiceDetail detail;
-  const InformationScreen({super.key, required this.detail});
+
+  const InformationScreen({
+    super.key,
+    required this.detail,
+  });
 
   @override
   State<InformationScreen> createState() => _InformationScreenState();
 }
 
-class _InformationScreenState extends State<InformationScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _InformationScreenState extends State<InformationScreen>
+    with TickerProviderStateMixin {
+  TabController? _tabController;
 
-  Color get primaryBlue => Theme.of(context).colorScheme.primary;
-  final Color lightBlueBg = const Color(0xFFE9F1F7);
-  final Color accentBlue = const Color(0xFF03A9F4);
+  final Color accentBlue = const Color(0xFF2458B8);
 
   @override
-  void initState() {
-    super.initState();
-    if (widget.detail.tabs.length > 1) {
-      _tabController = TabController(length: widget.detail.tabs.length, vsync: this);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateTabController();
+  }
+
+  @override
+  void didUpdateWidget(covariant InformationScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.detail != widget.detail) {
+      _updateTabController();
+    }
+  }
+
+  void _updateTabController() {
+    final language =
+        Provider.of<SettingsProvider>(context, listen: false).language;
+    final tabs = widget.detail.getTabs(language);
+
+    if (tabs.length <= 1) {
+      _tabController?.dispose();
+      _tabController = null;
+      return;
+    }
+
+    if (_tabController == null ||
+        _tabController!.length != tabs.length) {
+      _tabController?.dispose();
+      _tabController = TabController(
+        length: tabs.length,
+        vsync: this,
+      );
     }
   }
 
   @override
   void dispose() {
-    if (widget.detail.tabs.length > 1) _tabController.dispose();
+    _tabController?.dispose();
     super.dispose();
   }
 
-  // Calculates overall progress and pushes it to Firestore
-  void _updateProgress(List<String> reqs, List<String> steps) async {
+  Future<void> _updateProgress(
+      List<String> requirements,
+      List<String> steps,
+      ) async {
     final user = FirebaseAuth.instance.currentUser;
+
     if (user == null || widget.detail.serviceId.isEmpty) return;
-
-    int totalReqs = 0;
-    int totalSteps = 0;
-    for (var tab in widget.detail.tabs) {
-      totalReqs += tab.requirements.length;
-      totalSteps += tab.steps.length;
-    }
-
-    int total = totalReqs + totalSteps;
-    int completed = reqs.length + steps.length;
-    double progress = total == 0 ? 0.0 : (completed / total);
-    String status = progress >= 1.0 ? "Completed" : "In Progress";
 
     final docRef = FirebaseFirestore.instance
         .collection('users')
@@ -64,224 +89,322 @@ class _InformationScreenState extends State<InformationScreen> with SingleTicker
         .collection('service_history')
         .doc(widget.detail.serviceId);
 
-    // If everything is unchecked, remove the document entirely
-    if (completed == 0) {
-      await docRef.delete();
-    } else {
-      await docRef.set({
-        'service_id': widget.detail.serviceId,
-        'service_name': widget.detail.title,
-        'checked_requirements': reqs,
-        'completed_steps': steps,
+    final Map<String, dynamic> tabProgress = {};
+
+    double overallProgress = 0;
+    bool hasTrackableTabs = false;
+
+    for (final tab in widget.detail.tabs) {
+      final prefix = '${tab.name} : ';
+
+      final tabRequirements = tab.requirements
+          .map((item) => '$prefix${item.title}')
+          .toList();
+
+      final tabSteps = tab.steps
+          .map((step) => '$prefix${step.title}')
+          .toList();
+
+      final tabTotal = tabRequirements.length + tabSteps.length;
+
+      if (tabTotal == 0) continue;
+
+      hasTrackableTabs = true;
+
+      final tabDone =
+          tabRequirements.where(requirements.contains).length +
+              tabSteps.where(steps.contains).length;
+
+      final progress = tabDone / tabTotal;
+      final status = progress >= 1.0 ? 'Completed' : 'In Progress';
+
+      tabProgress[tab.name] = {
         'progress': progress,
         'status': status,
-        'last_updated': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+        'completed_requirements':
+        tabRequirements.where(requirements.contains).toList(),
+        'completed_steps': tabSteps.where(steps.contains).toList(),
+      };
+
+      // Keep the highest progress as the overall service progress.
+      overallProgress = max(overallProgress, progress);
     }
+
+    final totalCompleted = requirements.length + steps.length;
+
+    if (totalCompleted == 0) {
+      await docRef.delete();
+      return;
+    }
+
+    await docRef.set({
+      'service_id': widget.detail.serviceId,
+      'service_name': widget.detail.title,
+      'checked_requirements': requirements,
+      'completed_steps': steps,
+      'tab_progress': tabProgress,
+      'progress': hasTrackableTabs ? overallProgress : 0,
+      'status': hasTrackableTabs && overallProgress >= 1.0
+          ? 'Completed'
+          : 'In Progress',
+      'last_updated': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  void _requireSignIn(BuildContext context) {
+    RequireSignInModal.show(
+      context,
+      title: 'Information',
+      onPrimary: () async {
+        final rootNav = Navigator.of(context, rootNavigator: true);
+
+        Hive.box('auth_box').put('continueGuest', false);
+        rootNav.pop();
+
+        rootNav.pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => const AuthWrapper(),
+          ),
+              (route) => false,
+        );
+
+        rootNav.push(
+          MaterialPageRoute(
+            builder: (context) => const Authentication(),
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final lang = Provider.of<SettingsProvider>(context).language;
-    final tabs = widget.detail.getTabs(lang);
+    final language = Provider.of<SettingsProvider>(context).language;
+    final tabs = widget.detail.getTabs(language);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final Stream<DocumentSnapshot>? historyStream = user != null
+    final Stream<DocumentSnapshot>? historyStream =
+    user != null && widget.detail.serviceId.isNotEmpty
         ? FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .collection('service_history')
-              .doc(widget.detail.serviceId)
-              .snapshots()
+        .collection('users')
+        .doc(user.uid)
+        .collection('service_history')
+        .doc(widget.detail.serviceId)
+        .snapshots()
         : null;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: historyStream,
-        builder: (context, snapshot) {
-          List<String> checkedReqs = [];
-          List<String> completedSteps = [];
+      backgroundColor: isDark
+          ? Theme.of(context).colorScheme.surface
+          : const Color(0xFFF7F9FC),
+      body: SafeArea(
+        child: StreamBuilder<DocumentSnapshot>(
+          stream: historyStream,
+          builder: (context, snapshot) {
+            List<String> checkedRequirements = [];
+            List<String> completedSteps = [];
 
-          if (user != null && snapshot.hasData && snapshot.data!.exists) {
-            var data = snapshot.data!.data() as Map<String, dynamic>;
-            checkedReqs = List<String>.from(data['checked_requirements'] ?? []);
-            completedSteps = List<String>.from(data['completed_steps'] ?? []);
-          }
+            if (user != null &&
+                snapshot.hasData &&
+                snapshot.data!.exists) {
+              final data =
+              snapshot.data!.data() as Map<String, dynamic>;
 
-          void handleToggleReq(String uniqueId, bool isChecked) {
-            if (user == null) {
-              RequireSignInModal.show(
-                context,
-                title: 'Information',
-                onPrimary: () async {
-                  final rootNav = Navigator.of(context, rootNavigator: true);
-
-                  Hive.box('auth_box').put('continueGuest', false);
-
-                  rootNav.pop();
-
-                  rootNav.pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const AuthWrapper()),
-                    (route) => false,
-                  );
-                  rootNav.push(MaterialPageRoute(builder: (context) => const Authentication()));
-                },
+              checkedRequirements = List<String>.from(
+                data['checked_requirements'] ?? [],
               );
-              return;
-            }
-            List<String> newReqs = List.from(checkedReqs);
-            if (isChecked) {
-              newReqs.add(uniqueId);
-            } else {
-              newReqs.remove(uniqueId);
-            }
-            _updateProgress(newReqs, completedSteps);
-          }
 
-          void handleToggleStep(String uniqueId, bool isDone) {
-            if (user == null) {
-              RequireSignInModal.show(
-                context,
-                title: 'Information',
-                onPrimary: () async {
-                  final rootNav = Navigator.of(context, rootNavigator: true);
-
-                  Hive.box('auth_box').put('continueGuest', false);
-
-                  rootNav.pop();
-
-                  rootNav.pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const AuthWrapper()),
-                    (route) => false,
-                  );
-                  rootNav.push(MaterialPageRoute(builder: (context) => const Authentication()));
-                },
+              completedSteps = List<String>.from(
+                data['completed_steps'] ?? [],
               );
-              return;
             }
-            List<String> newSteps = List.from(completedSteps);
-            if (isDone) {
-              newSteps.add(uniqueId);
-            } else {
-              newSteps.remove(uniqueId);
-            }
-            _updateProgress(checkedReqs, newSteps);
-          }
 
-          return Column(
-            children: [
-              if (tabs.length > 1) _buildTabSwitcher(tabs),
-              Expanded(
-                child: tabs.isEmpty
-                    ? const Center(child: Text("No data available for this service."))
-                    : tabs.length > 1
-                    ? TabBarView(
-                        controller: _tabController,
-                        children: tabs
-                            .map(
-                              (tab) => _ContentList(
-                                tab: tab,
-                                detail: widget.detail,
-                                accentColor: accentBlue,
-                                checkedReqs: checkedReqs,
-                                completedSteps: completedSteps,
-                                onToggleReq: handleToggleReq,
-                                onToggleStep: handleToggleStep,
-                                language: lang,
-                              ),
-                            )
-                            .toList(),
-                      )
-                    : _ContentList(
-                        tab: tabs.first,
+            void handleToggleRequirement(
+                String uniqueId,
+                bool isChecked,
+                ) {
+              if (user == null) {
+                _requireSignIn(context);
+                return;
+              }
+
+              final updated = List<String>.from(checkedRequirements);
+
+              if (isChecked) {
+                if (!updated.contains(uniqueId)) {
+                  updated.add(uniqueId);
+                }
+              } else {
+                updated.remove(uniqueId);
+              }
+
+              _updateProgress(updated, completedSteps);
+            }
+
+            void handleToggleStep(
+                String uniqueId,
+                bool isDone,
+                ) {
+              if (user == null) {
+                _requireSignIn(context);
+                return;
+              }
+
+              final updated = List<String>.from(completedSteps);
+
+              if (isDone) {
+                if (!updated.contains(uniqueId)) {
+                  updated.add(uniqueId);
+                }
+              } else {
+                updated.remove(uniqueId);
+              }
+
+              _updateProgress(checkedRequirements, updated);
+            }
+
+            if (tabs.isEmpty) {
+              return const Center(
+                child: Text('No data available for this service.'),
+              );
+            }
+
+            return Column(
+              children: [
+                if (tabs.length > 1) ...[
+                  _buildTabSwitcher(tabs),
+                  const SizedBox(height: 12),
+                ],
+                Expanded(
+                  child: tabs.length > 1
+                      ? TabBarView(
+                    controller: _tabController,
+                    children: tabs.map((tab) {
+                      return _ContentList(
+                        key: ValueKey(
+                          '${widget.detail.serviceId}_${tab.name}',
+                        ),
+                        tab: tab,
                         detail: widget.detail,
                         accentColor: accentBlue,
-                        checkedReqs: checkedReqs,
+                        checkedReqs: checkedRequirements,
                         completedSteps: completedSteps,
-                        onToggleReq: handleToggleReq,
+                        onToggleReq: handleToggleRequirement,
                         onToggleStep: handleToggleStep,
-                        language: lang,
-                      ),
-              ),
-            ],
-          );
-        },
+                        language: language,
+                      );
+                    }).toList(),
+                  )
+                      : _ContentList(
+                    tab: tabs.first,
+                    detail: widget.detail,
+                    accentColor: accentBlue,
+                    checkedReqs: checkedRequirements,
+                    completedSteps: completedSteps,
+                    onToggleReq: handleToggleRequirement,
+                    onToggleStep: handleToggleStep,
+                    language: language,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildTabSwitcher(List<ServiceTab> tabs) {
-    if (tabs.length <= 1) return const SizedBox.shrink();
+    if (tabs.length <= 1 || _tabController == null) {
+      return const SizedBox.shrink();
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.tertiary,
-        borderRadius: BorderRadius.circular(15),
+        color: isDark
+            ? cs.surfaceContainerHighest
+            : const Color(0xFFEAF2FF),
+        borderRadius: BorderRadius.circular(14),
       ),
-      // Custom tab switcher: AnimatedBuilder rebuilds on tab change,
-      // IntrinsicHeight+stretch = uniform height, Expanded = equal width,
-      // alignment center = text centered, no ellipsis = full text visible,
-      // active tab gets surface color + shadow, supports dark/light mode
       child: AnimatedBuilder(
-        animation: _tabController,
+        animation: _tabController!,
         builder: (context, _) {
-          return IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: tabs.asMap().entries.map((entry) {
-              final i = entry.key;
+          return Row(
+            children: tabs.asMap().entries.map((entry) {
+              final index = entry.key;
               final tab = entry.value;
-              final isSelected = _tabController.index == i;
+              final selected = _tabController!.index == index;
+
               return Expanded(
-                child: GestureDetector(
-                  onTap: () => _tabController.animateTo(i),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                    alignment: Alignment.center, // Centers short text vertically/horizontally
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.surface
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Text(
-                      tab.name.isEmpty ? "Process" : tab.name,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: isSelected
-                            ? (Theme.of(context).brightness == Brightness.dark
-                                ? Theme.of(context).colorScheme.onPrimary
-                                : primaryBlue)
-                            : (Theme.of(context).brightness == Brightness.dark
-                                ? Theme.of(context).colorScheme.onPrimary
-                                : Colors.grey),
+                child: Semantics(
+                  button: true,
+                  selected: selected,
+                  child: GestureDetector(
+                    onTap: () {
+                      _tabController!.animateTo(
+                        index,
+                        duration: const Duration(milliseconds: 350),
+                        curve: Curves.easeInOutCubic,
+                      );
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOutCubic,
+                      constraints:
+                      const BoxConstraints(minHeight: 46),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 10,
+                      ),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? cs.surface
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        border: selected
+                            ? Border.all(
+                          color: isDark
+                              ? cs.outline.withValues(alpha: 0.3)
+                              : const Color(0xFFDDE4EF),
+                        )
+                            : null,
+                      ),
+                      child: Text(
+                        tab.name.isEmpty ? 'Process' : tab.name,
+                        textAlign: TextAlign.center,
+                        softWrap: true,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: selected
+                              ? cs.onSurface
+                              : cs.onSurface.withValues(alpha: 0.65),
+                        ),
                       ),
                     ),
                   ),
                 ),
               );
             }).toList(),
-          ),
           );
         },
       ),
     );
   }
 }
+
+// -----------------------------------------------------------------------------
+// SERVICE CONTENT
+// -----------------------------------------------------------------------------
 
 class _ContentList extends StatelessWidget {
   final ServiceDetail detail;
@@ -294,6 +417,7 @@ class _ContentList extends StatelessWidget {
   final String language;
 
   const _ContentList({
+    super.key,
     required this.detail,
     required this.tab,
     required this.accentColor,
@@ -306,29 +430,123 @@ class _ContentList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String tr(String key) => AppLocalizations.translate(key, language);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
+
+    String tr(String key) =>
+        AppLocalizations.translate(key, language);
+
+    Widget sectionHeading({
+      required IconData icon,
+      required String title,
+      String? subtitle,
+    }) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? cs.primary
+                    : const Color(0xFFEAF1FF),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                size: 21,
+                color: isDark
+                    ? cs.onPrimary
+                    : const Color(0xFF2458B8),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.inter(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w700,
+                      height: 1.3,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                  if (subtitle != null &&
+                      subtitle.trim().isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        height: 1.4,
+                        color:
+                        cs.onSurface.withValues(alpha: 0.65),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final description = detail.getDescription(language).trim();
 
     return ListView(
-      padding: const EdgeInsets.all(30),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
       children: [
         Text(
           detail.getTitle(language),
-          style: GoogleFonts.inter(fontSize: 25, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-
-        Text(
-          detail.getDescription(language).isNotEmpty
-              ? detail.getDescription(language)
-              : tr("No description available."),
           style: GoogleFonts.inter(
-            fontSize: 12,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+            fontSize: 25,
+            fontWeight: FontWeight.w800,
+            height: 1.25,
+            letterSpacing: -0.5,
+            color: cs.onSurface,
           ),
         ),
-        const SizedBox(height: 25),
+
+        if (description.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text(
+            description,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              height: 1.65,
+              color: cs.onSurface.withValues(alpha: 0.75),
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 22),
+
+        TransactionSummaryCard(
+          transactionType: tab.transactionType,
+          whoMayAvail: tab.getWhoMayAvail(language).isNotEmpty
+              ? tab.getWhoMayAvail(language)
+              : tr('No information available.'),
+          totalFee: tab.getTotalFee(language),
+          totalTime: tab.getTotalProcessingTime(language),
+          language: language,
+        ),
+
+        const SizedBox(height: 30),
 
         if (tab.requirements.isNotEmpty) ...[
+          sectionHeading(
+            icon: Icons.assignment_outlined,
+            title: tr('Requirements Checklist'),
+            subtitle: 'Prepare these documents before your visit.',
+          ),
+
           _RequirementsCard(
             requirements: tab.requirements,
             iconColor: accentColor,
@@ -338,53 +556,62 @@ class _ContentList extends StatelessWidget {
             onToggle: onToggleReq,
             language: language,
           ),
+
           const SizedBox(height: 30),
         ],
 
         if (tab.steps.isNotEmpty) ...[
-          Row(
-            children: [
-              Icon(
-                Icons.assignment_turned_in_outlined,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  tab.steps.length != 1
-                      ? "${tr('Step-by-Step Guide')} (1-${tab.steps.length})"
-                      : "${tr('Step-by-Step Guide')} (1)",
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-              ),
-            ],
+          sectionHeading(
+            icon: Icons.assignment_turned_in_outlined,
+            title: tr('Step-by-Step Guide'),
+            subtitle: 'Follow each step to complete your transaction.',
           ),
-          const SizedBox(height: 15),
+
+
           ...tab.steps.asMap().entries.map(
-            (entry) => _StepItem(
+                (entry) => _StepItem(
               num: entry.key + 1,
               step: entry.value,
               accentColor: accentColor,
               tabName: tab.name,
               completedSteps: completedSteps,
+              canComplete: entry.key == 0 ||
+                  completedSteps.contains(
+                    '${tab.name} : ${tab.steps[entry.key - 1].title}',
+                  ),
+              isLast: entry.key == tab.steps.length - 1,
               onToggle: onToggleStep,
               language: language,
             ),
           ),
+
+          const SizedBox(height: 12),
         ],
 
-        const SizedBox(height: 10),
-        _InfoGrid(detail: detail, accentColor: accentColor, language: language),
-        const SizedBox(height: 30),
+        sectionHeading(
+          icon: Icons.location_city_outlined,
+          title: tr('Office Information'),
+          subtitle: 'Find the office and contact details.',
+        ),
+
+        _InfoGrid(
+          detail: detail,
+          accentColor: accentColor,
+          language: language,
+        ),
+
+        const SizedBox(height: 24),
+
+
         _ScheduleTile(language: language),
       ],
     );
   }
 }
+
+// -----------------------------------------------------------------------------
+// REQUIREMENTS CHECKLIST
+// -----------------------------------------------------------------------------
 
 class _RequirementsCard extends StatelessWidget {
   final List<RequirementItem> requirements;
@@ -407,94 +634,89 @@ class _RequirementsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.assignment_outlined, color: Theme.of(context).colorScheme.onSurface),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                AppLocalizations.translate("Requirements Checklist", language),
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
+      children: requirements.map((item) {
+        final uniqueKey = '$tabName : ${item.title}';
+        final checked = checkedReqs.contains(uniqueKey);
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: checked
+                  ? iconColor.withValues(alpha: 0.55)
+                  : cs.outlineVariant.withValues(alpha: 0.30),
+              width: 0.5,
             ),
-          ],
-        ),
-        const SizedBox(height: 15),
-
-        ...requirements.map((item) {
-          // Creates a unique key so identical requirement names on different tabs don't clash
-          final uniqueKey = "$tabName : ${item.title}";
-          final checked = checkedReqs.contains(uniqueKey);
-
-          return GestureDetector(
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
             onTap: () => onToggle(uniqueKey, !checked),
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Checkbox(
                     value: checked,
-                    onChanged: (v) => onToggle(uniqueKey, v ?? false),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                    onChanged: (value) =>
+                        onToggle(uniqueKey, value ?? false),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
                     activeColor: iconColor,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    materialTapTargetSize:
+                    MaterialTapTargetSize.shrinkWrap,
                     visualDensity: VisualDensity.compact,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        const SizedBox(height: 5),
                         Text(
                           item.title,
                           style: GoogleFonts.inter(
                             fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 50),
+                            fontWeight: FontWeight.w600,
+                            height: 1.4,
+                            color: cs.onSurface,
+                            decoration: checked
+                                ? TextDecoration.lineThrough
+                                : null,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 5),
                         RichText(
                           text: TextSpan(
-                            text: "${AppLocalizations.translate('Secure at', language)}:  ",
+                            text:
+                            '${AppLocalizations.translate('Secure at', language)}: ',
                             style: GoogleFonts.inter(
-                              fontSize: 11,
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                              fontSize: 12,
+                              color: cs.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
                             ),
                             children: [
                               TextSpan(
-                                text: item.secureAt.isNotEmpty ? item.secureAt : "Not Applicable",
+                                text: item.secureAt.isNotEmpty
+                                    ? item.secureAt
+                                    : 'Not Applicable',
                                 style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  color: Theme.of(context).brightness == Brightness.dark
-                                      ? Theme.of(
-                                          context,
-                                        ).colorScheme.onSurface.withValues(alpha: 0.8)
-                                      : const Color(0xFF3B73E0),
-                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? cs.onSurface
+                                      : const Color(0xFF2458B8),
                                 ),
                               ),
                             ],
@@ -506,12 +728,17 @@ class _RequirementsCard extends StatelessWidget {
                 ],
               ),
             ),
-          );
-        }),
-      ],
+          ),
+        );
+      }).toList(),
     );
   }
 }
+
+// -----------------------------------------------------------------------------
+// STEP-BY-STEP GUIDE
+// -----------------------------------------------------------------------------
+
 
 class _StepItem extends StatelessWidget {
   final int num;
@@ -519,6 +746,8 @@ class _StepItem extends StatelessWidget {
   final Color accentColor;
   final String tabName;
   final List<String> completedSteps;
+  final bool canComplete;
+  final bool isLast;
   final Function(String, bool) onToggle;
   final String language;
 
@@ -527,332 +756,404 @@ class _StepItem extends StatelessWidget {
     required this.step,
     required this.accentColor,
     required this.tabName,
+    required this.canComplete,
+    required this.isLast,
     required this.completedSteps,
     required this.onToggle,
     required this.language,
   });
 
+  void _startNavigation(BuildContext context) {
+    if (FirebaseAuth.instance.currentUser == null) {
+      RequireSignInModal.show(
+        context,
+        title: 'Information',
+        onPrimary: () async {
+          final rootNav =
+          Navigator.of(context, rootNavigator: true);
+
+          Hive.box('auth_box').put('continueGuest', false);
+          rootNav.pop();
+
+          rootNav.pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => const AuthWrapper(),
+            ),
+                (route) => false,
+          );
+
+          rootNav.push(
+            MaterialPageRoute(
+              builder: (context) => const Authentication(),
+            ),
+          );
+        },
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          AppLocalizations.translate('Coming soon', language),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Unique key logic to prevent bleeding states across tabs
-    final uniqueKey = "$tabName : ${step.title}";
-    bool isDone = completedSteps.contains(uniqueKey);
+    final cs = Theme.of(context).colorScheme;
+    final isDark =
+        Theme.of(context).brightness == Brightness.dark;
 
-    return Column(
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: isDone
-                  ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : accentColor)
-                  : (Theme.of(context).brightness == Brightness.dark
-                        ? Colors.transparent
-                        : Colors.white),
-              child: Container(
-                decoration: isDone
-                    ? null
-                    : BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white
-                              : Colors.black,
-                          width: 2,
-                        ),
-                      ),
-                alignment: Alignment.center,
-                child: Text(
-                  "$num",
-                  style: TextStyle(
+    final uniqueKey = '$tabName : ${step.title}';
+    final isDone = completedSteps.contains(uniqueKey);
+    final hasNavigation = step.navigateTo.trim().isNotEmpty;
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Numbered circle and connecting timeline
+          SizedBox(
+            width: 38,
+            child: Column(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
                     color: isDone
-                        ? (Theme.of(context).brightness == Brightness.dark
-                              ? Colors.black
-                              : Colors.white)
-                        : (Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white
-                              : Colors.black),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
+                        ? const Color(0xFF2458B8)
+                        : (isDark
+                        ? cs.surfaceContainerHighest
+                        : const Color(0xFFEAF1FF)),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isDone
+                          ? const Color(0xFF2458B8)
+                          : cs.outlineVariant,
+                    ),
+                  ),
+                  child: isDone
+                      ? const Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: 20,
+                  )
+                      : Text(
+                    '$num',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: isDark
+                          ? cs.onSurface
+                          : const Color(0xFF2458B8),
+                    ),
                   ),
                 ),
-              ),
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 1,
+                      margin: const EdgeInsets.only(top: 4),
+                      decoration: BoxDecoration(
+                        color: isDone
+                            ? const Color(0xFF2458B8)
+                            .withValues(alpha: 0.65)
+                            : cs.outlineVariant
+                            .withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
+          ),
+
+          const SizedBox(width: 14),
+
+          // All step details
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 22),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     step.title,
                     style: GoogleFonts.inter(
-                      fontWeight: FontWeight.bold,
                       fontSize: 15,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                      fontWeight: FontWeight.w700,
+                      height: 1.4,
+                      color: cs.onSurface,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 5),
                   Text(
                     step.instruction,
                     style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                      height: 1.4,
+                      fontSize: 13,
+                      height: 1.6,
+                      color:
+                      cs.onSurface.withValues(alpha: 0.75),
                     ),
+                  ),
+                  AgencyActions(
+                    stepNumber: num,
+                    actions: step.agencyActions,
+                    language: language,
+                  ),
+
+                  if (step.onlineLink.trim().isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    _OnlineLinkChip(
+                      url: step.onlineLink.trim(),
+                    ),
+                  ],
+
+                  const SizedBox(height: 14),
+
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? cs.surfaceContainerLow
+                          : const Color(0xFFF0F4FA),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: cs.outlineVariant
+                            .withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _InfoBox(
+                                label:
+                                AppLocalizations.translate(
+                                  'Fee',
+                                  language,
+                                ),
+                                value: step.fee,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _InfoBox(
+                                label:
+                                AppLocalizations.translate(
+                                  'Processing Time',
+                                  language,
+                                ),
+                                value: step.processingTime,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        _InfoBox(
+                          label:
+                          AppLocalizations.translate(
+                            'Person In-charge',
+                            language,
+                          ),
+                          value:
+                          step.personsInCharge.join('\n'),
+                          fullWidth: true,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  if (step.notes.trim().isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    NoteCallout(
+                      text: step.notes.trim(),
+                    ),
+                  ],
+
+                  const SizedBox(height: 14),
+
+                  Row(
+                    children: [
+                      if (hasNavigation) ...[
+                        Expanded(
+                          child: SizedBox(
+                            height: 44,
+                            child: ElevatedButton.icon(
+                              onPressed: () =>
+                                  _startNavigation(context),
+                              icon: const Icon(
+                                Icons.navigation_outlined,
+                                size: 17,
+                              ),
+                              label: Text(
+                                AppLocalizations.translate(
+                                  'Navigate',
+                                  language,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isDark
+                                    ? cs.tertiary
+                                    : const Color(0xFF2458B8),
+                                foregroundColor: isDark
+                                    ? cs.onTertiary
+                                    : Colors.white,
+                                elevation: 0,
+                                padding:
+                                const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                  BorderRadius.circular(11),
+                                ),
+                                textStyle: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Expanded(
+                        child: SizedBox(
+                          height: 44,
+                          child: isDone
+                              ? ElevatedButton.icon(
+                            onPressed: () =>
+                                onToggle(uniqueKey, false),
+                            icon: const Icon(
+                              Icons.check,
+                              size: 18,
+                            ),
+                            label: Text(
+                              AppLocalizations.translate(
+                                'Completed',
+                                language,
+                              ),
+                              maxLines: 1,
+                              overflow:
+                              TextOverflow.ellipsis,
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF2458B8),
+                              foregroundColor: isDark
+                                  ? Colors.black
+                                  : Colors.white,
+                              elevation: 0,
+                              padding:
+                              const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                BorderRadius.circular(11),
+                              ),
+                              textStyle: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          )
+                              : OutlinedButton(
+                            onPressed: () {
+                              if (!canComplete) {
+                                StepLockedModal.show(context);
+                                return;
+                              }
+                              onToggle(uniqueKey, true);
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: cs.onSurface,
+                              side: BorderSide(
+                                color: cs.outline,
+                                width: 1,
+                              ),
+                              padding:
+                              const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                BorderRadius.circular(11),
+                              ),
+                              textStyle: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            child: Text(
+                              AppLocalizations.translate(
+                                'Mark As Done',
+                                language,
+                              ),
+                              maxLines: 1,
+                              overflow:
+                              TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-        if (step.onlineLink.trim().isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _OnlineLinkChip(url: step.onlineLink.trim()),
+          ),
         ],
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1)
-                  : const Color.fromARGB(255, 255, 255, 255),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _InfoBox(
-                        label: "${AppLocalizations.translate('Fee', language)}:",
-                        value: step.fee,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _InfoBox(
-                        label: "${AppLocalizations.translate('Processing Time', language)}:",
-                        value: step.processingTime,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              _InfoBox(
-                label: "${AppLocalizations.translate('Person In-charge', language)}:",
-                value: step.personsInCharge.join('\n'),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 24),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            // Start Navigate button
-            /* SizedBox(
-              height: 48,
-              child: ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Theme.of(context).colorScheme.tertiary
-                  : const Color(0xFF2057CE),
-                  foregroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Theme.of(context).colorScheme.onPrimary
-                  : Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                      width: 1.5,
-                    ),
-                  ),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                ),
-                child: const Text("Start Navigate",
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ), */
-
-            // Mark As Done button
-            SizedBox(
-              height: 45,
-              child: isDone
-                  ? ElevatedButton(
-                      onPressed: () => onToggle(uniqueKey, false),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white
-                            : const Color(0xFF2057CE),
-                        foregroundColor: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.black
-                            : Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
-                            color: Theme.of(context).colorScheme.onPrimary,
-                            width: 1.5,
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        elevation: 0,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.check, size: 18),
-                          SizedBox(width: 8),
-                          Text(
-                            AppLocalizations.translate("Completed", language),
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    )
-                  : OutlinedButton(
-                      onPressed: () => onToggle(uniqueKey, true),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Theme.of(context).brightness == Brightness.dark
-                            ? Theme.of(context).colorScheme.onPrimary
-                            : Theme.of(context).colorScheme.onSurface,
-                        side: BorderSide(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Theme.of(context).colorScheme.onPrimary
-                              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                          width: 1.2,
-                        ),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                      ),
-                      child: Text(
-                        AppLocalizations.translate("Mark As Done", language),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-      ],
-    );
-  }
-}
-
-class _OnlineLinkChip extends StatelessWidget {
-  final String url;
-
-  const _OnlineLinkChip({required this.url});
-
-  // Prefixes the url with https:// if the admin saved it without a scheme,
-  // so url_launcher doesn't choke on something like "example.gov.ph".
-  Uri _resolvedUri() {
-    final hasScheme = RegExp(r'^[a-zA-Z][a-zA-Z\d+\-.]*://').hasMatch(url);
-    return Uri.parse(hasScheme ? url : 'https://$url');
-  }
-
-  Future<void> _openLink(BuildContext context) async {
-    final uri = _resolvedUri();
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!launched && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Couldn't open the link.")),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(15),
-        onTap: () => _openLink(context),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: isDark
-                ? Theme.of(context).colorScheme.primary
-                : const Color(0xFFFFF7E0),
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(
-              color: isDark
-                  ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1)
-                  : const Color(0xFFF0E4BE),
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.link, size: 18, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  url,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: isDark
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : Colors.black87,
-                    decoration: TextDecoration.underline,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Icon(
-                Icons.open_in_new,
-                size: 16,
-                color: isDark
-                    ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.6)
-                    : Colors.black45,
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
 }
 
+
+
+// -----------------------------------------------------------------------------
+// FEE / PROCESSING TIME / PERSON IN-CHARGE
+// -----------------------------------------------------------------------------
+
 class _InfoBox extends StatelessWidget {
   final String label;
   final String value;
+  final bool fullWidth;
 
-  const _InfoBox({required this.label, required this.value});
+  const _InfoBox({
+    required this.label,
+    required this.value,
+    this.fullWidth = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 11,
+      ),
       decoration: BoxDecoration(
-        color: Theme.brightnessOf(context) == Brightness.dark
-            ? Theme.of(context).colorScheme.primary
-            : const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(15),
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(11),
         border: Border.all(
-          color: Theme.brightnessOf(context) == Brightness.dark
-              ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1)
-              : Colors.grey.shade100,
+          color: cs.outlineVariant.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -861,23 +1162,20 @@ class _InfoBox extends StatelessWidget {
           Text(
             label,
             style: GoogleFonts.inter(
-              fontSize: 12,
-              color: Theme.brightnessOf(context) == Brightness.dark
-                  ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)
-                  : Colors.black54,
-              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              height: 1.4,
+              color: cs.onSurface.withValues(alpha: 0.65),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 5),
           Text(
-            value.isNotEmpty ? value : "N/A",
+            value.trim().isNotEmpty ? value : 'N/A',
             style: GoogleFonts.inter(
               fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Theme.brightnessOf(context) == Brightness.dark
-                  ? Theme.of(context).colorScheme.onPrimary
-                  : Colors.black87,
-              height: 1.2,
+              fontWeight: FontWeight.w700,
+              height: 1.45,
+              color: isDark ? cs.onSurface : const Color(0xFF202938),
             ),
           ),
         ],
@@ -885,6 +1183,104 @@ class _InfoBox extends StatelessWidget {
     );
   }
 }
+
+// -----------------------------------------------------------------------------
+// ONLINE LINK
+// -----------------------------------------------------------------------------
+
+class _OnlineLinkChip extends StatelessWidget {
+  final String url;
+
+  const _OnlineLinkChip({required this.url});
+
+  Uri _resolvedUri() {
+    final hasScheme =
+    RegExp(r'^[a-zA-Z][a-zA-Z\d+\-.]*://').hasMatch(url);
+
+    return Uri.parse(hasScheme ? url : 'https://$url');
+  }
+
+  Future<void> _openLink(BuildContext context) async {
+    final uri = _resolvedUri();
+
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't open the link.")),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't open the link.")),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Material(
+      color: isDark
+          ? cs.surfaceContainerHighest
+          : const Color(0xFFFFF8E8),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _openLink(context),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDark
+                  ? cs.outlineVariant
+                  : const Color(0xFFEDE0BB),
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.open_in_new,
+                size: 18,
+                color: Color(0xFF2458B8),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  url,
+                  softWrap: true,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    height: 1.45,
+                    color: isDark
+                        ? cs.onSurface
+                        : const Color(0xFF2458B8),
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// OFFICE INFORMATION
+// -----------------------------------------------------------------------------
 
 class _InfoGrid extends StatelessWidget {
   final ServiceDetail detail;
@@ -897,261 +1293,445 @@ class _InfoGrid extends StatelessWidget {
     required this.language,
   });
 
-  // Resolves a "website or email" value typed by the admin into a launchable
-  // Uri: an email-looking value becomes a mailto: link, everything else is
-  // treated as a URL (https:// is added if the admin left the scheme off).
   Uri _resolveWebsiteOrEmailUri(String raw) {
     final value = raw.trim();
-    final looksLikeEmail =
-        !value.contains('://') && RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value);
-    if (looksLikeEmail) return Uri(scheme: 'mailto', path: value);
 
-    final hasScheme = RegExp(r'^[a-zA-Z][a-zA-Z\d+\-.]*://').hasMatch(value);
+    final looksLikeEmail = !value.contains('://') &&
+        RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value);
+
+    if (looksLikeEmail) {
+      return Uri(scheme: 'mailto', path: value);
+    }
+
+    final hasScheme =
+    RegExp(r'^[a-zA-Z][a-zA-Z\d+\-.]*://').hasMatch(value);
+
     return Uri.parse(hasScheme ? value : 'https://$value');
   }
 
-  Future<void> _openWebsiteOrEmail(BuildContext context, String raw) async {
-    final uri = _resolveWebsiteOrEmailUri(raw);
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!launched && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Couldn't open that.")),
+  Future<void> _openWebsiteOrEmail(
+      BuildContext context,
+      String raw,
+      ) async {
+    try {
+      final launched = await launchUrl(
+        _resolveWebsiteOrEmailUri(raw),
+        mode: LaunchMode.externalApplication,
       );
+
+      if (!launched && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't open that.")),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't open that.")),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final locationVal = detail.location.isNotEmpty ? detail.location : "N/A";
-    final contactVal = detail.contactPhone.isNotEmpty ? detail.contactPhone : "N/A";
-    final websiteVal = detail.contactEmail.isNotEmpty ? detail.contactEmail : "N/A";
-    final hasWebsite = websiteVal != "N/A";
+    final location = detail.location.trim().isNotEmpty
+        ? detail.location
+        : 'N/A';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Row 1: LOCATION (Full Width)
-        _buildCard(
-          context,
-          Icons.location_on,
-          AppLocalizations.translate("LOCATION", language),
-          locationVal,
-        ),
-        const SizedBox(height: 15),
+    final phone = detail.contactPhone.trim().isNotEmpty
+        ? detail.contactPhone
+        : 'N/A';
 
-        // Row 2: CONTACT NUMBER and WEBSITE (Side-by-Side)
-        LayoutBuilder(
-          builder: (context, constraints) {
-            if (constraints.maxWidth < 300 || MediaQuery.textScalerOf(context).scale(1) > 1.05) {
-              return Column(
-                children: [
-                  _buildCard(
-                    context,
-                    Icons.phone,
-                    AppLocalizations.translate("CONTACT NUMBER", language),
-                    contactVal,
-                  ),
-                  const SizedBox(height: 15),
-                  _buildCard(
-                    context,
-                    Icons.language,
-                    AppLocalizations.translate("WEBSITE", language),
-                    websiteVal,
-                    onTap: hasWebsite ? () => _openWebsiteOrEmail(context, websiteVal) : null,
-                  ),
-                ],
-              );
-            }
-            return IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: _buildCard(
-                      context,
-                      Icons.phone,
-                      AppLocalizations.translate("CONTACT NUMBER", language),
-                      contactVal,
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: _buildCard(
-                      context,
-                      Icons.language,
-                      AppLocalizations.translate("WEBSITE", language),
-                      websiteVal,
-                      onTap: hasWebsite ? () => _openWebsiteOrEmail(context, websiteVal) : null,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
+    final website = detail.contactEmail.trim().isNotEmpty
+        ? detail.contactEmail
+        : 'N/A';
 
-  Widget _buildCard(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value, {
-    VoidCallback? onTap,
-  }) {
-    final isLink = onTap != null;
 
-    return Material(
-      borderRadius: BorderRadius.circular(25),
-      elevation: 4,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(25),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Theme.of(context).colorScheme.primary
-                : Colors.white,
-            borderRadius: BorderRadius.circular(25),
-            border: Border.all(
-              color: Theme.brightnessOf(context) == Brightness.dark
-                  ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1)
-                  : Colors.grey.shade100,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, color: const Color(0xFF3B73E0), size: 18),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      label,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)
-                            : Colors.black45,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (isLink) ...[
-                    const Spacer(),
-                    const Icon(Icons.open_in_new, size: 14, color: Color(0xFF3B73E0)),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 15),
-              Text(
-                value,
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: isLink
-                      ? const Color(0xFF3B73E0)
-                      : (Theme.of(context).brightness == Brightness.dark
-                            ? Theme.of(context).colorScheme.onSurface
-                            : Colors.black),
-                  decoration: isLink ? TextDecoration.underline : null,
-                  height: 1.3,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-class _ScheduleTile extends StatelessWidget {
-  final String language;
-  const _ScheduleTile({required this.language});
+    Widget _buildContactCard(
+        BuildContext context,
+        String phone,
+        String website,
+        ) {
+      final cs = Theme.of(context).colorScheme;
+      final isDark = Theme.of(context).brightness == Brightness.dark;
 
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      borderRadius: BorderRadius.circular(25),
-      elevation: 4,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Theme.of(context).colorScheme.primary
-              : const Color.fromRGBO(185, 217, 235, 0.45),
-          borderRadius: BorderRadius.circular(25),
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.25),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.12 : 0.10),
+              blurRadius: 5,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Flexible(
-                  child: Text(
-                    AppLocalizations.translate("OFFICE SCHEDULE", language),
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Theme.of(context).colorScheme.onSurface
-                          : Colors.black,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+                Icon(
+                  Icons.contact_mail_outlined,
+                  size: 19,
+                  color: accentColor,
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF52EC44),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
+                const SizedBox(width: 8),
+                Expanded(
                   child: Text(
-                    AppLocalizations.translate("OPEN NOW", language),
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
+                    AppLocalizations.translate(
+                      'CONTACT INFORMATION',
+                      language,
+                    ),
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: cs.onSurface.withValues(alpha: 0.65),
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 15),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
+            const SizedBox(height: 16),
+
+            // Contact number
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "Monday - Friday",
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.onSurface
-                        : Colors.black,
+                Icon(
+                  Icons.phone_outlined,
+                  size: 18,
+                  color: accentColor,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    phone,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      height: 1.5,
+                      color: cs.onSurface,
+                    ),
                   ),
                 ),
-                Text(
-                  "8:00 AM - 5:00 PM",
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.onSurface
-                        : Colors.black,
+              ],
+            ),
+
+            const SizedBox(height: 14),
+
+            // Website or email
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.language_outlined,
+                  size: 18,
+                  color: accentColor,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: InkWell(
+                    onTap: website != 'N/A'
+                        ? () => _openWebsiteOrEmail(context, website)
+                        : null,
+                    child: Text(
+                      website,
+                      softWrap: true,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        height: 1.5,
+                        color: website != 'N/A'
+                            ? accentColor
+                            : cs.onSurface,
+                        decoration: website != 'N/A'
+                            ? TextDecoration.underline
+                            : null,
+                      ),
+                    ),
                   ),
                 ),
+                if (website != 'N/A')
+                  Icon(
+                    Icons.open_in_new,
+                    size: 14,
+                    color: accentColor,
+                  ),
               ],
             ),
           ],
         ),
+      );
+    }
+
+
+    return Column(
+      children: [
+        _buildCard(
+          context,
+          Icons.location_on_outlined,
+          AppLocalizations.translate('LOCATION', language),
+          location,
+        ),
+        const SizedBox(height: 12),
+        _buildContactCard(context, phone, website),
+      ],
+    );
+
+  }
+
+
+  Widget _buildCard(
+      BuildContext context,
+      IconData icon,
+      String label,
+      String value, {
+        VoidCallback? onTap,
+      }) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isLink = onTap != null;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.25),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.12 : 0.10),
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      icon,
+                      size: 19,
+                      color: const Color(0xFF4778C7),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: cs.onSurface.withValues(alpha: 0.65),
+                        ),
+                      ),
+                    ),
+                    if (isLink)
+                      Icon(
+                        Icons.open_in_new,
+                        size: 14,
+                        color: const Color(0xFF4778C7),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  value,
+                  softWrap: true,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    height: 1.4,
+                    fontWeight: FontWeight.w600,
+                    color: isLink
+                        ? const Color(0xFF4778C7)
+                        : (isDark
+                        ? cs.onSurface
+                        : const Color(0xFF202938)),
+                    decoration: isLink
+                        ? TextDecoration.underline
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+}
+
+// -----------------------------------------------------------------------------
+// OFFICE SCHEDULE
+// -----------------------------------------------------------------------------
+
+
+
+class _ScheduleTile extends StatelessWidget {
+  final String language;
+
+  const _ScheduleTile({required this.language});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Get the current local date and time of the device.
+    final now = DateTime.now();
+
+    // DateTime.weekday: Monday = 1, Sunday = 7.
+    final isWeekday = now.weekday >= DateTime.monday &&
+        now.weekday <= DateTime.friday;
+
+    // Open from 8:00 AM until 5:00 PM, Monday to Friday.
+    final openingTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      8,
+    );
+
+    final closingTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      17,
+    );
+
+    final isOpen = isWeekday &&
+        !now.isBefore(openingTime) &&
+        now.isBefore(closingTime);
+
+    final statusText = isOpen ? 'OPEN NOW' : 'CLOSED NOW';
+    final statusColor = isOpen
+        ? const Color(0xFF43E83E)
+        : const Color(0xFFE53935);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 18,
+        vertical: 18,
+      ),
+      decoration: BoxDecoration(
+        color: isDark
+            ? cs.surfaceContainerLow
+            : const Color(0xFFE0EFF6),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark
+              ? cs.outlineVariant
+              : const Color(0xFFC7D8E0),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(
+              alpha: isDark ? 0.12 : 0.16,
+            ),
+            blurRadius: 7,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  AppLocalizations.translate(
+                    'OFFICE SCHEDULE',
+                    language,
+                  ),
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: isDark
+                        ? cs.onSurface
+                        : const Color(0xFF59636A),
+                  ),
+                ),
+              ),
+
+              // Smaller status badge with dynamic text and color.
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 9,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  AppLocalizations.translate(
+                    statusText,
+                    language,
+                  ),
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: isOpen ? Colors.black : Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  'Monday - Friday',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  '8:00 AM - 5:00 PM',
+                  textAlign: TextAlign.end,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
+

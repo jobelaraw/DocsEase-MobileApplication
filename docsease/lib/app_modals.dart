@@ -780,6 +780,27 @@ class NotificationPopupRoute {
   }
 }
 
+
+class StepLockedModal {
+  static Future<void> show(BuildContext context) {
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.lock_outline_rounded,
+        iconColor: const Color(0xFF2563EB),
+        iconBgColor: const Color(0xFFDBEAFE),
+        title: 'Complete the Previous Step',
+        subtitle:
+        'Please mark the previous step as done before proceeding to the next step.',
+        primaryLabel: 'Got it',
+        singleAction: true,
+        onPrimary: () =>
+            Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
 //Auth modal with a redirect button (e.g. "Go to Sign In")
 class AuthRedirectModal {
   static Future<void> show(
