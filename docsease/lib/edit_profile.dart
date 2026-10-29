@@ -605,40 +605,7 @@ class _EditProfileState extends State<EditProfile> {
                   Text('Do you want to delete your account?', style: GoogleFonts.inter(fontSize: 12, color: Colors.black54)),
                   const SizedBox(height: 4),
                   GestureDetector(
-                    onTap: () async {
-                      DeleteAccountModal.show(
-                        context,
-                        onPrimary: () async {
-                          Navigator.of(context, rootNavigator: true).pop();
-
-                          try {
-                            await _editService.deleteAccount();
-
-                            if (mounted) {
-                              await Provider.of<SettingsProvider>(
-                                context,
-                                listen: false,
-                              ).loadSettings();
-                            }
-
-                            if (mounted) {
-                              AuthSuccessModal.show(
-                                context,
-                                title: 'Account Deleted',
-                                subtitle: 'Your account have been successfully deleted.',
-                                onPrimary: () {
-                                  navigatorKey.currentState?.popUntil((route) => route.isFirst);
-                                },
-                              );
-                            }
-                          } catch (e) {
-                            if (mounted) {
-                              AuthErrorModal.show(context, title: 'Deletion Failed', subtitle: 'Please sign out and sign back in before deleting your account.');
-                            }
-                          }
-                        },
-                      );
-                    },
+                    onTap: _startDeleteFlow,
                     child: Text('Delete Account', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.red)),
                   ),
                 ],
@@ -648,6 +615,193 @@ class _EditProfileState extends State<EditProfile> {
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _startDeleteFlow() async {
+  // Step 1
+  DeleteAccountModal.show(
+    context,
+    onPrimary: () async {
+      Navigator.of(context, rootNavigator: true).pop();
+      if (!mounted) return;
+
+      // Step 2: password + re-authentication
+      final verified = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const _PasswordConfirmDialog(),
+      );
+      if (verified != true || !mounted) return;
+
+      // Step 3: final irreversible warning
+      final confirmed = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('Delete permanently?', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 18)),
+          content: Text(
+            'Once you confirm, your account, history, and all associated data will be permanently deleted. This cannot be undone.',
+            style: GoogleFonts.inter(fontSize: 13, color: Colors.black54),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Confirm Delete', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+
+      await _performAccountDeletion();
+    },
+  );
+}
+
+Future<void> _performAccountDeletion() async {
+  // Show "Deletion in progress" modal (not awaited, it stays open until hide())
+  LoadingModal.show(
+    context,
+    title: 'Deletion in progress',
+    subtitle: 'Please wait while we delete your account. Do not close the app.',
+  );
+
+  try {
+    await _editService.deleteAccount();
+
+    if (mounted) {
+      await Provider.of<SettingsProvider>(context, listen: false).loadSettings();
+    }
+
+    if (mounted) LoadingModal.hide(context);
+
+    if (mounted) {
+      AuthSuccessModal.show(
+        context,
+        title: 'Account Deleted',
+        subtitle: 'Your account has been successfully deleted.',
+        onPrimary: () {
+          navigatorKey.currentState?.popUntil((route) => route.isFirst);
+        },
+      );
+    }
+  } catch (e) {
+    if (mounted) LoadingModal.hide(context);
+
+    if (mounted) {
+      AuthErrorModal.show(
+        context,
+        title: 'Deletion Failed',
+        subtitle: 'Something went wrong while deleting your account. Please try again.',
+      );
+    }
+  }
+}
+}
+
+/// Step 2: asks for the password and re-authenticates inline.
+/// Returns true only if re-authentication succeeded.
+class _PasswordConfirmDialog extends StatefulWidget {
+  const _PasswordConfirmDialog();
+
+  @override
+  State<_PasswordConfirmDialog> createState() => _PasswordConfirmDialogState();
+}
+
+class _PasswordConfirmDialogState extends State<_PasswordConfirmDialog> {
+  final TextEditingController _controller = TextEditingController();
+  bool _obscure = true;
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _confirm() async {
+    final password = _controller.text;
+    if (password.isEmpty) {
+      setState(() => _error = 'Please enter your password.');
+      return;
+    }
+
+    setState(() { _loading = true; _error = null; });
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null || user.email == null) throw Exception('No user');
+
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: password,
+      );
+      await user.reauthenticateWithCredential(credential);
+
+      if (mounted) Navigator.of(context).pop(true);
+    } on FirebaseAuthException catch (e) {
+      String message = 'Something went wrong. Please try again.';
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        message = 'Incorrect password.';
+      } else if (e.code == 'too-many-requests') {
+        message = 'Too many attempts. Please try again later.';
+      } else if (e.code == 'network-request-failed') {
+        message = 'Please check your internet connection.';
+      }
+      if (mounted) setState(() { _loading = false; _error = message; });
+    } catch (_) {
+      if (mounted) setState(() { _loading = false; _error = 'Something went wrong. Please try again.'; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text('Confirm your password', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 18)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'For your security, enter your password to continue deleting your account.',
+            style: GoogleFonts.inter(fontSize: 13, color: Colors.black54),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _controller,
+            obscureText: _obscure,
+            enabled: !_loading,
+            autofocus: true,
+            onSubmitted: (_) => _confirm(),
+            decoration: InputDecoration(
+              hintText: 'Password',
+              errorText: _error,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              suffixIcon: IconButton(
+                icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+                onPressed: () => setState(() => _obscure = !_obscure),
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _loading ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: _loading ? null : _confirm,
+          child: _loading
+              ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Continue', style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
+      ],
     );
   }
 }
