@@ -8,6 +8,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'navigator_transition.dart';
 import 'package:docsease/app_modals.dart';
+import 'package:docsease/agreement_modal.dart';
+import 'package:docsease/guest_agreement.dart';
 
 class AppStart extends StatefulWidget {
   const AppStart({super.key});
@@ -19,10 +21,19 @@ class AppStart extends StatefulWidget {
 class _AppStartState extends State<AppStart> {
   bool _isGuestLoading = false;
   bool _guestTriggerFired = false;
+  bool _askingAgreement = false;
+  late final TapGestureRecognizer _termsTap;
+  late final TapGestureRecognizer _privacyTap;
 
   @override
   void initState() {
     super.initState();
+
+    _termsTap = TapGestureRecognizer()
+      ..onTap = () => GuestAgreement.show(context, tab: AgreementTab.terms);
+    _privacyTap = TapGestureRecognizer()
+      ..onTap = () => GuestAgreement.show(context, tab: AgreementTab.privacy);
+
     var authBox = Hive.box('auth_box');
     if (authBox.get('triggerGuestAnimation', defaultValue: false)) {
       authBox.put('triggerGuestAnimation', false);
@@ -32,7 +43,21 @@ class _AppStartState extends State<AppStart> {
     }
   }
 
+  @override
+  void dispose() {
+    _termsTap.dispose();
+    _privacyTap.dispose();
+    super.dispose();
+  }
+
   Future<void> _handleGuestLogin() async {
+    if (_askingAgreement || _isGuestLoading) return;
+
+    _askingAgreement = true;
+    final agreed = await GuestAgreement.ensureAccepted(context);
+    _askingAgreement = false;
+    if (!agreed || !mounted) return;
+
     setState(() {
       _isGuestLoading = true;
     });
@@ -195,13 +220,13 @@ class _AppStartState extends State<AppStart> {
                           children: [
                             const TextSpan(text: 'By continuing, you agree to our '),
                             TextSpan(
-                              text: 'Terms of Services',
+                              text: 'Terms & Conditions',
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 color: const Color(0xFF3B73E0),
                                 decoration: TextDecoration.underline,
                               ),
-                              recognizer: TapGestureRecognizer()..onTap = () {},
+                              recognizer: _termsTap,
                             ),
                             const TextSpan(text: ' and '),
                             TextSpan(
@@ -211,7 +236,7 @@ class _AppStartState extends State<AppStart> {
                                 color: const Color(0xFF3B73E0),
                                 decoration: TextDecoration.underline,
                               ),
-                              recognizer: TapGestureRecognizer()..onTap = () {},
+                              recognizer: _privacyTap,
                             ),
                             const TextSpan(text: '.'),
                           ],

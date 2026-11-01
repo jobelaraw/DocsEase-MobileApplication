@@ -8,6 +8,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:docsease/info_model.dart';
 import 'package:hive/hive.dart';
 import 'dart:io';
+import 'package:docsease/legal_content.dart';
 
 // sign in - G account already has profile
 class GoogleAccountAlreadyUsedException implements Exception {}
@@ -48,6 +49,8 @@ class FirebaseServices {
           'email': email,
           'profile_img': 'assets/default_profile.png',
           'history_id': uniqueHistoryId,
+          'accepted_terms_version': LegalContent.version,
+          'accepted_terms_at': FieldValue.serverTimestamp(),
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
         });
@@ -230,6 +233,8 @@ class FirebaseServices {
         'email': user.email,
         'profile_img': user.photoURL ?? 'assets/default_profile.png',
         'history_id': uniqueHistoryId,
+        'accepted_terms_version': LegalContent.version,
+        'accepted_terms_at': FieldValue.serverTimestamp(),
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
