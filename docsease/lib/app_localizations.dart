@@ -58,14 +58,21 @@ class AppLocalizations {
       'Helps users navigate inside Biñan City Hall by scanning wall-mounted QR calibration codes and following augmented reality directional pathways to offices and windows, complete with an interactive 2D map fallback interface that automatically activates for smartphones lacking AR hardware support.': 'Tinutulungan ang mga gumagamit na mag-navigate sa loob ng Biñan City Hall sa pamamagitan ng pag-scan ng mga QR calibration code sa dingding at pagsunod sa augmented reality na mga landas patungo sa mga opisina. Mayroon din itong interactive 2D map na awtomatikong gumagana para sa mga smartphone na hindi suportado ang AR hardware.',
 
       'Progress Tracker': 'Tagasubaybay ng Progreso',
-      'Allows you to monitor your active municipal applications and multi-service transactions simultaneously through real-time status updates, manual step-by-step digital checklists, progress percentages, and complete archiving securely accessible inside your profile\'s Service History.'
-
+      'Allows you to monitor your active municipal applications and multi-service transactions simultaneously through real-time status updates, manual step-by-step digital checklists, progress percentages, and complete archiving securely accessible inside your profile\'s Service History.':
+      'Nagbibigay-daan sa iyong subaybayan ang iyong mga aktibong aplikasyon at transaksyon sa pamamagitan ng real-time na status, manu-manong checklist, porsyento ng progreso, at ligtas na archive sa Service History ng iyong profile.',
       // FAQ Screen Translations
-      'Support & FAQs': 'Gabay at Mga Madalas Itanong',
       'How can we help you?': 'Paano kami makatutulong sa iyo?',
       'search question here': 'maghanap ng tanong dito',
       'No questions found.': 'Walang nakitang mga tanong.',
       'Answer:': 'Sagot:',
+
+      'Coming soon': 'Malapit na',
+      'CONTACT NUMBER': 'NUMERO NG KONTAK',
+      'WEBSITE': 'WEBSITE',
+      'Are you sure you want to back?': 'Sigurado ka bang gusto mong bumalik?',
+      'Session Expired': 'Nag-expire na ang Session',
+      'For your security, you were logged out because the app was inactive for 15 minutes. Please sign in again.':
+      'Para sa iyong seguridad, na-logout ka dahil walang aktibidad sa app sa loob ng 15 minuto. Mag-sign in muli.',
 
       // General App & Limitations FAQs
       'Can I submit my documents and pay fees through the app?': 'Maaari ba akong mag-sumite ng mga dokumento at magbayad ng bayarin sa pamamagitan ng app?',
@@ -119,7 +126,7 @@ class AppLocalizations {
 
       // Chatbot
       'Chatbot': 'Chatbot',
-      'DocsEase Bot': 'DocsEase Bot',
+      'GaBayan Bot': 'GaBayan Bot',
       'Online Assistant': 'Online Assistant',
       'Offline - Waiting for network...':
           'Offline - Naghihintay ng koneksyon...',
@@ -155,8 +162,8 @@ class AppLocalizations {
       'Previous 7 Days': 'Nakaraang 7 Araw',
       'Previous 30 Days': 'Nakaraang 30 Araw',
       'Older': 'Mas Luma',
-      "Hey Citizen! I'm your DocsEase Bot, your assistant here in DocuGuide!":
-          'Kumusta, Mamamayan! Ako si DocsEase Bot, ang iyong katuwang dito sa DocuGuide!',
+      "Hey Citizen! I'm your GaBayan Bot, your assistant here in GaBayan!":
+      'Kumusta, Mamamayan! Ako si GaBayan Bot, ang iyong katuwang dito sa GaBayan!',
       'No conversations yet.': 'Wala pang mga usapan.',
       'Delete chat': 'Burahin ang chat',
       'What would you like to delete?': 'Ano ang gusto mong burahin?',
@@ -190,6 +197,10 @@ class AppLocalizations {
       'A recovery code has been sent to your email. Please check your inbox.':
           'Naipadala na ang recovery code sa iyong email. Suriin ang iyong inbox.',
       'Profile Requires Sign in': 'Kailangan mag-sign in para sa Profile',
+      'Profile Requires Authentication': 'Kailangan Mag-sign In para sa Profile',
+      'GaBayan Bot Requires Authentication': 'Kailangan Mag-sign In para sa GaBayan Bot',
+      'Service History Requires Authentication': 'Kailangan Mag-sign In para sa Kasaysayan ng Serbisyo',
+      'Navigation Requires Authentication': 'Kailangan Mag-sign In para sa Nabigasyon',
       "You'll be directed to sign in screen. Are you sure you want to continue?":
           'Ire-redirect ka sa sign in screen. Sigurado ka bang gusto mong magpatuloy?',
       'Verified': 'Kumpirmado',
