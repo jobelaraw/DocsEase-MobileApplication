@@ -9,6 +9,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:docsease/settings_provider.dart';
+import 'package:flutter/gestures.dart';
+import 'package:docsease/agreement_modal.dart';
+import 'package:docsease/guest_agreement.dart';
 
 import 'package:hive/hive.dart';
 
@@ -477,7 +480,9 @@ class _SignInState extends State<SignIn> {
         SizedBox(height: 10),
         CustomTextButton(
           inkwellText: 'Continue as Guest',
-          onTapAction: () {
+          onTapAction: () async {
+            final agreed = await GuestAgreement.ensureAccepted(context);
+            if (!agreed || !mounted) return;
             Hive.box('auth_box').put('triggerGuestAnimation', true);
             Navigator.pop(context);
           },
@@ -521,6 +526,110 @@ class _SignUpState extends State<SignUp> {
   bool _isEmailTaken = false;
   String? _submitEmailError;
 
+  bool _agreed = false;
+  late final TapGestureRecognizer _termsTap;
+  late final TapGestureRecognizer _privacyTap;
+
+  @override
+  void initState() {
+    super.initState();
+    _termsTap = TapGestureRecognizer()
+      ..onTap = () => _openAgreement(AgreementTab.terms);
+    _privacyTap = TapGestureRecognizer()
+      ..onTap = () => _openAgreement(AgreementTab.privacy);
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _termsTap.dispose();
+    _privacyTap.dispose();
+    super.dispose();
+  }
+
+  /// Opens the modal. Checks the box only if the user taps "I Agree".
+  /// Opens the modal and updates the checkbox from the user's decision.
+  /// "I Agree" checks it, "Not now" unchecks it, and dismissing the dialog
+  /// (tap outside / back button) leaves it as it was.
+  Future<bool> _openAgreement(AgreementTab tab) async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final result = await AgreementModal.showForResult(
+      context,
+      initialTab: tab,
+    );
+    if (!mounted) return false;
+
+    if (result == true) {
+      setState(() => _agreed = true);
+    } else if (result == false) {
+      setState(() => _agreed = false);
+    }
+    return result == true;
+  }
+
+  Future<void> _onAgreementCheckboxTap() async {
+    if (_agreed) {
+      setState(() => _agreed = false); // unchecking never opens the modal
+      return;
+    }
+    await _openAgreement(AgreementTab.terms);
+  }
+
+  Widget _buildAgreementRow() {
+    const blue = Color.fromRGBO(59, 115, 224, 1.0);
+    final baseStyle = GoogleFonts.inter(
+      fontSize: 12,
+      height: 1.4,
+      color: Colors.black.withValues(alpha: 0.7),
+    );
+    final linkStyle = baseStyle.copyWith(
+      color: blue,
+      fontWeight: FontWeight.bold,
+    );
+
+    return Row(
+      children: [
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: Checkbox(
+            value: _agreed,
+            onChanged: (_) => _onAgreementCheckboxTap(),
+            activeColor: blue,
+            side: const BorderSide(color: blue, width: 1.5),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              style: baseStyle,
+              text: 'I agree to the ',
+              children: [
+                TextSpan(
+                  text: 'Terms & Conditions',
+                  style: linkStyle,
+                  recognizer: _termsTap,
+                ),
+                const TextSpan(text: ' and '),
+                TextSpan(
+                  text: 'Privacy Policy',
+                  style: linkStyle,
+                  recognizer: _privacyTap,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -549,6 +658,7 @@ class _SignUpState extends State<SignUp> {
             _debounce = Timer(const Duration(milliseconds: 300), () async {
               if (value.trim().length >= 8) {
                 bool taken = await _authService.isUsernameTaken(value.trim());
+                if (!mounted) return;
                 setState(() => _isUsernameTaken = taken);
               }
             });
@@ -591,6 +701,7 @@ class _SignUpState extends State<SignUp> {
                 } catch (e) {
                   taken = false;
                 }
+                if (!mounted) return;
                 setState(() => _isEmailTaken = taken);
               }
             });
@@ -659,17 +770,24 @@ class _SignUpState extends State<SignUp> {
           },
           forceValidate: invalidInput,
         ),
-        SizedBox(height: 40),
+        const SizedBox(height: 20),
+        _buildAgreementRow(),
+        const SizedBox(height: 24),
 
         CustomButton(
           buttonText: 'Sign Up',
           isLoading: _isEmailLoading,
           isButtonEnabled:
+          _agreed &&
               widget.usernameController.text.isNotEmpty &&
               widget.emailController.text.isNotEmpty &&
               widget.passwordController.text.isNotEmpty &&
               widget.confirmController.text.isNotEmpty,
           onTapAction: () async {
+            if (!_agreed) {
+              await _openAgreement(AgreementTab.terms);
+              return;
+            }
             final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
             bool isUsernameValid =
                 widget.usernameController.text.trim().length >= 8;
@@ -745,6 +863,10 @@ class _SignUpState extends State<SignUp> {
           isGoogle: true,
           isLoading: _isGoogleLoading,
           onTapAction: () async {
+            if (!_agreed) {
+              final accepted = await _openAgreement(AgreementTab.terms);
+              if (!accepted) return;
+            }
             final settings = Provider.of<SettingsProvider>(
               context,
               listen: false,
@@ -823,7 +945,9 @@ class _SignUpState extends State<SignUp> {
         SizedBox(height: 10),
         CustomTextButton(
           inkwellText: 'Continue as Guest',
-          onTapAction: () {
+          onTapAction: () async {
+            final agreed = await GuestAgreement.ensureAccepted(context);
+            if (!agreed || !mounted) return;
             Hive.box('auth_box').put('triggerGuestAnimation', true);
             Navigator.pop(context);
           },
