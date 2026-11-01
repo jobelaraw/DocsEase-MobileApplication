@@ -62,6 +62,9 @@ class _ServicesContent extends State<Services> {
   }
 
   Widget buildFilteredCategory(Office office) {
+    // Safety net: never render an office that has no services.
+    if (office.services.isEmpty) return const SizedBox.shrink();
+
     final lang = Provider.of<SettingsProvider>(context, listen: false).language;
     final filteredServices = office.services.where((service) {
       return service.getTitle(lang).toLowerCase().contains(searchQuery);
@@ -136,13 +139,20 @@ class _ServicesContent extends State<Services> {
                         return SliverToBoxAdapter(
                           child: Center(child: Text("Error loading data: ${snapshot.error}")),
                         );
-                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      }
+
+                      // Only show offices that actually have at least one
+                      // available service. Offices with no services are hidden.
+                      final offices = (snapshot.data ?? <Office>[])
+                          .where((office) => office.services.isNotEmpty)
+                          .toList();
+
+                      if (offices.isEmpty) {
                         return const SliverToBoxAdapter(
                           child: Center(child: Text("No services available.")),
                         );
                       }
 
-                      final offices = snapshot.data!;
                       return SliverPadding(
                         padding: const EdgeInsets.fromLTRB(20, 15, 20, 20),
                         sliver: SliverList(
