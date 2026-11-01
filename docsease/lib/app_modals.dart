@@ -800,6 +800,25 @@ class StepLockedModal {
     );
   }
 }
+//will appear after the app logs the user out for being idle mga niggs
+class SessionExpiredModal {
+  static Future<void> show(BuildContext context) {
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.lock_outline_rounded,
+        iconColor: _kBlue,
+        iconBgColor: _kIconBgBlue,
+        title: 'Session Expired',
+        subtitle:
+        'For your security, you were logged out because the app was inactive for 15 minutes. Please sign in again.',
+        primaryLabel: 'Got it',
+        singleAction: true,
+        onPrimary: () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
 
 //Auth modal with a redirect button (e.g. "Go to Sign In")
 class AuthRedirectModal {
