@@ -455,6 +455,8 @@ class RequireSignInModal {
             ? tr('Profile Requires Authentication')
             : title == 'Chatbot'
             ? tr('GaBayan Bot Requires Authentication')
+            : title == 'Navigate'
+            ? tr('Navigation Requires Authentication')
             : tr('Service History Requires Authentication'),
         subtitle: tr("You'll be directed to sign in screen. Are you sure you want to continue?"),
         primaryLabel: tr('Yes'),

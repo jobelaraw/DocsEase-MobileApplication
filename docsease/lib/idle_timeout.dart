@@ -10,7 +10,7 @@ import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 
 /// Change this to Duration(seconds: 20) when testing.
-const Duration kIdleTimeout = Duration(minutes: 1);
+const Duration kIdleTimeout = Duration(minutes: 15);
 const String kLastActiveKey = 'lastActiveAt';
 
 class IdleTimeoutWrapper extends StatefulWidget {

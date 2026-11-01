@@ -767,13 +767,53 @@ class _SideBarState extends State<SideBar> {
                                 SideBarOption(
                                   selectedImage: 'assets/navigate_icon.png',
                                   unselectedImage: 'assets/navigate_outlined_icon.png',
-                                  iconScale: 1.3,
+                                  iconData: Icons.location_on_outlined,
                                   optionName: AppLocalizations.translate(
                                     'Navigate',
                                     Provider.of<SettingsProvider>(context).language,
                                   ),
                                   isSelected: false,
-                                  onTapAction: () {
+
+
+                                  onTapAction: () async {
+                                    debugPrint('NAV TAP -> isGuest: ${widget.isGuest}, '
+                                        'user: ${FirebaseAuth.instance.currentUser}, '
+                                        'hive: ${Hive.box('auth_box').get('continueGuest', defaultValue: false)}');
+
+                                    final bool isGuestUser = widget.isGuest ||
+                                        FirebaseAuth.instance.currentUser == null ||
+                                        Hive.box('auth_box').get('continueGuest', defaultValue: false) == true;
+
+                                    // Guest: show the sign-in modal (same as Profile)
+                                    if (isGuestUser) {
+                                      Navigator.pop(context);
+                                      await Future.delayed(const Duration(milliseconds: 200));
+                                      if (!mounted) return;
+                                      RequireSignInModal.show(
+                                        context,
+                                        title: 'Navigate',
+                                        onPrimary: () async {
+                                          Hive.box('auth_box').put('continueGuest', false);
+
+                                          Navigator.pop(context);
+
+                                          Navigator.of(context).pushAndRemoveUntil(
+                                            MaterialPageRoute(
+                                              builder: (context) => const AuthWrapper(),
+                                            ),
+                                                (route) => false,
+                                          );
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (context) => const Authentication(),
+                                            ),
+                                          );
+                                        },
+                                      );
+                                      return;
+                                    }
+
+                                    // Registered user: still "Coming soon" (old code)
                                     Navigator.pop(context);
                                     Future.delayed(const Duration(milliseconds: 50), () {
                                       if (!mounted) return;
@@ -789,6 +829,7 @@ class _SideBarState extends State<SideBar> {
                                       );
                                     });
                                   },
+
                                 ),
                                 const SizedBox(height: 13),
                                 SideBarOption(
@@ -1285,6 +1326,8 @@ class SideBarOption extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTapAction;
   final double iconScale;
+  final IconData? iconData;
+
 
   const SideBarOption({
     super.key,
@@ -1294,6 +1337,7 @@ class SideBarOption extends StatelessWidget {
     required this.isSelected,
     required this.onTapAction,
     this.iconScale = 1.0,
+    this.iconData,
   });
 
   @override
@@ -1322,7 +1366,9 @@ class SideBarOption extends StatelessWidget {
               SizedBox(
                 width: 25,
                 height: 25,
-                child: Transform.scale(
+                child: iconData != null
+                    ? Icon(iconData, size: 26, color: currentColor)
+                    : Transform.scale(
                   scale: iconScale,
                   child: Image.asset(
                     isSelected ? selectedImage : unselectedImage,
