@@ -10,6 +10,8 @@ import 'firebase_options.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:docsease/settings_provider.dart';
+import 'package:docsease/idle_timeout.dart';
+import 'package:docsease/firebase_services.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -23,6 +25,17 @@ Future<void> main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await Hive.initFlutter();
   await Hive.openBox('auth_box');
+  final box = Hive.box('auth_box'); // this is for the app was closed and the user comes back after more than 15 minutes mga nigga
+  final lastActive = box.get(kLastActiveKey);
+  if (FirebaseAuth.instance.currentUser != null && lastActive is int) {
+    final idle = DateTime.now().difference(
+      DateTime.fromMillisecondsSinceEpoch(lastActive),
+    );
+    if (idle >= kIdleTimeout) {
+      await FirebaseServices().signOutUser();
+      await box.delete(kLastActiveKey);
+    }
+  }
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]).then((_) {
     runApp(
@@ -75,11 +88,13 @@ class MyApp extends StatelessWidget {
           builder: (context, child) {
             return MediaQuery(
               data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scaleFactor)),
-              child: GestureDetector(
-                onTap: () {
-                  FocusManager.instance.primaryFocus?.unfocus();
-                },
-                child: child!,
+              child: IdleTimeoutWrapper(
+                child: GestureDetector(
+                  onTap: () {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                  },
+                  child: child!,
+                ),
               ),
             );
           },
