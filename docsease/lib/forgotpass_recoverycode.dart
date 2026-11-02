@@ -22,7 +22,7 @@ class ForgotPasswordRecoveryScreen extends StatefulWidget {
 class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScreen> {
   final List<TextEditingController> _controllers = List.generate(
     6,
-    (index) => TextEditingController(),
+        (index) => TextEditingController(),
   );
   final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
 
@@ -87,7 +87,7 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
         url,
         headers: {'Content-Type': 'application/json'},
         body:
-            '{ "service_id": "service_2qau4rv", "template_id": "template_fsgox73", "user_id": "KA-6Zx9c2My5ohVje", "accessToken": "N-ee2mCjc4qS35RiBdh1O", "template_params": { "to_email": "${widget.targetEmail}", "recovery_code": "$newCode" } }',
+        '{ "service_id": "service_2qau4rv", "template_id": "template_fsgox73", "user_id": "KA-6Zx9c2My5ohVje", "accessToken": "N-ee2mCjc4qS35RiBdh1O", "template_params": { "to_email": "${widget.targetEmail}", "recovery_code": "$newCode" } }',
       );
       if (mounted) {
         for (var c in _controllers) c.clear();
@@ -342,51 +342,51 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                         switchOutCurve: Curves.easeIn,
                                         transitionBuilder:
                                             (Widget child, Animation<double> animation) {
-                                              return SizeTransition(
-                                                sizeFactor: animation,
-                                                axisAlignment: -1.0,
-                                                child: SlideTransition(
-                                                  position: Tween<Offset>(
-                                                    begin: const Offset(0, 0.5),
-                                                    end: Offset.zero,
-                                                  ).animate(animation),
-                                                  child: FadeTransition(
-                                                    opacity: animation,
-                                                    child: child,
-                                                  ),
-                                                ),
-                                              );
-                                            },
+                                          return SizeTransition(
+                                            sizeFactor: animation,
+                                            axisAlignment: -1.0,
+                                            child: SlideTransition(
+                                              position: Tween<Offset>(
+                                                begin: const Offset(0, 0.5),
+                                                end: Offset.zero,
+                                              ).animate(animation),
+                                              child: FadeTransition(
+                                                opacity: animation,
+                                                child: child,
+                                              ),
+                                            ),
+                                          );
+                                        },
                                         child: _hasError
                                             ? Padding(
-                                                key: const ValueKey('error'),
-                                                padding: const EdgeInsets.only(top: 5),
-                                                child: Center(
-                                                  child: Text(
-                                                    'Invalid code. Please try again.',
-                                                    style: GoogleFonts.inter(
-                                                      color: const Color.fromRGBO(255, 100, 100, 1),
-                                                      fontSize: 12,
-                                                      fontWeight: FontWeight.w500,
-                                                    ),
-                                                  ),
-                                                ),
-                                              )
+                                          key: const ValueKey('error'),
+                                          padding: const EdgeInsets.only(top: 5),
+                                          child: Center(
+                                            child: Text(
+                                              'Invalid code. Please try again.',
+                                              style: GoogleFonts.inter(
+                                                color: const Color.fromRGBO(255, 100, 100, 1),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        )
                                             : _isComplete
                                             ? Padding(
-                                                key: const ValueKey('complete'),
-                                                padding: const EdgeInsets.only(top: 5),
-                                                child: Center(
-                                                  child: Text(
-                                                    'Valid recovery code.',
-                                                    style: GoogleFonts.inter(
-                                                      color: Colors.green,
-                                                      fontSize: 12,
-                                                      fontWeight: FontWeight.w500,
-                                                    ),
-                                                  ),
-                                                ),
-                                              )
+                                          key: const ValueKey('complete'),
+                                          padding: const EdgeInsets.only(top: 5),
+                                          child: Center(
+                                            child: Text(
+                                              'Valid recovery code.',
+                                              style: GoogleFonts.inter(
+                                                color: Colors.green,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        )
                                             : const SizedBox.shrink(key: ValueKey('empty')),
                                       ),
                                       const SizedBox(height: 40),
@@ -422,7 +422,7 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
 
                                             if (mounted) {
                                               setState(() => isLoading = false);
-                                              
+
                                               await VerifiedModal.show(
                                                 context,
                                                 onPrimary: () {
@@ -463,44 +463,44 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                               onTap: _isResending ? null : _resendCode,
                                               child: _isResending
                                                   ? const SizedBox(
-                                                      height: 16,
-                                                      width: 16,
-                                                      child: CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                      ),
-                                                    )
+                                                height: 16,
+                                                width: 16,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                ),
+                                              )
                                                   : RichText(
-                                                      text: TextSpan(
-                                                        style: GoogleFonts.inter(
-                                                          fontSize: 12,
-                                                          color: Colors.black54,
-                                                        ),
-                                                        children: [
-                                                          const TextSpan(
-                                                            text: "Didn't receive a code? ",
-                                                          ),
-                                                          TextSpan(
-                                                            text: 'Resend code',
-                                                            style: GoogleFonts.inter(
-                                                              fontSize: 12,
-                                                              fontWeight: FontWeight.bold,
-                                                              color: _resendSecondsLeft > 0
-                                                                  ? const Color(
-                                                                      0xFF2B6FD4,
-                                                                    ).withOpacity(0.4)
-                                                                  : const Color(0xFF2B6FD4),
-                                                              decoration: TextDecoration.underline,
-                                                              decorationColor:
-                                                                  _resendSecondsLeft > 0
-                                                                  ? const Color(
-                                                                      0xFF2B6FD4,
-                                                                    ).withOpacity(0.4)
-                                                                  : const Color(0xFF2B6FD4),
-                                                            ),
-                                                          ),
-                                                        ],
+                                                text: TextSpan(
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 12,
+                                                    color: Colors.black54,
+                                                  ),
+                                                  children: [
+                                                    const TextSpan(
+                                                      text: "Didn't receive a code? ",
+                                                    ),
+                                                    TextSpan(
+                                                      text: 'Resend code',
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: _resendSecondsLeft > 0
+                                                            ? const Color(
+                                                          0xFF2B6FD4,
+                                                        ).withOpacity(0.4)
+                                                            : const Color(0xFF2B6FD4),
+                                                        decoration: TextDecoration.underline,
+                                                        decorationColor:
+                                                        _resendSecondsLeft > 0
+                                                            ? const Color(
+                                                          0xFF2B6FD4,
+                                                        ).withOpacity(0.4)
+                                                            : const Color(0xFF2B6FD4),
                                                       ),
                                                     ),
+                                                  ],
+                                                ),
+                                              ),
                                             ),
                                             if (_resendSecondsLeft > 0) ...[
                                               const SizedBox(height: 6),
