@@ -12,6 +12,8 @@ import 'package:docsease/navigator_transition.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:http/http.dart' as http;
+import 'dart:io' show SocketException;
+import 'package:docsease/network_check.dart';
 
 class ForgotPasswordEmailScreen extends StatefulWidget {
   const ForgotPasswordEmailScreen({super.key});
@@ -38,11 +40,13 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
     );
   }
 
-  Future<bool> _sendEmailJSRecovery(String targetEmail, String recoveryCode) async {
+  /// Returns 'ok', 'offline', or 'failed:<code>'.
+  Future<String> _sendEmailJSRecovery(String targetEmail, String recoveryCode) async {
     final url = Uri.parse('https://api.emailjs.com/api/v1.0/email/send');
 
     try {
-      final response = await http.post(
+      final response = await http
+          .post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
@@ -52,13 +56,18 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
           'accessToken': 'N-ee2mCjc4qS35RiBdh1O',
           'template_params': {'to_email': targetEmail, 'recovery_code': recoveryCode},
         }),
-      );
+      )
+          .timeout(const Duration(seconds: 15));
       print('EmailJS Status Code: ${response.statusCode}');
       print('EmailJS Response: ${response.body}');
-      return response.statusCode == 200;
+      return response.statusCode == 200 ? 'ok' : 'failed:${response.statusCode}';
+    } on SocketException {
+      return 'offline';
+    } on TimeoutException {
+      return 'offline';
     } catch (e) {
       print("EmailJS Error: $e");
-      return false;
+      return 'failed:error';
     }
   }
 
@@ -235,14 +244,16 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                           if (_debounce?.isActive ?? false) _debounce!.cancel();
                                           _debounce = Timer(
                                             const Duration(milliseconds: 300),
-                                            () async {
+                                                () async {
                                               final emailRegex = RegExp(
                                                 r'^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$',
                                               );
                                               if (emailRegex.hasMatch(value.trim())) {
+                                                if (!await NetworkCheck.hasInternet()) return;
                                                 bool exists = await _authService.isEmailTaken(
                                                   value.trim(),
                                                 );
+                                                if (!mounted) return;
                                                 setState(() => _emailNotFound = !exists);
                                               }
                                             },
@@ -264,6 +275,15 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                             return;
                                           }
 
+                                          setState(() => isLoading = true);
+                                          if (!await NetworkCheck.hasInternet()) {
+                                            if (mounted) {
+                                              setState(() => isLoading = false);
+                                              NoInternetModal.show(context);
+                                            }
+                                            return;
+                                          }
+
                                           try {
                                             setState(() => isLoading = true);
 
@@ -282,7 +302,8 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                             }
 
                                             String recoveryCode = _generateRecoveryCode();
-                                            bool emailSent = await _sendEmailJSRecovery(targetEmail, recoveryCode);
+                                            final sendResult = await _sendEmailJSRecovery(targetEmail, recoveryCode);
+                                            final bool emailSent = sendResult == 'ok';
                                             if (emailSent) {
                                               final expiresAt = DateTime.now().add(
                                                 const Duration(minutes: 5),
@@ -316,20 +337,25 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                                     );
                                                   },
                                                 );
+                                              } else if (sendResult == 'offline') {
+                                                NoInternetModal.show(context);
                                               } else {
                                                 AuthErrorModal.show(
                                                   context,
                                                   title: 'Failed to Send',
-                                                  subtitle: 'Please check your internet and try again.'
+                                                  subtitle:
+                                                  'We could not send the recovery code. Please try again later. (${sendResult.replaceFirst('failed:', 'Error ')})',
                                                 );
                                               }
                                             }
                                           } catch (e) {
+                                            final stillOnline = await NetworkCheck.hasInternet();
                                             if (mounted) {
                                               setState(() {
                                                 isLoading = false;
-                                                invalidInput = true;
+                                                if (stillOnline) invalidInput = true;
                                               });
+                                              if (!stillOnline) NoInternetModal.show(context);
                                             }
                                           }
                                         },

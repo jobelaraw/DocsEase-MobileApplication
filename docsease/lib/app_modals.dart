@@ -822,6 +822,28 @@ class SessionExpiredModal {
   }
 }
 
+//Shown when an action needs internet but the phone is offline
+class NoInternetModal {
+  static Future<void> show(BuildContext context) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.wifi_off_rounded,
+        iconColor: _kRed,
+        iconBgColor: _kIconBgRed,
+        title: tr('No Internet Connection'),
+        subtitle: tr('Please check your internet connection and try again.'),
+        primaryLabel: tr('Got it'),
+        singleAction: true,
+        onPrimary: () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
 //Auth modal with a redirect button (e.g. "Go to Sign In")
 class AuthRedirectModal {
   static Future<void> show(

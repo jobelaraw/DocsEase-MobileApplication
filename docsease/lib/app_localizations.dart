@@ -172,6 +172,7 @@ class AppLocalizations {
       '{n} selected': '{n} ang napili',
       'Failed to delete conversation.': 'Hindi nabura ang usapan.',
 
+
       // Modals
       'Are you sure you want to exit?': 'Sigurado ka bang gusto mong lumabas?',
       'Changes will not be saved if you leave this page.':
@@ -209,6 +210,10 @@ class AppLocalizations {
       'New Code Sent': 'Naipadala na ang Bagong Code',
       "We've sent a new recovery code. Please check your inbox for the updated 6-digit recovery code.":
           'Nagpadala kami ng bagong recovery code. Suriin ang iyong inbox para sa bagong 6-digit na recovery code.',
+
+      'No Internet Connection': 'Walang Koneksyon sa Internet',
+      'Please check your internet connection and try again.':
+      'Pakisuri ang iyong koneksyon sa internet at subukan muli.',
 
       // Information screen
       'No description available.': 'Walang available na paglalarawan.',
