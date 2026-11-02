@@ -12,6 +12,7 @@ import 'package:docsease/settings_provider.dart';
 import 'package:flutter/gestures.dart';
 import 'package:docsease/agreement_modal.dart';
 import 'package:docsease/guest_agreement.dart';
+import 'package:docsease/network_check.dart';
 
 import 'package:hive/hive.dart';
 
@@ -322,6 +323,17 @@ class _SignInState extends State<SignIn> {
               return;
             }
 
+            // NEW: stop here if there is no internet
+            setState(() => _isEmailLoading = true);
+            final online = await NetworkCheck.hasInternet();
+            if (!online) {
+              if (mounted) {
+                setState(() => _isEmailLoading = false);
+                NoInternetModal.show(context);
+              }
+              return;
+            }
+
             final settings = Provider.of<SettingsProvider>(
               context,
               listen: false,
@@ -373,6 +385,15 @@ class _SignInState extends State<SignIn> {
                 );
               }
             } catch (e) {
+              if (e is FirebaseAuthException &&
+                  e.code == 'network-request-failed') {
+                if (mounted) {
+                  settings.setPauseUpdates(false);
+                  setState(() => _isEmailLoading = false);
+                  NoInternetModal.show(context);
+                }
+                return;
+              }
               // A Google-only account has no password, so email/password fails.
               // Tell the user to use Google instead of a vague "invalid" error.
               bool googleOnly = false;
@@ -412,6 +433,16 @@ class _SignInState extends State<SignIn> {
           isGoogle: true,
           isLoading: _isGoogleLoading,
           onTapAction: () async {
+            // NEW: stop here if there is no internet
+            setState(() => _isGoogleLoading = true);
+            if (!await NetworkCheck.hasInternet()) {
+              if (mounted) {
+                setState(() => _isGoogleLoading = false);
+                NoInternetModal.show(context);
+              }
+              return;
+            }
+
             final settings = Provider.of<SettingsProvider>(
               context,
               listen: false,
@@ -810,6 +841,17 @@ class _SignUpState extends State<SignUp> {
               return;
             }
 
+            // NEW: stop here if there is no internet
+            setState(() => _isEmailLoading = true);
+            final online = await NetworkCheck.hasInternet();
+            if (!online) {
+              if (mounted) {
+                setState(() => _isEmailLoading = false);
+                NoInternetModal.show(context);
+              }
+              return;
+            }
+
             final settings = Provider.of<SettingsProvider>(
               context,
               listen: false,
@@ -840,6 +882,14 @@ class _SignUpState extends State<SignUp> {
               }
             } catch (e) {
               settings.setPauseUpdates(false);
+              if (e is FirebaseAuthException &&
+                  e.code == 'network-request-failed') {
+                if (mounted) {
+                  setState(() => _isEmailLoading = false);
+                  NoInternetModal.show(context);
+                }
+                return;
+              }
               if (mounted) {
                 setState(() {
                   _isEmailLoading = false;
@@ -867,6 +917,17 @@ class _SignUpState extends State<SignUp> {
               final accepted = await _openAgreement(AgreementTab.terms);
               if (!accepted) return;
             }
+
+            // NEW: stop here if there is no internet
+            setState(() => _isGoogleLoading = true);
+            if (!await NetworkCheck.hasInternet()) {
+              if (mounted) {
+                setState(() => _isGoogleLoading = false);
+                NoInternetModal.show(context);
+              }
+              return;
+            }
+
             final settings = Provider.of<SettingsProvider>(
               context,
               listen: false,
