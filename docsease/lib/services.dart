@@ -116,7 +116,7 @@ class _ServicesContent extends State<Services> {
                       focusNode: _searchFocusNode,
                       controller: _searchController,
                       hasFocus: _searchFocusNode.hasFocus,
-                      onChanged: (value) => setState(() => searchQuery = value.toLowerCase()),
+                      onChanged: (value) => setState(() => searchQuery = value.trim().toLowerCase()),
                     ),
                   ),
 
@@ -151,6 +151,76 @@ class _ServicesContent extends State<Services> {
                         return const SliverToBoxAdapter(
                           child: Center(child: Text("No services available.")),
                         );
+                      }
+                      final lang = Provider.of<SettingsProvider>(
+                        context,
+                        listen: false,
+                      ).language;
+
+                      final query = searchQuery.trim().toLowerCase();
+
+                      if (query.isNotEmpty) {
+                        final hasResults = offices.any((office) {
+                          final matchesOffice = office
+                              .getOfficeName(lang)
+                              .toLowerCase()
+                              .contains(query);
+
+                          final matchesService = office.services.any(
+                                (service) => service
+                                .getTitle(lang)
+                                .toLowerCase()
+                                .contains(query),
+                          );
+
+                          return matchesOffice || matchesService;
+                        });
+
+                        if (!hasResults) {
+                          return SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.search_off_rounded,
+                                      size: 55,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.45),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No matching services found',
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Try a different keyword or check your spelling.',
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }
                       }
 
                       return SliverPadding(
