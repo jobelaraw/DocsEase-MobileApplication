@@ -284,7 +284,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                         await launchUrl(phoneLaunchUri);
                       }
                     },
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8),//mga bading
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       child: Row(
