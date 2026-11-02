@@ -95,38 +95,34 @@ class _InformationScreenState extends State<InformationScreen>
     bool hasTrackableTabs = false;
 
     for (final tab in widget.detail.tabs) {
-      final prefix = '${tab.name} : ';
+      // Progress counts the step-by-step procedure only (not requirements),
+      // and each tab keeps its own separate percentage.
+      if (tab.steps.isEmpty) continue;
 
-      final tabRequirements = tab.requirements
-          .map((item) => '$prefix${item.title}')
-          .toList();
+      final prefix = '${tab.name} : ';
 
       final tabSteps = tab.steps
           .map((step) => '$prefix${step.title}')
           .toList();
 
-      final tabTotal = tabRequirements.length + tabSteps.length;
-
-      if (tabTotal == 0) continue;
+      final doneSteps = tabSteps.where(steps.contains).toList();
 
       hasTrackableTabs = true;
 
-      final tabDone =
-          tabRequirements.where(requirements.contains).length +
-              tabSteps.where(steps.contains).length;
-
-      final progress = tabDone / tabTotal;
+      final progress = doneSteps.length / tabSteps.length;
       final status = progress >= 1.0 ? 'Completed' : 'In Progress';
 
-      tabProgress[tab.name] = {
+      final tabKey = tab.name.isEmpty ? 'Process' : tab.name;
+
+      tabProgress[tabKey] = {
         'progress': progress,
         'status': status,
-        'completed_requirements':
-        tabRequirements.where(requirements.contains).toList(),
-        'completed_steps': tabSteps.where(steps.contains).toList(),
+        'completed_count': doneSteps.length,
+        'total_steps': tabSteps.length,
+        'completed_steps': doneSteps,
       };
 
-      // Keep the highest progress as the overall service progress.
+      // Highest tab progress is kept as a fallback overall value.
       overallProgress = max(overallProgress, progress);
     }
 
@@ -149,6 +145,16 @@ class _InformationScreenState extends State<InformationScreen>
           : 'In Progress',
       'last_updated': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  /// Step-by-step progress (0.0 - 1.0) of a single tab.
+  double _tabStepProgress(ServiceTab tab, List<String> completedSteps) {
+    if (tab.steps.isEmpty) return 0;
+    final prefix = '${tab.name} : ';
+    final done = tab.steps
+        .where((step) => completedSteps.contains('$prefix${step.title}'))
+        .length;
+    return done / tab.steps.length;
   }
 
   void _requireSignIn(BuildContext context) {
@@ -273,7 +279,7 @@ class _InformationScreenState extends State<InformationScreen>
             return Column(
               children: [
                 if (tabs.length > 1) ...[
-                  _buildTabSwitcher(tabs),
+                  _buildTabSwitcher(tabs, completedSteps),
                   const SizedBox(height: 12),
                 ],
                 Expanded(
@@ -315,7 +321,7 @@ class _InformationScreenState extends State<InformationScreen>
     );
   }
 
-  Widget _buildTabSwitcher(List<ServiceTab> tabs) {
+  Widget _buildTabSwitcher(List<ServiceTab> tabs, List<String> completedSteps) {
     if (tabs.length <= 1 || _tabController == null) {
       return const SizedBox.shrink();
     }
@@ -376,19 +382,36 @@ class _InformationScreenState extends State<InformationScreen>
                         )
                             : null,
                       ),
-                      child: Text(
-                        tab.name.isEmpty ? 'Process' : tab.name,
-                        textAlign: TextAlign.center,
-                        softWrap: true,
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: selected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          color: selected
-                              ? cs.onSurface
-                              : cs.onSurface.withValues(alpha: 0.65),
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            tab.name.isEmpty ? 'Process' : tab.name,
+                            textAlign: TextAlign.center,
+                            softWrap: true,
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: selected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: selected
+                                  ? cs.onSurface
+                                  : cs.onSurface.withValues(alpha: 0.65),
+                            ),
+                          ),
+                          if (FirebaseAuth.instance.currentUser != null &&
+                              tab.steps.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              '${(_tabStepProgress(tab, completedSteps) * 100).toInt()}%',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: accentBlue,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
@@ -566,6 +589,46 @@ class _ContentList extends StatelessWidget {
             title: tr('Step-by-Step Guide'),
             subtitle: 'Follow each step to complete your transaction.',
           ),
+
+          if (FirebaseAuth.instance.currentUser != null)
+            Builder(builder: (context) {
+              final prefix = '${tab.name} : ';
+              final done = tab.steps
+                  .where((st) => completedSteps.contains('$prefix${st.title}'))
+                  .length;
+              final value = done / tab.steps.length;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value: value,
+                          minHeight: 6,
+                          backgroundColor: Colors.grey.shade300,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            value >= 1.0
+                                ? const Color(0xFF4CAF50)
+                                : accentColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      '${(value * 100).toInt()}%  ($done/${tab.steps.length})',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface.withValues(alpha: 0.65),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
 
 
           ...tab.steps.asMap().entries.map(
@@ -1726,4 +1789,3 @@ class _ScheduleTile extends StatelessWidget {
     );
   }
 }
-

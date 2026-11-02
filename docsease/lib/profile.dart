@@ -369,9 +369,29 @@ class _ProfileState extends State<Profile> {
             String serviceId = data['service_id'] ?? '';
             String serviceName = data['service_name'] ?? 'Unknown Service';
             double progress = (data['progress'] ?? 0.0).toDouble();
-            String status = data['status'] ?? 'In Progress';
 
-            bool isCompleted = progress >= 1.0;
+            // Separate step-by-step percentage for each tab.
+            final List<_TabProgress> tabProgress = [];
+            final rawTabs = data['tab_progress'];
+            if (rawTabs is Map) {
+              final keys = rawTabs.keys.map((k) => k.toString()).toList()..sort();
+              for (final key in keys) {
+                final value = rawTabs[key];
+                if (value is Map) {
+                  tabProgress.add(
+                    _TabProgress(
+                      name: key,
+                      progress: ((value['progress'] ?? 0.0) as num).toDouble().clamp(0.0, 1.0),
+                    ),
+                  );
+                }
+              }
+            }
+
+            bool isCompleted = tabProgress.isNotEmpty
+                ? tabProgress.every((t) => t.progress >= 1.0)
+                : progress >= 1.0;
+            String status = isCompleted ? 'Completed' : (data['status'] ?? 'In Progress');
             Color statusColor = isCompleted ? const Color(0xFF4CAF50) : const Color(0xFFFF7043);
 
             return _buildServiceItem(
@@ -381,6 +401,7 @@ class _ProfileState extends State<Profile> {
               date: dateStr,
               statusColor: statusColor,
               progress: progress,
+              tabProgress: tabProgress,
               showProgress: !isCompleted,
               iconBg: UIHelper.getBgColorForService(serviceName),
               isLoading: _loadingServiceId == serviceId,
@@ -392,6 +413,59 @@ class _ProfileState extends State<Profile> {
     );
   }
 
+  Widget _buildProgressRow(String label, double value) {
+    final done = value >= 1.0;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              if (label.isNotEmpty)
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                )
+              else
+                const Spacer(),
+              Text(
+                "${(value * 100).toInt()}%",
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: done
+                      ? const Color(0xFF4CAF50)
+                      : onSurface.withValues(alpha: 0.5),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: LinearProgressIndicator(
+              value: value,
+              minHeight: 5,
+              backgroundColor: Colors.grey.shade300,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                done ? const Color(0xFF4CAF50) : const Color(0xFF2196F3),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildServiceItem({
     required IconData iconData,
     required String title,
@@ -399,6 +473,7 @@ class _ProfileState extends State<Profile> {
     required String date,
     required Color statusColor,
     double progress = 0.0,
+    List<_TabProgress> tabProgress = const [],
     bool showProgress = true,
     required Color iconBg,
     required bool isLoading,
@@ -481,27 +556,14 @@ class _ProfileState extends State<Profile> {
                 ),
               ],
             ),
-            if (showProgress) ...[
-              Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  "${(progress * 100).toInt()}%",
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 5,
-                  backgroundColor: Colors.grey.shade300,
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2196F3)),
-                ),
+            if (showProgress && tabProgress.length > 1) ...[
+              // One separate percentage + bar per tab
+              const SizedBox(height: 6),
+              ...tabProgress.map((t) => _buildProgressRow(t.name, t.progress)),
+            ] else if (showProgress) ...[
+              _buildProgressRow(
+                '',
+                tabProgress.length == 1 ? tabProgress.first.progress : progress,
               ),
             ],
           ],
@@ -509,6 +571,12 @@ class _ProfileState extends State<Profile> {
       ),
     );
   }
+}
+
+class _TabProgress {
+  final String name;
+  final double progress;
+  const _TabProgress({required this.name, required this.progress});
 }
 
 // --- SKELETON WIDGETS FOR PROFILE --- //
