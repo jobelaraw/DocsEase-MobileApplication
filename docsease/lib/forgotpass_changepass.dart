@@ -197,9 +197,9 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
 
                                           int score =
                                               (hasLength ? 1 : 0) +
-                                              (hasSymbol ? 1 : 0) +
-                                              (hasUppercase ? 1 : 0) +
-                                              (hasNumber ? 1 : 0);
+                                                  (hasSymbol ? 1 : 0) +
+                                                  (hasUppercase ? 1 : 0) +
+                                                  (hasNumber ? 1 : 0);
 
                                           if (score < 4) {
                                             return 'Please meet all the password requirements.';
@@ -244,7 +244,7 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                         buttonText: 'Save Changes',
                                         isLoading: isLoading,
                                         isButtonEnabled:
-                                            _passwordController.text.isNotEmpty &&
+                                        _passwordController.text.isNotEmpty &&
                                             _confirmPasswordController.text.isNotEmpty,
                                         onTapAction: () async {
                                           bool isPasswordValid = _passwordController.text.isNotEmpty && hasStrongPassword;
@@ -272,14 +272,14 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
 
                                                 if (mounted) {
                                                   setState(() => isLoading = false);
-                                                  
+
                                                   await ChangesSavedModal.show(
                                                     context,
                                                     onPrimary: () {
                                                       Navigator.of(context).pop();
                                                       Navigator.of(context).pushAndRemoveUntil(
                                                         SlideRoute(page: const Authentication()),
-                                                        (route) => route.isFirst,
+                                                            (route) => route.isFirst,
                                                       );
                                                     },
                                                   );
