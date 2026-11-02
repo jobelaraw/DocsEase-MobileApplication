@@ -308,6 +308,7 @@ class _SignInState extends State<SignIn> {
 
         CustomButton(
           buttonText: 'Sign In',
+          btnElevation: 2,
           isLoading: _isEmailLoading,
           isButtonEnabled:
               widget.emailController.text.isNotEmpty &&
@@ -807,6 +808,7 @@ class _SignUpState extends State<SignUp> {
 
         CustomButton(
           buttonText: 'Sign Up',
+          btnElevation: 2,
           isLoading: _isEmailLoading,
           isButtonEnabled:
           _agreed &&
