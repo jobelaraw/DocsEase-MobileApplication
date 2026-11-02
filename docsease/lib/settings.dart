@@ -392,7 +392,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             'Save Changes',
                             settingsProvider.pendingLanguage,
                           ),
-                          btnElevation: 4,
+                          btnElevation: 2,
                           btnRadius: 15,
                           isLoading: isChangesLoading,
                           onTapAction: _saveChanges,

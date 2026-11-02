@@ -651,7 +651,7 @@ class ServiceItem extends StatelessWidget {
           ? Theme.of(context).colorScheme.tertiary
           : Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(20),
-      elevation: 4,
+      elevation: 2,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: () {

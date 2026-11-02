@@ -163,7 +163,7 @@ class _AppStartState extends State<AppStart> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF3B73E0),
                             foregroundColor: Colors.white,
-                            elevation: 6,
+                            elevation: 2,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                           ),
                           child: Padding(
