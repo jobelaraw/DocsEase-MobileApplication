@@ -147,16 +147,6 @@ class _InformationScreenState extends State<InformationScreen>
     }, SetOptions(merge: true));
   }
 
-  /// Step-by-step progress (0.0 - 1.0) of a single tab.
-  double _tabStepProgress(ServiceTab tab, List<String> completedSteps) {
-    if (tab.steps.isEmpty) return 0;
-    final prefix = '${tab.name} : ';
-    final done = tab.steps
-        .where((step) => completedSteps.contains('$prefix${step.title}'))
-        .length;
-    return done / tab.steps.length;
-  }
-
   void _requireSignIn(BuildContext context) {
     RequireSignInModal.show(
       context,
@@ -279,7 +269,7 @@ class _InformationScreenState extends State<InformationScreen>
             return Column(
               children: [
                 if (tabs.length > 1) ...[
-                  _buildTabSwitcher(tabs, completedSteps),
+                  _buildTabSwitcher(tabs),
                   const SizedBox(height: 12),
                 ],
                 Expanded(
@@ -321,7 +311,7 @@ class _InformationScreenState extends State<InformationScreen>
     );
   }
 
-  Widget _buildTabSwitcher(List<ServiceTab> tabs, List<String> completedSteps) {
+  Widget _buildTabSwitcher(List<ServiceTab> tabs) {
     if (tabs.length <= 1 || _tabController == null) {
       return const SizedBox.shrink();
     }
@@ -382,36 +372,19 @@ class _InformationScreenState extends State<InformationScreen>
                         )
                             : null,
                       ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            tab.name.isEmpty ? 'Process' : tab.name,
-                            textAlign: TextAlign.center,
-                            softWrap: true,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: selected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              color: selected
-                                  ? cs.onSurface
-                                  : cs.onSurface.withValues(alpha: 0.65),
-                            ),
-                          ),
-                          if (FirebaseAuth.instance.currentUser != null &&
-                              tab.steps.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              '${(_tabStepProgress(tab, completedSteps) * 100).toInt()}%',
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: accentBlue,
-                              ),
-                            ),
-                          ],
-                        ],
+                      child: Text(
+                        tab.name.isEmpty ? 'Process' : tab.name,
+                        textAlign: TextAlign.center,
+                        softWrap: true,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: selected
+                              ? cs.onSurface
+                              : cs.onSurface.withValues(alpha: 0.65),
+                        ),
                       ),
                     ),
                   ),
