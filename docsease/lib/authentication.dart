@@ -13,7 +13,7 @@ import 'package:flutter/gestures.dart';
 import 'package:docsease/agreement_modal.dart';
 import 'package:docsease/guest_agreement.dart';
 import 'package:docsease/network_check.dart';
-
+import 'package:docsease/login_lockout.dart';
 import 'package:hive/hive.dart';
 
 class Authentication extends StatefulWidget {
@@ -258,6 +258,86 @@ class _SignInState extends State<SignIn> {
   bool _isGoogleLoading = false;
   String? errorMessage;
 
+  Duration _lockLeft = Duration.zero;
+  Timer? _lockTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.emailController.addListener(_onEmailChanged);
+    _lockLeft = LoginLockout.remaining(widget.emailController.text);
+    if (_lockLeft > Duration.zero) _startLockTicker();
+  }
+
+  @override
+  void dispose() {
+    widget.emailController.removeListener(_onEmailChanged);
+    _lockTimer?.cancel();
+    super.dispose();
+  }
+
+  /// The lock belongs to the typed email, so re-check it whenever the email
+  /// changes (this also fires when switching tabs clears the field).
+  void _onEmailChanged() {
+    final left = LoginLockout.remaining(widget.emailController.text);
+    final statusChanged = (left > Duration.zero) != (_lockLeft > Duration.zero);
+    _lockLeft = left;
+    if (left > Duration.zero) {
+      _startLockTicker();
+    } else {
+      _lockTimer?.cancel();
+    }
+    if (statusChanged && mounted) setState(() {});
+  }
+
+  void _startLockTicker() {
+    _lockTimer?.cancel();
+    _lockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final left = LoginLockout.remaining(widget.emailController.text);
+      setState(() => _lockLeft = left);
+      if (left <= Duration.zero) timer.cancel();
+    });
+  }
+
+  String _mmss(Duration d) {
+    final total = (d.inMilliseconds / 1000).ceil();
+    final m = (total ~/ 60).toString().padLeft(2, '0');
+    final s = (total % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  /// Counts one wrong attempt. Returns attempts left (0 = locked just now).
+  int _countFailure(String email) {
+    final left = LoginLockout.registerFailure(email);
+    _lockLeft = LoginLockout.remaining(email);
+    if (_lockLeft > Duration.zero) _startLockTicker();
+    return left;
+  }
+
+  String _invalidMessage(int attemptsLeft) {
+    if (attemptsLeft <= 0 || attemptsLeft > 2) {
+      return 'Email or password is invalid.';
+    }
+    final word = attemptsLeft == 1 ? 'attempt' : 'attempts';
+    return 'Email or password is invalid. $attemptsLeft $word left.';
+  }
+
+  void _showLockedModal() {
+    AuthErrorModal.show(
+      context,
+      title: 'Too Many Attempts',
+      subtitle:
+      'For your security, sign-in for this email is locked for '
+          '${LoginLockout.lockDuration.inMinutes} minutes after '
+          '${LoginLockout.maxAttempts} wrong attempts. You can try again when '
+          'the timer ends, or use Forgot Password.',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -304,13 +384,28 @@ class _SignInState extends State<SignIn> {
           forceValidate: errorMessage != null,
           showSuccessState: false,
         ),
-        SizedBox(height: 40),
+        SizedBox(height: _lockLeft > Duration.zero ? 20 : 40),
+        if (_lockLeft > Duration.zero) ...[
+          Text(
+            'Too many failed attempts. Sign-in for this email is temporarily locked.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFFEF4444),
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
 
         CustomButton(
-          buttonText: 'Sign In',
+          buttonText: _lockLeft > Duration.zero
+              ? 'Try again in ${_mmss(_lockLeft)}'
+              : 'Sign In',
           btnElevation: 2,
           isLoading: _isEmailLoading,
           isButtonEnabled:
+          _lockLeft <= Duration.zero &&
               widget.emailController.text.isNotEmpty &&
               widget.passwordController.text.isNotEmpty,
           onTapAction: () async {
@@ -321,6 +416,13 @@ class _SignInState extends State<SignIn> {
               setState(() {
                 errorMessage = 'Email or password is required.';
               });
+              return;
+            }
+
+            // Locked? Stop before any network call.
+            if (LoginLockout.isLocked(widget.emailController.text)) {
+              _onEmailChanged();
+              _showLockedModal();
               return;
             }
 
@@ -361,16 +463,23 @@ class _SignInState extends State<SignIn> {
 
                 if (adminDoc.exists) {
                   await FirebaseAuth.instance.signOut();
+                  final attemptsLeft = _countFailure(inputEmail);
                   if (mounted) {
                     settings.setPauseUpdates(false);
                     setState(() {
                       _isEmailLoading = false;
-                      errorMessage = 'Email or password is invalid.';
+                      errorMessage = _invalidMessage(attemptsLeft);
                     });
+                    if (attemptsLeft == 0) {
+                      widget.passwordController.clear();
+                      _showLockedModal();
+                    }
                   }
                   return;
                 }
               }
+
+              LoginLockout.reset(inputEmail); // success: forget earlier wrong attempts
 
               if (mounted) {
                 setState(() => _isEmailLoading = false);
@@ -395,6 +504,21 @@ class _SignInState extends State<SignIn> {
                 }
                 return;
               }
+              // Firebase's own brute-force protection kicked in
+              if (e is FirebaseAuthException && e.code == 'too-many-requests') {
+                if (mounted) {
+                  settings.setPauseUpdates(false);
+                  setState(() => _isEmailLoading = false);
+                  AuthErrorModal.show(
+                    context,
+                    title: 'Too Many Attempts',
+                    subtitle:
+                    'Sign-in is temporarily blocked because of too many attempts. Please wait a few minutes and try again, or use Forgot Password.',
+                  );
+                }
+                return;
+              }
+
               // A Google-only account has no password, so email/password fails.
               // Tell the user to use Google instead of a vague "invalid" error.
               bool googleOnly = false;
@@ -407,19 +531,38 @@ class _SignInState extends State<SignIn> {
                       !providers.contains('password');
                 } catch (_) {}
               }
+              // Count only wrong-credential errors (not network problems, and
+              // not the Google-only case, where the user is just told to use Google).
+              final emailKey = widget.emailController.text.trim().toLowerCase();
+              final wrongCredentials = !googleOnly &&
+                  e is FirebaseAuthException &&
+                  (e.code == 'invalid-credential' ||
+                      e.code == 'wrong-password' ||
+                      e.code == 'user-not-found');
+              final attemptsLeft = wrongCredentials
+                  ? _countFailure(emailKey)
+                  : LoginLockout.maxAttempts;
+
               if (mounted) {
                 settings.setPauseUpdates(false);
                 setState(() {
                   _isEmailLoading = false;
-                  if (!googleOnly) errorMessage = 'Email or password is invalid.';
+                  if (!googleOnly) {
+                    errorMessage = wrongCredentials
+                        ? _invalidMessage(attemptsLeft)
+                        : 'Email or password is invalid.';
+                  }
                 });
                 if (googleOnly) {
                   AuthErrorModal.show(
                     context,
                     title: 'Use Google Sign-In',
                     subtitle:
-                        'This account was created with Google. Please tap "Continue with Google", or use Forgot Password to set a password.',
+                    'This account was created with Google. Please tap "Continue with Google", or use Forgot Password to set a password.',
                   );
+                } else if (wrongCredentials && attemptsLeft == 0) {
+                  widget.passwordController.clear();
+                  _showLockedModal();
                 }
               }
             }
@@ -1019,6 +1162,8 @@ class _SignUpState extends State<SignUp> {
     );
   }
 }
+
+
 
 class CustomDivider extends StatelessWidget {
   const CustomDivider({super.key});
