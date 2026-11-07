@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:docsease/custom_button.dart';
 import 'package:docsease/custom_textfield.dart';
 import 'package:docsease/firebase_services.dart';
@@ -9,9 +10,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:async';
-import 'dart:math';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:docsease/app_modals.dart';
 import 'package:docsease/main.dart' show navigatorKey;
 import 'package:docsease/settings_provider.dart';
@@ -114,65 +112,37 @@ class _EditProfileState extends State<EditProfile> {
     });
   }
 
-  String _generateRecoveryCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    Random rnd = Random();
-    return String.fromCharCodes(
-      Iterable.generate(6, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))),
-    );
-  }
-
-  Future<bool> _sendEmailJSRecovery(String targetEmail, String recoveryCode) async {
-    final url = Uri.parse('https://api.emailjs.com/api/v1.0/email/send');
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'service_id': 'service_2qau4rv',
-          'template_id': 'template_fsgox73',
-          'user_id': 'KA-6Zx9c2My5ohVje',
-          'accessToken': 'N-ee2mCjc4qS35RiBdh1O',
-          'template_params': {'to_email': targetEmail, 'recovery_code': recoveryCode},
-        }),
-      );
-      return response.statusCode == 200;
-    } catch (e) {
-      print("EmailJS Error: $e");
-      return false;
-    }
-  }
-
   Future<void> _sendCode() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user == null || user.email == null) return;
-    String targetEmail = user.email!;
 
     setState(() => _isSendingCode = true);
     try {
-      String recoveryCode = _generateRecoveryCode();
-      await FirebaseFirestore.instance.collection('recovery_codes').doc(targetEmail).set({
-        'code': recoveryCode,
-        'createdAt': FieldValue.serverTimestamp(),
+      await FirebaseFunctions.instance
+          .httpsCallable('sendRecoveryCode')
+          .call({'email': user.email!})
+          .timeout(const Duration(seconds: 30));
+      if (!mounted) return;
+      setState(() {
+        _isSendingCode = false;
+        _isOtpSent = true;
       });
-
-      bool emailSent = await _sendEmailJSRecovery(targetEmail, recoveryCode);
+      _startResendTimer();
+      CheckEmailModal.show(context, onPrimary: () => Navigator.of(context, rootNavigator: true).pop());
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint('sendRecoveryCode error: ${e.code} ${e.message}');
       if (!mounted) return;
       setState(() => _isSendingCode = false);
-
-      if (emailSent) {
-        setState(() {
-          _isOtpSent = true;
-        });
-        _startResendTimer();
-        CheckEmailModal.show(context, onPrimary: () => Navigator.of(context, rootNavigator: true).pop()); 
+      if (e.code == 'resource-exhausted') {
+        AuthErrorModal.show(context, title: 'Please Wait', subtitle: e.message ?? 'Please wait before requesting another code.');
       } else {
-        AuthErrorModal.show(context, title: 'Failed to Send', subtitle: 'Please check your internet connection.');
+        AuthErrorModal.show(context, title: 'Failed to Send', subtitle: 'We could not send the recovery code. Please try again later.');
       }
     } catch (e) {
+      debugPrint('sendRecoveryCode error: $e');
       if (mounted) {
         setState(() => _isSendingCode = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error sending code.')));
+        AuthErrorModal.show(context, title: 'Failed to Send', subtitle: 'Please check your internet connection.');
       }
     }
   }
@@ -183,23 +153,32 @@ class _EditProfileState extends State<EditProfile> {
 
     setState(() => _isVerifyingCode = true);
     try {
-      var doc = await FirebaseFirestore.instance.collection('recovery_codes').doc(user.email!).get();
+      await FirebaseFunctions.instance
+          .httpsCallable('verifyRecoveryCode')
+          .call({'email': user.email!, 'code': _otpController.text.trim()});
+      if (!mounted) return;
+      setState(() {
+        _isVerifyingCode = false;
+        _isCodeVerified = true;
+        _resendTimer?.cancel();
+      });
+      VerifiedModal.show(context, onPrimary: () => Navigator.of(context, rootNavigator: true).pop());
+    } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
       setState(() => _isVerifyingCode = false);
-
-      if (doc.exists && doc.data()?['code'] == _otpController.text.trim()) {
-        setState(() {
-          _isCodeVerified = true;
-          _resendTimer?.cancel();
-        });
-        VerifiedModal.show(context, onPrimary: () => Navigator.of(context, rootNavigator: true).pop());
+      String message;
+      if (e.code == 'permission-denied') {
+        message = 'Invalid verification code.';
+      } else if (e.code == 'failed-precondition' || e.code == 'resource-exhausted') {
+        message = e.message ?? 'Please request a new code.';
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid verification code.')));
+        message = 'Verification error. Please try again.';
       }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
       if (mounted) {
         setState(() => _isVerifyingCode = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Verification error.')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Verification error.')));
       }
     }
   }
@@ -548,6 +527,20 @@ class _EditProfileState extends State<EditProfile> {
                                   User? currentUser = FirebaseAuth.instance.currentUser;
                                   if (currentUser == null) throw Exception("User not logged in");
 
+                                  if (isUpdatingPassword) {
+                                    final newPass = _newPasswordController.text.trim();
+                                    await FirebaseFunctions.instance.httpsCallable('changePasswordWithCode').call({
+                                      'code': _otpController.text.trim(),
+                                      'newPassword': newPass,
+                                    });
+                                    // Changing the password server-side can invalidate this session, so sign in again with it.
+                                    if (currentUser.email != null) {
+                                      try {
+                                        await FirebaseAuth.instance.signInWithEmailAndPassword(email: currentUser.email!, password: newPass);
+                                      } catch (_) {}
+                                    }
+                                  }
+
                                   String? newImageUrl;
                                   if (_selectedImage != null) {
                                     newImageUrl = await _editService.uploadProfileImage(_selectedImage!, currentUser.uid);
@@ -558,16 +551,8 @@ class _EditProfileState extends State<EditProfile> {
 
                                   await _editService.updateUserProfile(
                                     newUsername: _usernameController.text.trim(),
-                                    newPassword: isUpdatingPassword ? _newPasswordController.text.trim() : null,
                                     newProfileImgUrl: newImageUrl,
                                   );
-
-                                  if (isUpdatingPassword && currentUser.email != null) {
-                                    await FirebaseFirestore.instance
-                                        .collection('recovery_codes')
-                                        .doc(currentUser.email)
-                                        .delete();
-                                  }
 
                                   if (mounted) {
                                     setState(() {
@@ -585,7 +570,7 @@ class _EditProfileState extends State<EditProfile> {
                                 } catch (e) {
                                   if (mounted) {
                                     setState(() { invalidInput = true; isLoading = false; });
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e is FirebaseFunctionsException ? (e.message ?? 'Something went wrong.') : 'Something went wrong. Please try again.')));
                                   }
                                 }
                               },
