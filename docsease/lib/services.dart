@@ -270,7 +270,7 @@ class _ServicesContent extends State<Services> {
                     widget.onTitleChange('Chatbot');
                     Navigator.push(
                       context,
-                      SlideRoute(page: const ChatBotScreen()),
+                      SlideRoute(page: ChatBotScreen(onTitleChange: widget.onTitleChange)),
                     ).then((result) {
                       // Handle chatbot navigation chip result:
                       // If user tapped "Go to Profile/Settings/About", switch sidebar tab
