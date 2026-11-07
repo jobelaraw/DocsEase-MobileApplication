@@ -803,7 +803,7 @@ class _StepItem extends StatelessWidget {
     if (FirebaseAuth.instance.currentUser == null) {
       RequireSignInModal.show(
         context,
-        title: 'Information',
+        title: 'Navigate',
         onPrimary: () async {
           final rootNav =
           Navigator.of(context, rootNavigator: true);
