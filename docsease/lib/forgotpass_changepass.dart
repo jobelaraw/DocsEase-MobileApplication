@@ -263,10 +263,10 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                               setState(() => isLoading = true);
 
                                               try {
-                                                HttpsCallable callable = FirebaseFunctions.instance.httpsCallable('resetUserPassword');
+                                                HttpsCallable callable = FirebaseFunctions.instance.httpsCallable('resetPasswordWithCode');
                                                 await callable.call({
                                                   'email': widget.targetEmail,
-                                                  'otp': widget.recoveryCode,
+                                                  'code': widget.recoveryCode,
                                                   'newPassword': _passwordController.text.trim(),
                                                 });
 
@@ -293,7 +293,11 @@ class _ForgotPassChangePassScreenState extends State<ForgotPassChangePassScreen>
                                                 }
                                                 ScaffoldMessenger.of(context).showSnackBar(
                                                   SnackBar(
-                                                    content: Text("Error: ${e.toString()}"),
+                                                    content: Text(
+                                                      e is FirebaseFunctionsException
+                                                          ? (e.message ?? 'Something went wrong.')
+                                                          : 'Something went wrong. Please try again.',
+                                                    ),
                                                     backgroundColor: Colors.red,
                                                     duration: const Duration(seconds: 5),
                                                   ),

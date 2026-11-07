@@ -1,6 +1,5 @@
-import 'dart:math';
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:docsease/custom_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,7 +7,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:docsease/app_modals.dart';
 import 'package:docsease/forgotpass_changepass.dart';
 import 'package:docsease/navigator_transition.dart';
-import 'package:http/http.dart' as http;
 
 class ForgotPasswordRecoveryScreen extends StatefulWidget {
   final String targetEmail;
@@ -66,29 +64,12 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
     return '$minutes:$secs seconds';
   }
 
-  String _generateRecoveryCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    Random rnd = Random();
-    return String.fromCharCodes(
-      Iterable.generate(6, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))),
-    );
-  }
-
   Future<void> _resendCode() async {
     setState(() => _isResending = true);
     try {
-      String newCode = _generateRecoveryCode();
-      await FirebaseFirestore.instance.collection('recovery_codes').doc(widget.targetEmail).set({
-        'code': newCode,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      final url = Uri.parse('https://api.emailjs.com/api/v1.0/email/send');
-      await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body:
-        '{ "service_id": "service_2qau4rv", "template_id": "template_fsgox73", "user_id": "KA-6Zx9c2My5ohVje", "accessToken": "N-ee2mCjc4qS35RiBdh1O", "template_params": { "to_email": "${widget.targetEmail}", "recovery_code": "$newCode" } }',
-      );
+      await FirebaseFunctions.instance
+          .httpsCallable('sendRecoveryCode')
+          .call({'email': widget.targetEmail});
       if (mounted) {
         for (var c in _controllers) c.clear();
         setState(() {
@@ -97,6 +78,26 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
         });
         await ResendCodeModal.show(context, onPrimary: () => Navigator.of(context).pop());
         _startResendTimer();
+      }
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint('resend error: ${e.code} ${e.message}');
+      if (mounted) {
+        AuthErrorModal.show(
+          context,
+          title: e.code == 'resource-exhausted' ? 'Please Wait' : 'Failed to Send',
+          subtitle: e.code == 'resource-exhausted'
+              ? (e.message ?? 'Please wait before requesting another code.')
+              : 'We could not send the recovery code. Please try again later.',
+        );
+      }
+    } catch (e) {
+      debugPrint('resend error: $e');
+      if (mounted) {
+        AuthErrorModal.show(
+          context,
+          title: 'Failed to Send',
+          subtitle: 'We could not send the recovery code. Please try again later.',
+        );
       }
     } finally {
       if (mounted) setState(() => _isResending = false);
@@ -405,17 +406,26 @@ class _ForgotPasswordRecoveryScreenState extends State<ForgotPasswordRecoveryScr
                                           try {
                                             setState(() => isLoading = true);
 
-                                            var docSnapshot = await FirebaseFirestore.instance
-                                                .collection('recovery_codes')
-                                                .doc(widget.targetEmail)
-                                                .get();
-
-                                            if (!docSnapshot.exists || docSnapshot.data()?['code'] != enteredCode) {
+                                            try {
+                                              await FirebaseFunctions.instance
+                                                  .httpsCallable('verifyRecoveryCode')
+                                                  .call({'email': widget.targetEmail, 'code': enteredCode});
+                                            } on FirebaseFunctionsException catch (e) {
+                                              final codeProblem = e.code == 'failed-precondition' || e.code == 'resource-exhausted';
                                               if (mounted) {
                                                 setState(() {
                                                   isLoading = false;
-                                                  _hasError = true;
+                                                  _hasError = e.code == 'permission-denied' || codeProblem;
                                                 });
+                                                if (e.code != 'permission-denied') {
+                                                  AuthErrorModal.show(
+                                                    context,
+                                                    title: codeProblem ? 'Code Not Valid' : 'Something Went Wrong',
+                                                    subtitle: codeProblem
+                                                        ? (e.message ?? 'Please request a new code.')
+                                                        : 'Please check your connection and try again.',
+                                                  );
+                                                }
                                               }
                                               return;
                                             }

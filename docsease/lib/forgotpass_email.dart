@@ -1,6 +1,4 @@
-import 'dart:convert';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:docsease/custom_button.dart';
 import 'package:docsease/firebase_services.dart';
 import 'package:flutter/material.dart';
@@ -10,9 +8,6 @@ import 'package:docsease/forgotpass_recoverycode.dart';
 import 'package:docsease/custom_textfield.dart';
 import 'package:docsease/navigator_transition.dart';
 import 'dart:async';
-import 'dart:math';
-import 'package:http/http.dart' as http;
-import 'dart:io' show SocketException;
 import 'package:docsease/network_check.dart';
 
 class ForgotPasswordEmailScreen extends StatefulWidget {
@@ -32,41 +27,32 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
   Timer? _debounce;
   bool _emailNotFound = false;
 
-  String _generateRecoveryCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    Random rnd = Random();
-    return String.fromCharCodes(
-      Iterable.generate(6, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))),
-    );
-  }
-
-  /// Returns 'ok', 'offline', or 'failed:<code>'.
-  Future<String> _sendEmailJSRecovery(String targetEmail, String recoveryCode) async {
-    final url = Uri.parse('https://api.emailjs.com/api/v1.0/email/send');
-
+  Future<String> _requestRecoveryCode(String email) async {
     try {
-      final response = await http
-          .post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'service_id': 'service_2qau4rv',
-          'template_id': 'template_fsgox73',
-          'user_id': 'KA-6Zx9c2My5ohVje',
-          'accessToken': 'N-ee2mCjc4qS35RiBdh1O',
-          'template_params': {'to_email': targetEmail, 'recovery_code': recoveryCode},
-        }),
-      )
-          .timeout(const Duration(seconds: 15));
-      print('EmailJS Status Code: ${response.statusCode}');
-      print('EmailJS Response: ${response.body}');
-      return response.statusCode == 200 ? 'ok' : 'failed:${response.statusCode}';
-    } on SocketException {
-      return 'offline';
+      await FirebaseFunctions.instance
+          .httpsCallable('sendRecoveryCode')
+          .call({'email': email})
+          .timeout(const Duration(seconds: 30));
+      return 'ok';
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint('sendRecoveryCode error: ${e.code} ${e.message}');
+      switch (e.code) {
+        case 'not-found':
+          return 'not-found';
+        case 'resource-exhausted':
+          return 'cooldown:${e.message ?? 'Please wait before requesting another code.'}';
+        case 'unavailable':
+          final details = e.details;
+          final status = details is Map ? details['status'] : null;
+          if (status == null && !await NetworkCheck.hasInternet()) return 'offline';
+          return 'failed:${status ?? e.code}';
+        default:
+          return 'failed:${e.code}';
+      }
     } on TimeoutException {
       return 'offline';
     } catch (e) {
-      print("EmailJS Error: $e");
+      debugPrint('sendRecoveryCode error: $e');
       return 'failed:error';
     }
   }
@@ -250,11 +236,11 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                               );
                                               if (emailRegex.hasMatch(value.trim())) {
                                                 if (!await NetworkCheck.hasInternet()) return;
-                                                bool exists = await _authService.isEmailTaken(
-                                                  value.trim(),
-                                                );
-                                                if (!mounted) return;
-                                                setState(() => _emailNotFound = !exists);
+                                                try {
+                                                  final exists = await _authService.isEmailRegistered(value.trim());
+                                                  if (!mounted) return;
+                                                  setState(() => _emailNotFound = !exists);
+                                                } catch (_) {}
                                               }
                                             },
                                           );
@@ -288,9 +274,10 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                             setState(() => isLoading = true);
 
                                             String targetEmail = _emailController.text.trim();
-                                            bool exists = await _authService.isEmailTaken(targetEmail);
+                                            final sendResult = await _requestRecoveryCode(targetEmail);
+                                            final bool emailSent = sendResult == 'ok';
 
-                                            if (!exists) {
+                                            if (sendResult == 'not-found') {
                                               if (mounted) {
                                                 setState(() {
                                                   isLoading = false;
@@ -299,23 +286,6 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                                 });
                                               }
                                               return;
-                                            }
-
-                                            String recoveryCode = _generateRecoveryCode();
-                                            final sendResult = await _sendEmailJSRecovery(targetEmail, recoveryCode);
-                                            final bool emailSent = sendResult == 'ok';
-                                            if (emailSent) {
-                                              final expiresAt = DateTime.now().add(
-                                                const Duration(minutes: 5),
-                                              );
-                                              await FirebaseFirestore.instance
-                                                  .collection('recovery_codes')
-                                                  .doc(targetEmail)
-                                                  .set({
-                                                'code': recoveryCode,
-                                                'createdAt': FieldValue.serverTimestamp(),
-                                                'expiresAt': Timestamp.fromDate(expiresAt),
-                                              });
                                             }
 
                                             if (mounted) {
@@ -339,6 +309,12 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
                                                 );
                                               } else if (sendResult == 'offline') {
                                                 NoInternetModal.show(context);
+                                              } else if (sendResult.startsWith('cooldown:')) {
+                                                AuthErrorModal.show(
+                                                  context,
+                                                  title: 'Please Wait',
+                                                  subtitle: sendResult.replaceFirst('cooldown:', ''),
+                                                );
                                               } else {
                                                 AuthErrorModal.show(
                                                   context,
