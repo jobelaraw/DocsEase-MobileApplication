@@ -304,10 +304,12 @@ class _SideBarState extends State<SideBar> {
     // or simply not signed in to Firebase, so check both.
     final bool hideBell = widget.isGuest || FirebaseAuth.instance.currentUser == null;
     final bool onServicesTab = selectedIndex == 0 && currentTitle == 'Services';
+    final bool onChatbot = selectedIndex == 0 && currentTitle == 'Chatbot';
 
     return WillPopScope(
       onWillPop: _handleBackNavigation,
       child: Scaffold(
+        endDrawerEnableOpenDragGesture: !onChatbot,
         appBar: AppBar(
           // No reserved space for the bell when a guest is on the Services tab
           leadingWidth: (onServicesTab && hideBell) ? 0 : 60,
@@ -515,25 +517,28 @@ class _SideBarState extends State<SideBar> {
                 icon: NewChatIcon(color: Theme.of(context).colorScheme.onPrimary),
               ),
             ],
-            // --- HAMBURGER MENU ---
-            Builder(
-              builder: (BuildContext context) {
-                return Padding(
-                  padding: const EdgeInsets.only(left: 0, right: 15),
-                  child: IconButton(
-                    splashRadius: 20.0,
-                    onPressed: () {
-                      Scaffold.of(context).openEndDrawer();
-                    },
-                    icon: ImageIcon(
-                      const AssetImage('assets/hamburger_icon.png'),
-                      size: 20,
-                      color: Theme.of(context).colorScheme.onPrimary,
+            // --- HAMBURGER MENU (hidden on the chatbot screen) ---
+            if (!onChatbot)
+              Builder(
+                builder: (BuildContext context) {
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 0, right: 15),
+                    child: IconButton(
+                      splashRadius: 20.0,
+                      onPressed: () {
+                        Scaffold.of(context).openEndDrawer();
+                      },
+                      icon: ImageIcon(
+                        const AssetImage('assets/hamburger_icon.png'),
+                        size: 20,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
+            // keeps the chatbot icons off the screen edge now that the hamburger is gone
+            if (onChatbot) const SizedBox(width: 8),
           ],
           backgroundColor: Theme.of(context).colorScheme.primary,
           surfaceTintColor: Colors.transparent,
