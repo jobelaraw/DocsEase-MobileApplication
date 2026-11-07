@@ -1163,11 +1163,8 @@ class _SignUpState extends State<SignUp> {
   }
 }
 
-
-
 class CustomDivider extends StatelessWidget {
   const CustomDivider({super.key});
-
   @override
   Widget build(BuildContext context) {
     return Row(
