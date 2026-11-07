@@ -116,11 +116,19 @@ class FaqScreen extends StatefulWidget {
 
 class _FaqScreenState extends State<FaqScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
   String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchFocus.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -168,10 +176,14 @@ class _FaqScreenState extends State<FaqScreen> {
               decoration: BoxDecoration(
                 color: isDark ? scheme.primary : Colors.white,
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: Colors.grey.shade500, width: 1),
+                border: Border.all(
+                  color: _searchFocus.hasFocus ? accent : Colors.grey.shade500,
+                  width: _searchFocus.hasFocus ? 1.0 : 1,
+                ),
               ),
               child: TextField(
                 controller: _searchController,
+                focusNode: _searchFocus,
                 onChanged: (v) => setState(() => _query = v),
                 style: GoogleFonts.inter(fontSize: 14, color: textColor),
                 textAlignVertical: TextAlignVertical.center,

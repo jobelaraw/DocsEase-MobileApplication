@@ -24,7 +24,6 @@ class Services extends StatefulWidget {
 }
 
 class _ServicesContent extends State<Services> {
-  final FocusNode _searchFocusNode = FocusNode();
   final TextEditingController _searchController = TextEditingController();
   String searchQuery = '';
 
@@ -42,14 +41,10 @@ class _ServicesContent extends State<Services> {
     _officesStream.listen((offices) {
       ChatBotScreen.setCachedOffices(offices);
     });
-    _searchFocusNode.addListener(() {
-      setState(() {});
-    });
   }
 
   @override
   void dispose() {
-    _searchFocusNode.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -70,9 +65,14 @@ class _ServicesContent extends State<Services> {
       return service.getTitle(lang).toLowerCase().contains(searchQuery);
     }).toList();
 
-    final matchesOfficeTitle = office.getOfficeName(lang).toLowerCase().contains(searchQuery);
+    final matchesOfficeTitle = office
+        .getOfficeName(lang)
+        .toLowerCase()
+        .contains(searchQuery);
 
-    if (searchQuery.isNotEmpty && filteredServices.isEmpty && !matchesOfficeTitle) {
+    if (searchQuery.isNotEmpty &&
+        filteredServices.isEmpty &&
+        !matchesOfficeTitle) {
       return const SizedBox.shrink();
     }
 
@@ -80,7 +80,9 @@ class _ServicesContent extends State<Services> {
       children: [
         ServiceCategory(
           title: office.getOfficeName(lang),
-          services: filteredServices.isNotEmpty ? filteredServices : office.services,
+          services: filteredServices.isNotEmpty
+              ? filteredServices
+              : office.services,
           onTitleChange: widget.onTitleChange,
         ),
         const SizedBox(height: 30),
@@ -100,143 +102,165 @@ class _ServicesContent extends State<Services> {
         backgroundColor: Theme.of(context).colorScheme.surface,
         body: Stack(
           children: [
-            RefreshIndicator(
-              onRefresh: _handleRefresh,
-              color: Theme.of(context).colorScheme.primary,
-              backgroundColor: Theme.of(context).colorScheme.onPrimary,
-              elevation: 0,
-              displacement: 20,
-              child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  // --- UPDATED SEARCH BAR DELEGATE ---
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _SearchBarDelegate(
-                      focusNode: _searchFocusNode,
-                      controller: _searchController,
-                      hasFocus: _searchFocusNode.hasFocus,
-                      onChanged: (value) => setState(() => searchQuery = value.trim().toLowerCase()),
-                    ),
-                  ),
+            Column(
+              children: [
+                _ServicesSearchBar(
+                  controller: _searchController,
+                  onChanged: (value) =>
+                      setState(() => searchQuery = value.trim().toLowerCase()),
+                ),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _handleRefresh,
+                    color: Theme.of(context).colorScheme.primary,
+                    backgroundColor: Theme.of(context).colorScheme.onPrimary,
+                    elevation: 0,
+                    displacement: 20,
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                      slivers: [
+                        // StreamBuilder handles the list below the search bar - rebuilds
+                        // automatically whenever Firestore pushes an update
+                        StreamBuilder<List<Office>>(
+                          stream: _officesStream,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return SliverPadding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  20,
+                                  15,
+                                  20,
+                                  20,
+                                ),
+                                sliver: SliverList(
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, index) =>
+                                        const _SkeletonServiceCategory(),
+                                    childCount: 4,
+                                  ),
+                                ),
+                              );
+                            } else if (snapshot.hasError) {
+                              return SliverToBoxAdapter(
+                                child: Center(
+                                  child: Text(
+                                    "Error loading data: ${snapshot.error}",
+                                  ),
+                                ),
+                              );
+                            }
 
-                  // StreamBuilder handles the list below the search bar - rebuilds
-                  // automatically whenever Firestore pushes an update
-                  StreamBuilder<List<Office>>(
-                    stream: _officesStream,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(20, 15, 20, 20),
-                          sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) => const _SkeletonServiceCategory(),
-                              childCount: 4,
-                            ),
-                          ),
-                        );
-                      } else if (snapshot.hasError) {
-                        return SliverToBoxAdapter(
-                          child: Center(child: Text("Error loading data: ${snapshot.error}")),
-                        );
-                      }
+                            // Only show offices that actually have at least one
+                            // available service. Offices with no services are hidden.
+                            final offices = (snapshot.data ?? <Office>[])
+                                .where((office) => office.services.isNotEmpty)
+                                .toList();
 
-                      // Only show offices that actually have at least one
-                      // available service. Offices with no services are hidden.
-                      final offices = (snapshot.data ?? <Office>[])
-                          .where((office) => office.services.isNotEmpty)
-                          .toList();
+                            if (offices.isEmpty) {
+                              return const SliverToBoxAdapter(
+                                child: Center(
+                                  child: Text("No services available."),
+                                ),
+                              );
+                            }
+                            final lang = Provider.of<SettingsProvider>(
+                              context,
+                              listen: false,
+                            ).language;
 
-                      if (offices.isEmpty) {
-                        return const SliverToBoxAdapter(
-                          child: Center(child: Text("No services available.")),
-                        );
-                      }
-                      final lang = Provider.of<SettingsProvider>(
-                        context,
-                        listen: false,
-                      ).language;
+                            final query = searchQuery.trim().toLowerCase();
 
-                      final query = searchQuery.trim().toLowerCase();
+                            if (query.isNotEmpty) {
+                              final hasResults = offices.any((office) {
+                                final matchesOffice = office
+                                    .getOfficeName(lang)
+                                    .toLowerCase()
+                                    .contains(query);
 
-                      if (query.isNotEmpty) {
-                        final hasResults = offices.any((office) {
-                          final matchesOffice = office
-                              .getOfficeName(lang)
-                              .toLowerCase()
-                              .contains(query);
+                                final matchesService = office.services.any(
+                                  (service) => service
+                                      .getTitle(lang)
+                                      .toLowerCase()
+                                      .contains(query),
+                                );
 
-                          final matchesService = office.services.any(
-                                (service) => service
-                                .getTitle(lang)
-                                .toLowerCase()
-                                .contains(query),
-                          );
+                                return matchesOffice || matchesService;
+                              });
 
-                          return matchesOffice || matchesService;
-                        });
-
-                        if (!hasResults) {
-                          return SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(24),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.search_off_rounded,
-                                      size: 55,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface
-                                          .withValues(alpha: 0.45),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'No matching services found',
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        color: Theme.of(context).colorScheme.onSurface,
+                              if (!hasResults) {
+                                return SliverFillRemaining(
+                                  hasScrollBody: false,
+                                  child: Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(24),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.search_off_rounded,
+                                            size: 55,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.45),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            'No matching services found',
+                                            textAlign: TextAlign.center,
+                                            style: GoogleFonts.inter(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurface,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Try a different keyword or check your spelling.',
+                                            textAlign: TextAlign.center,
+                                            style: GoogleFonts.inter(
+                                              fontSize: 13,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withValues(alpha: 0.6),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Try a different keyword or check your spelling.',
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurface
-                                            .withValues(alpha: 0.6),
-                                      ),
-                                    ),
-                                  ],
+                                  ),
+                                );
+                              }
+                            }
+
+                            return SliverPadding(
+                              padding: const EdgeInsets.fromLTRB(
+                                20,
+                                15,
+                                20,
+                                20,
+                              ),
+                              sliver: SliverList(
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) =>
+                                      buildFilteredCategory(offices[index]),
+                                  childCount: offices.length,
                                 ),
                               ),
-                            ),
-                          );
-                        }
-                      }
-
-                      return SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(20, 15, 20, 20),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) => buildFilteredCategory(offices[index]),
-                            childCount: offices.length,
-                          ),
+                            );
+                          },
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
-                ],
-              ),
-            ),
+                ), // closes Expanded
+              ], // closes Column children
+            ), // closes Column
             // Floating Chatbot Button
             Positioned(
               bottom: 20,
@@ -250,18 +274,25 @@ class _ServicesContent extends State<Services> {
                         context,
                         title: 'Chatbot',
                         onPrimary: () async {
-                          final rootNav = Navigator.of(context, rootNavigator: true);
+                          final rootNav = Navigator.of(
+                            context,
+                            rootNavigator: true,
+                          );
 
                           Hive.box('auth_box').put('continueGuest', false);
 
                           rootNav.pop();
 
                           rootNav.pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (context) => const AuthWrapper()),
+                            MaterialPageRoute(
+                              builder: (context) => const AuthWrapper(),
+                            ),
                             (route) => false,
                           );
                           rootNav.push(
-                            MaterialPageRoute(builder: (context) => const Authentication()),
+                            MaterialPageRoute(
+                              builder: (context) => const Authentication(),
+                            ),
                           );
                         },
                       );
@@ -270,7 +301,11 @@ class _ServicesContent extends State<Services> {
                     widget.onTitleChange('Chatbot');
                     Navigator.push(
                       context,
-                      SlideRoute(page: ChatBotScreen(onTitleChange: widget.onTitleChange)),
+                      SlideRoute(
+                        page: ChatBotScreen(
+                          onTitleChange: widget.onTitleChange,
+                        ),
+                      ),
                     ).then((result) {
                       // Handle chatbot navigation chip result:
                       // If user tapped "Go to Profile/Settings/About", switch sidebar tab
@@ -307,20 +342,24 @@ class _ServicesContent extends State<Services> {
 
 class _ShimmerEffect extends StatefulWidget {
   final Widget child;
+
   const _ShimmerEffect({required this.child});
 
   @override
   State<_ShimmerEffect> createState() => _ShimmerEffectState();
 }
 
-class _ShimmerEffectState extends State<_ShimmerEffect> with SingleTickerProviderStateMixin {
+class _ShimmerEffectState extends State<_ShimmerEffect>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))
-      ..repeat(reverse: true);
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
   }
 
   @override
@@ -382,7 +421,10 @@ class _SkeletonServiceCategory extends StatelessWidget {
                   children: [
                     Container(
                       height: 78,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 15,
+                      ),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(20),
@@ -448,86 +490,86 @@ class _SkeletonServiceCategory extends StatelessWidget {
   }
 }
 
-class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
-  final FocusNode focusNode;
+class _ServicesSearchBar extends StatefulWidget {
   final TextEditingController controller;
-  final bool hasFocus;
   final ValueChanged<String> onChanged;
 
-  const _SearchBarDelegate({
-    required this.focusNode,
+  const _ServicesSearchBar({
     required this.controller,
-    required this.hasFocus,
     required this.onChanged,
   });
 
   @override
-  double get minExtent => 70;
-  @override
-  double get maxExtent => 70;
+  State<_ServicesSearchBar> createState() => _ServicesSearchBarState();
+}
+
+class _ServicesSearchBarState extends State<_ServicesSearchBar> {
+  // The focus lives here, so only this small widget rebuilds when focus changes.
+  final FocusNode _focusNode = FocusNode();
 
   @override
-  bool shouldRebuild(_SearchBarDelegate old) =>
-      old.hasFocus != hasFocus || old.controller != controller;
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() => setState(() {}));
+  }
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Consumer<SettingsProvider>(
-      builder: (context, settings, child) {
-        return Container(
-          color: Theme.of(context).colorScheme.surface,
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
-          child: GestureDetector(
-            onTap: () => focusNode.requestFocus(),
-            child: Container(
-              height: 50,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: hasFocus
-                      ? Theme.of(context).colorScheme.secondary
-                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const SizedBox(width: 18),
-                  Icon(Icons.search, color: Theme.of(context).colorScheme.onSurface, size: 25),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: TextField(
-                      controller: controller,
-                      focusNode: focusNode,
-                      autofocus: false,
-                      onChanged: onChanged,
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      decoration: InputDecoration(
-                        // Seamlessly updates translation without scrolling
-                        hintText: AppLocalizations.translate(
-                          'Search service...',
-                          settings.language,
-                        ),
-                        hintStyle: GoogleFonts.inter(
-                          fontSize: 15,
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                        ),
-                        border: InputBorder.none,
-                        isDense: true,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 18),
-                ],
-              ),
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final lang = Provider.of<SettingsProvider>(context).language;
+    final textColor = scheme.onSurface;
+
+    return Container(
+      color: scheme.surface,
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+      child: Container(
+        height: 50,
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _focusNode.hasFocus
+                ? scheme.secondary
+                : textColor.withValues(alpha: 0.15),
+          ),
+        ),
+        child: TextField(
+          controller: widget.controller,
+          focusNode: _focusNode,
+          onChanged: (value) {
+            setState(() {}); // refreshes the clear (X) button
+            widget.onChanged(value);
+          },
+          style: GoogleFonts.inter(fontSize: 15, color: textColor),
+          textAlignVertical: TextAlignVertical.center,
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            isDense: true,
+            hintText: AppLocalizations.translate('Search service...', lang),
+            hintStyle: GoogleFonts.inter(
+              fontSize: 15,
+              color: textColor.withValues(alpha: 0.5),
+            ),
+            prefixIcon: Icon(Icons.search, size: 25, color: textColor),
+            suffixIcon: widget.controller.text.isEmpty
+                ? null
+                : IconButton(
+              icon: Icon(Icons.close, size: 20, color: textColor),
+              onPressed: () {
+                widget.controller.clear();
+                widget.onChanged('');
+                setState(() {});
+              },
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
@@ -619,8 +661,12 @@ class ServiceCategory extends StatelessWidget {
             children: List.generate(displayedItems.length, (index) {
               return Column(
                 children: [
-                  ServiceItem(detail: displayedItems[index], onTitleChange: onTitleChange),
-                  if (index != displayedItems.length - 1) const SizedBox(height: 12),
+                  ServiceItem(
+                    detail: displayedItems[index],
+                    onTitleChange: onTitleChange,
+                  ),
+                  if (index != displayedItems.length - 1)
+                    const SizedBox(height: 12),
                 ],
               );
             }),
@@ -658,7 +704,10 @@ class ServiceItem extends StatelessWidget {
           FocusManager.instance.primaryFocus?.unfocus();
 
           onTitleChange('Information');
-          Navigator.push(context, SlideRoute(page: InformationScreen(detail: detail))).then((_) {
+          Navigator.push(
+            context,
+            SlideRoute(page: InformationScreen(detail: detail)),
+          ).then((_) {
             onTitleChange(returnTitle);
           });
         },
@@ -667,7 +716,9 @@ class ServiceItem extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.1),
             ),
           ),
           child: Row(
