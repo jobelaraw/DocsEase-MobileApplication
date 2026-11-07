@@ -23,21 +23,31 @@ import 'package:docsease/app_modals.dart';
 // ─── ChatBot Screen Widget ───
 class ChatBotScreen extends StatefulWidget {
   final String? conversationId;
-  const ChatBotScreen({super.key, this.conversationId});
+
+  /// Lets the chat tell the side bar which title to show when another screen is
+  /// opened on top of it, and bring the chat header back when the user returns.
+  final Function(String)? onTitleChange;
+
+  const ChatBotScreen({super.key, this.conversationId, this.onTitleChange});
 
   // Allows Services screen to share preloaded offices data with chatbot
   static void setCachedOffices(List<Office> offices) {
     _ChatBotScreenState._cachedOffices = offices;
   }
 
-  // Lets the header's new chat icon open the chat history drawer
+  // Lets the header's new chat icon open the chat history drawer.
+  // Does nothing unless the chat is the screen currently on top.
   static void openHistory() {
-    _ChatBotScreenState._activeState?._scaffoldKey.currentState?.openEndDrawer();
+    final state = _ChatBotScreenState._activeState;
+    if (state == null || !state._isOnTop) return;
+    state._scaffoldKey.currentState?.openEndDrawer();
   }
 
-  // Lets the header's search icon open the search bar
+  // Lets the header's search icon open the search bar (same guard).
   static void openSearch() {
-    _ChatBotScreenState._activeState?._openSearch();
+    final state = _ChatBotScreenState._activeState;
+    if (state == null || !state._isOnTop) return;
+    state._openSearch();
   }
 
   @override
@@ -1118,20 +1128,35 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   }
 
 
+  // True only while the chat is the top screen (not covered by another page).
+  bool get _isOnTop => mounted && (ModalRoute.of(context)?.isCurrent ?? false);
+
+  // ─── Open Over Chat: opens another screen on top of the chat ───
+  // While it is open, the app bar shows [title] instead of the chat header
+  // (no search / new chat buttons). The chat header returns when the user comes back.
+  Future<void> _openOverChat(Widget page, String title) async {
+    widget.onTitleChange?.call(title);
+    await Navigator.push(context, SlideRoute(page: page));
+    if (!mounted) return;
+    // If the chat itself was closed meanwhile (e.g. "Home" tapped in the drawer),
+    // do not bring the chat header back.
+    if (_isOnTop) widget.onTitleChange?.call('Chatbot');
+  }
+
   // ─── Navigate to Office: Shows all services under an office ───
   void _navigateToOffice(String officeId) {
     final office = _cachedOffices.where((o) => o.officeId == officeId).firstOrNull;
     if (office != null && mounted) {
       final lang = Provider.of<SettingsProvider>(context, listen: false).language;
-      Navigator.push(
-        context,
-        SlideRoute(
-          page: SeeAllScreen(
-            title: office.getOfficeName(lang),
-            services: office.services,
-            onTitleChange: (_) {},
-          ),
+      final officeTitle = office.getOfficeName(lang);
+      _openOverChat(
+        SeeAllScreen(
+          title: officeTitle,
+          services: office.services,
+          // lets the cards inside this page set "Information" and restore the office title
+          onTitleChange: widget.onTitleChange ?? (_) {},
         ),
+        officeTitle,
       );
     }
   }
@@ -1149,10 +1174,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     final allServices = _cachedOffices.expand((o) => o.services).toList();
     final service = allServices.where((s) => s.serviceId == serviceId).firstOrNull;
     if (service != null && mounted) {
-      Navigator.push(
-        context,
-        SlideRoute(page: InformationScreen(detail: service)),
-      );
+      _openOverChat(InformationScreen(detail: service), 'Information');
     }
   }
 
@@ -1229,10 +1251,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => Navigator.push(
-            context,
-            SlideRoute(page: InformationScreen(detail: service)),
-          ),
+          onTap: () => _openOverChat(InformationScreen(detail: service), 'Information'),
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -1339,10 +1358,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       iconBackground: UIHelper.getBgColorForService(service.title),
       title: service.getTitle(lang),
       subtitle: service.getDescription(lang),
-      onTap: () => Navigator.push(
-        context,
-        SlideRoute(page: InformationScreen(detail: service)),
-      ),
+      onTap: () => _openOverChat(InformationScreen(detail: service), 'Information'),
     );
   }
 
@@ -1382,10 +1398,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           ),
           const SizedBox(height: 3),
           GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              SlideRoute(page: InformationScreen(detail: service)),
-            ),
+            onTap: () => _openOverChat(InformationScreen(detail: service), 'Information'),
             child: Text(
               '${AppLocalizations.translate('View full details', lang)} →',
               style: GoogleFonts.inter(
