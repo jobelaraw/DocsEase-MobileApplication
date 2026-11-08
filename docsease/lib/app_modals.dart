@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:docsease/app_localizations.dart';
 import 'package:docsease/settings_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:hive/hive.dart';
 
 Future<T?> _showAppModal<T>({required BuildContext context, required Widget child}) {
   return showDialog<T>(
@@ -175,10 +176,10 @@ class _AppModalBaseState extends State<_AppModalBase> {
         onPressed: _isLoading ? null : onPressed,
         child: _isLoading
             ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-              )
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+        )
             : Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
       ),
     );
@@ -198,20 +199,20 @@ class _AppModalBaseState extends State<_AppModalBase> {
         onPressed: _isLoading ? null : onPressed,
         child: _isLoading && widget.singleAction
             ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(color: Color(0xFF374151), strokeWidth: 2.5),
-              )
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(color: Color(0xFF374151), strokeWidth: 2.5),
+        )
             : Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : const Color(0xFF374151),
-                ),
-              ),
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Theme.of(context).colorScheme.onPrimary
+                : const Color(0xFF374151),
+          ),
+        ),
       ),
     );
   }
@@ -245,10 +246,10 @@ class ExitConfirmationModal {
 class DeleteChatOptionsModal {
   // onDeleteCurrent is null when there is no saved conversation open, which disables that option
   static Future<void> show(
-    BuildContext context, {
-    VoidCallback? onDeleteCurrent,
-    required VoidCallback onDeleteMultiple,
-  }) {
+      BuildContext context, {
+        VoidCallback? onDeleteCurrent,
+        required VoidCallback onDeleteMultiple,
+      }) {
     final lang = Provider.of<SettingsProvider>(context, listen: false).language;
     String tr(String key) => AppLocalizations.translate(key, lang);
     void close() => Navigator.of(context, rootNavigator: true).pop();
@@ -275,9 +276,9 @@ class DeleteChatOptionsModal {
                 onPressed: onDeleteCurrent == null
                     ? null
                     : () {
-                        close();
-                        onDeleteCurrent();
-                      },
+                  close();
+                  onDeleteCurrent();
+                },
               ),
               const SizedBox(height: 12),
               _buildOption(
@@ -317,26 +318,316 @@ class DeleteChatOptionsModal {
       height: 35,
       child: filled
           ? ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _kRed,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: _kRed.withValues(alpha: 0.35),
-                disabledForegroundColor: Colors.white,
-                elevation: 0,
-                shape: shape,
-              ),
-              onPressed: onPressed,
-              child: content,
-            )
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _kRed,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: _kRed.withValues(alpha: 0.35),
+          disabledForegroundColor: Colors.white,
+          elevation: 0,
+          shape: shape,
+        ),
+        onPressed: onPressed,
+        child: content,
+      )
           : OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _kRed,
-                side: const BorderSide(color: _kRed),
-                shape: shape,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _kRed,
+          side: const BorderSide(color: _kRed),
+          shape: shape,
+        ),
+        onPressed: onPressed,
+        child: content,
+      ),
+    );
+  }
+}
+
+//Reminders shown on the Information screen
+class RemindersModal {
+  static const String prefKey = 'hideServiceReminders';
+
+  static bool get isHidden =>
+      Hive.box('auth_box').get(prefKey, defaultValue: false) == true;
+
+  /// [fromTopBar] = true -> no checkbox, just a "Got it" button.
+  static Future<void> show(BuildContext context, {bool fromTopBar = false}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    return _showAppModal<void>(
+      context: context,
+      child: _RemindersDialog(fromTopBar: fromTopBar, language: lang),
+    );
+  }
+}
+
+class _ReminderItem {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String text;
+  const _ReminderItem(this.icon, this.color, this.title, this.text);
+}
+
+const List<_ReminderItem> _kReminders = [
+  _ReminderItem(
+    Icons.menu_book_rounded,
+    Color(0xFF2563EB),
+    'Guide only',
+    'You can’t submit documents or pay in the app. Please do it in person at the office.',
+  ),
+  _ReminderItem(
+    Icons.description_rounded,
+    Color(0xFF0D9488),
+    'Based on the Citizen’s Charter',
+    'Requirements, fees, and processing times come from the 2026 Citizen’s Charter of Biñan, Laguna.',
+  ),
+  _ReminderItem(
+    Icons.update_rounded,
+    Color(0xFFD97706),
+    'May change',
+    'Details can change without notice. What the City Hall officer tells you is final.',
+  ),
+  _ReminderItem(
+    Icons.hourglass_bottom_rounded,
+    Color(0xFFE11D48),
+    'Processing time varies',
+    'Times are only estimates. Long lines or busy days can cause delays, and we can’t control them.',
+  ),
+  _ReminderItem(
+    Icons.smart_toy_rounded,
+    Color(0xFF475569),
+    'Bot & navigation',
+    'The Bot and AR navigation can make mistakes. Please double-check with the office.',
+  ),
+  _ReminderItem(
+    Icons.checklist_rounded,
+    Color(0xFF16A34A),
+    'Your progress only',
+    'Marking a step as done only tracks your own progress. It won’t update your actual transaction.',
+  ),
+];
+
+class _RemindersDialog extends StatelessWidget {
+  const _RemindersDialog({required this.fromTopBar, required this.language});
+
+  final bool fromTopBar;
+  final String language;
+
+  @override
+  Widget build(BuildContext context) {
+    String tr(String key) => AppLocalizations.translate(key, language);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = isDark ? cs.onPrimary : const Color(0xFF111827);
+    final textColor =
+    isDark ? cs.onPrimary.withValues(alpha: 0.75) : const Color(0xFF6B7280);
+    final maxHeight = MediaQuery.of(context).size.height * 0.85;
+    final dontShowAgain = ValueNotifier<bool>(false);
+
+    return Dialog(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      backgroundColor: isDark ? cs.primary : Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Header ─────────────────────────────────────────────
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 11, 20, 11),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF1D4ED8), Color(0xFF3B82F6)],
+                ),
               ),
-              onPressed: onPressed,
-              child: content,
+              child: Column(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.lightbulb_outline_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    tr('Reminders'),
+                    style: const TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    tr('Good to know before you start your transaction.'),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ],
+              ),
             ),
+
+            // ── Reminder cards ─────────────────────────────────────
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+                child: Column(
+                  children: _kReminders.map((item) {
+                    return Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : const Color(0xFFE5E7EB),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: item.color.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(item.icon, size: 20, color: item.color),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  tr(item.title),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: titleColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  tr(item.text),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    height: 1.45,
+                                    color: textColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+
+            // ── Footer ─────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!fromTopBar)
+                    ValueListenableBuilder<bool>(
+                      valueListenable: dontShowAgain,
+                      builder: (context, value, _) => InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () => dontShowAgain.value = !value,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: Checkbox(
+                                  value: value,
+                                  onChanged: (v) =>
+                                  dontShowAgain.value = v ?? false,
+                                  visualDensity: VisualDensity.compact,
+                                  materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                tr("Don't show this again"),
+                                style: TextStyle(fontSize: 12, color: textColor),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (!fromTopBar) const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _kBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () {
+                        if (!fromTopBar) {
+                          Hive.box('auth_box')
+                              .put(RemindersModal.prefKey, dontShowAgain.value);
+                        }
+                        Navigator.of(context, rootNavigator: true).pop();
+                      },
+                      child: Text(
+                        tr('Got it'),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -392,10 +683,10 @@ class ChangesSavedModal {
 //Confirm changes modal
 class ConfirmChangesModal {
   static Future<void> show(
-    BuildContext context, {
-    required Function onPrimary,
-    VoidCallback? onSecondary,
-  }) {
+      BuildContext context, {
+        required Function onPrimary,
+        VoidCallback? onSecondary,
+      }) {
     final lang = Provider.of<SettingsProvider>(context, listen: false).language;
     String tr(String key) => AppLocalizations.translate(key, lang);
 
@@ -527,11 +818,11 @@ class ResendCodeModal {
 //Logout modal
 class LogoutModal {
   static Future<void> show(
-    BuildContext context, {
-    Function? onPrimary,
-    bool hasUnsavedChanges = false,
-    bool isGuest = false,
-  }) {
+      BuildContext context, {
+        Function? onPrimary,
+        bool hasUnsavedChanges = false,
+        bool isGuest = false,
+      }) {
     final lang = Provider.of<SettingsProvider>(context, listen: false).language;
     String tr(String key) => AppLocalizations.translate(key, lang);
 
@@ -570,6 +861,9 @@ class LogoutModal {
 //dismissed programmatically via LoadingModal.hide once it finishes)
 class LoadingModal {
   static Future<void> show(BuildContext context, {required String title, String? subtitle}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -594,7 +888,7 @@ class LoadingModal {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  title,
+                  tr(title),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
@@ -607,7 +901,7 @@ class LoadingModal {
                 if (subtitle != null) ...[
                   const SizedBox(height: 6),
                   Text(
-                    subtitle,
+                    tr(subtitle),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,
@@ -637,15 +931,18 @@ class LoadingModal {
 //Google account, sign-in/sign-up failed)
 class AuthErrorModal {
   static Future<void> show(BuildContext context, {required String title, required String subtitle}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
         iconData: Icons.error_outline_rounded,
         iconColor: _kRed,
         iconBgColor: _kIconBgRed,
-        title: title,
-        subtitle: subtitle,
-        primaryLabel: 'Got it',
+        title: tr(title),
+        subtitle: tr(subtitle),
+        primaryLabel: tr('Got it'),
         singleAction: true,
         onPrimary: () => Navigator.of(context, rootNavigator: true).pop(),
       ),
@@ -657,20 +954,23 @@ class AuthErrorModal {
 //before redirecting, for a smoother transition instead of an instant jump
 class AuthSuccessModal {
   static Future<void> show(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-    required Function onPrimary,
-  }) {
+      BuildContext context, {
+        required String title,
+        required String subtitle,
+        required Function onPrimary,
+      }) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
         iconData: Icons.check_circle_outline_rounded,
         iconColor: _kGreen,
         iconBgColor: _kIconBgGreen,
-        title: title,
-        subtitle: subtitle,
-        primaryLabel: 'Continue',
+        title: tr(title),
+        subtitle: tr(subtitle),
+        primaryLabel: tr('Continue'),
         singleAction: true,
         onPrimary: onPrimary,
       ),
@@ -704,21 +1004,24 @@ class ProfileChangesModal {
 
 class DeleteAccountModal {
   static Future<void> show(
-    BuildContext context, {
-    required Function onPrimary,
-    VoidCallback? onSecondary,
-  }) {
+      BuildContext context, {
+        required Function onPrimary,
+        VoidCallback? onSecondary,
+      }) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
         iconData: Icons.warning_amber_rounded,
         iconColor: _kRed,
         iconBgColor: _kIconBgRed,
-        title: 'Delete Account?',
-        subtitle: 'This will completely remove or delete your account, as well as your credentials and service history.',
-        primaryLabel: 'Yes, Delete',
+        title: tr('Delete Account?'),
+        subtitle: tr('This will completely remove or delete your account, as well as your credentials and service history.'),
+        primaryLabel: tr('Yes, Delete'),
         primaryColor: _kRed,
-        secondaryLabel: 'No',
+        secondaryLabel: tr('No'),
         onPrimary: onPrimary,
         onSecondary: onSecondary ?? () => Navigator.of(context, rootNavigator: true).pop(),
       ),
@@ -728,15 +1031,18 @@ class DeleteAccountModal {
 
 class OfficeNotificationModal {
   static Future<void> show(BuildContext context, {required String title, required String body, Function? onPrimary}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
         iconData: Icons.business_rounded,
         iconColor: _kBlue,
         iconBgColor: _kIconBgBlue,
-        title: title,
-        subtitle: body,
-        primaryLabel: 'Got it',
+        title: tr(title),
+        subtitle: tr(body),
+        primaryLabel: tr('Got it'),
         singleAction: true,
         onPrimary: onPrimary ?? () => Navigator.of(context, rootNavigator: true).pop(),
       ),
@@ -785,16 +1091,19 @@ class NotificationPopupRoute {
 
 class StepLockedModal {
   static Future<void> show(BuildContext context) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
         iconData: Icons.lock_outline_rounded,
         iconColor: const Color(0xFF2563EB),
         iconBgColor: const Color(0xFFDBEAFE),
-        title: 'Complete the Previous Step',
-        subtitle:
-        'Please mark the previous step as done before proceeding to the next step.',
-        primaryLabel: 'Got it',
+        title: tr('Complete the Previous Step'),
+        subtitle: tr(
+            'Please mark the previous step as done before proceeding to the next step.'),
+        primaryLabel: tr('Got it'),
         singleAction: true,
         onPrimary: () =>
             Navigator.of(context, rootNavigator: true).pop(),
@@ -802,19 +1111,23 @@ class StepLockedModal {
     );
   }
 }
-//will appear after the app logs the user out for being idle mga niggs
+
+//Appears after the app logs the user out for being idle
 class SessionExpiredModal {
   static Future<void> show(BuildContext context) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
         iconData: Icons.lock_outline_rounded,
         iconColor: _kBlue,
         iconBgColor: _kIconBgBlue,
-        title: 'Session Expired',
-        subtitle:
-        'For your security, you were logged out because the app was inactive for 15 minutes. Please sign in again.',
-        primaryLabel: 'Got it',
+        title: tr('Session Expired'),
+        subtitle: tr(
+            'For your security, you were logged out because the app was inactive for 15 minutes. Please sign in again.'),
+        primaryLabel: tr('Got it'),
         singleAction: true,
         onPrimary: () => Navigator.of(context, rootNavigator: true).pop(),
       ),
@@ -847,22 +1160,25 @@ class NoInternetModal {
 //Auth modal with a redirect button (e.g. "Go to Sign In")
 class AuthRedirectModal {
   static Future<void> show(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-    required String primaryLabel,
-    required VoidCallback onPrimary,
-  }) {
+      BuildContext context, {
+        required String title,
+        required String subtitle,
+        required String primaryLabel,
+        required VoidCallback onPrimary,
+      }) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
     return _showAppModal<void>(
       context: context,
       child: _AppModalBase(
         iconData: Icons.info_outline_rounded,
         iconColor: _kBlue,
         iconBgColor: _kIconBgBlue,
-        title: title,
-        subtitle: subtitle,
-        primaryLabel: primaryLabel,
-        secondaryLabel: 'Cancel',
+        title: tr(title),
+        subtitle: tr(subtitle),
+        primaryLabel: tr(primaryLabel),
+        secondaryLabel: tr('Cancel'),
         onPrimary: onPrimary,
         onSecondary: () => Navigator.of(context, rootNavigator: true).pop(),
       ),

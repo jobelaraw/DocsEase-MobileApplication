@@ -24,7 +24,7 @@ class AppLocalizations {
       'Edit Profile': 'I-edit ang Profile',
       'Service History': 'Kasaysayan ng Serbisyo',
       'No service history yet.\nStart a service to track your progress!':
-          'Wala pang kasaysayan ng serbisyo.\nMagsimula ng serbisyo para masubaybayan ang iyong progreso!',
+      'Wala pang kasaysayan ng serbisyo.\nMagsimula ng serbisyo para masubaybayan ang iyong progreso!',
       'In Progress': 'Kasalukuyang Ginagawa',
       'Completed': 'Tapos Na',
 
@@ -129,9 +129,9 @@ class AppLocalizations {
       'GaBayan Bot': 'GaBayan Bot',
       'Online Assistant': 'Online Assistant',
       'Offline - Waiting for network...':
-          'Offline - Naghihintay ng koneksyon...',
+      'Offline - Naghihintay ng koneksyon...',
       'Ask about your transaction...':
-          'Magtanong tungkol sa iyong transaksyon...',
+      'Magtanong tungkol sa iyong transaksyon...',
       'Go to Home': 'Pumunta sa Home',
       'Go to Settings': 'Pumunta sa Settings',
       'Go to Profile': 'Pumunta sa Profile',
@@ -151,7 +151,7 @@ class AppLocalizations {
       'Business Permit & Licensing': 'Permiso sa Negosyo at Lisensya',
       'City Civil Registry': 'Tagapagrehistro Sibil ng Lungsod',
       "City Engineer's Office": 'Opisina ng City Engineer',
-      'Business Permit': 'Permiso sa Negosyo', 
+      'Business Permit': 'Permiso sa Negosyo',
       'Marriage Certificate': 'Sertipiko ng Kasal',
       'Building Permit': 'Permiso sa Pagtatayo ng Gusali',
       'New Chat': 'Bagong Chat',
@@ -176,7 +176,7 @@ class AppLocalizations {
       // Modals
       'Are you sure you want to exit?': 'Sigurado ka bang gusto mong lumabas?',
       'Changes will not be saved if you leave this page.':
-          'Hindi mase-save ang mga pagbabago kung aalis ka sa pahinang ito.',
+      'Hindi mase-save ang mga pagbabago kung aalis ka sa pahinang ito.',
       'Yes': 'Oo',
       'Cancel': 'Kanselahin',
       'Delete': 'Burahin',
@@ -185,35 +185,83 @@ class AppLocalizations {
       'This cannot be undone.': 'Hindi na ito maibabalik.',
       'Changes Saved!': 'Na-save na ang Pagbabago!',
       'Updated successfully. Please click to continue.':
-          'Matagumpay na na-update. Pindutin upang magpatuloy.',
+      'Matagumpay na na-update. Pindutin upang magpatuloy.',
       'Got it': 'Okay',
       'Confirm Changes': 'Kumpirmahin ang Pagbabago',
       'Are you sure you want to save changes?':
-          'Sigurado ka bang gusto mong i-save ang pagbabago?',
+      'Sigurado ka bang gusto mong i-save ang pagbabago?',
       'Are you sure you want to logout?':
-          'Sigurado ka bang gusto mong mag-logout?',
+      'Sigurado ka bang gusto mong mag-logout?',
       'You have unsaved Settings changes that will be lost.':
-          'Mayroon kang hindi na-save na mga pagbabago sa Settings na mawawala.',
+      'Mayroon kang hindi na-save na mga pagbabago sa Settings na mawawala.',
       'Check your Email': 'Suriin ang iyong Email',
       'A recovery code has been sent to your email. Please check your inbox.':
-          'Naipadala na ang recovery code sa iyong email. Suriin ang iyong inbox.',
+      'Naipadala na ang recovery code sa iyong email. Suriin ang iyong inbox.',
       'Profile Requires Sign in': 'Kailangan mag-sign in para sa Profile',
       'Profile Requires Authentication': 'Kailangan Mag-sign In para sa Profile',
       'GaBayan Bot Requires Authentication': 'Kailangan Mag-sign In para sa GaBayan Bot',
       'Service History Requires Authentication': 'Kailangan Mag-sign In para sa Kasaysayan ng Serbisyo',
       'Navigation Requires Authentication': 'Kailangan Mag-sign In para sa Nabigasyon',
       "You'll be directed to sign in screen. Are you sure you want to continue?":
-          'Ire-redirect ka sa sign in screen. Sigurado ka bang gusto mong magpatuloy?',
+      'Ire-redirect ka sa sign in screen. Sigurado ka bang gusto mong magpatuloy?',
       'Verified': 'Kumpirmado',
       'Code verified successfully. You may now change your password.':
-          'Matagumpay na na-verify ang code. Maaari mo nang palitan ang iyong password.',
+      'Matagumpay na na-verify ang code. Maaari mo nang palitan ang iyong password.',
       'New Code Sent': 'Naipadala na ang Bagong Code',
       "We've sent a new recovery code. Please check your inbox for the updated 6-digit recovery code.":
-          'Nagpadala kami ng bagong recovery code. Suriin ang iyong inbox para sa bagong 6-digit na recovery code.',
+      'Nagpadala kami ng bagong recovery code. Suriin ang iyong inbox para sa bagong 6-digit na recovery code.',
 
       'No Internet Connection': 'Walang Koneksyon sa Internet',
       'Please check your internet connection and try again.':
       'Pakisuri ang iyong koneksyon sa internet at subukan muli.',
+
+      // Reminders & other modals
+      'Reminders':
+      'Mga Paalala',
+      'Good to know before you start your transaction.':
+      'Magandang malaman bago simulan ang iyong transaksyon.',
+      "Don't show this again":
+      'Huwag nang ipakita ito muli',
+      'Guide only':
+      'Gabay lamang',
+      'You can’t submit documents or pay in the app. Please do it in person at the office.':
+      'Hindi ka makakapagsumite ng dokumento o makakapagbayad sa app. Gawin ito nang personal sa opisina.',
+      'Based on the Citizen’s Charter':
+      'Batay sa Citizen’s Charter',
+      'Requirements, fees, and processing times come from the 2026 Citizen’s Charter of Biñan, Laguna.':
+      'Ang mga requirements, bayad, at tagal ng proseso ay mula sa 2026 Citizen’s Charter ng Biñan, Laguna.',
+      'May change':
+      'Maaaring magbago',
+      'Details can change without notice. What the City Hall officer tells you is final.':
+      'Maaaring magbago ang mga detalye nang walang abiso. Ang sasabihin ng opisyal ng City Hall ang masusunod.',
+      'Processing time varies':
+      'Nag-iiba ang tagal ng proseso',
+      'Times are only estimates. Long lines or busy days can cause delays, and we can’t control them.':
+      'Tantiya lamang ang mga oras. Ang mahabang pila o abalang araw ay maaaring magdulot ng pagkaantala, at hindi namin ito makokontrol.',
+      'Bot & navigation':
+      'Bot at nabigasyon',
+      'The Bot and AR navigation can make mistakes. Please double-check with the office.':
+      'Maaaring magkamali ang Bot at AR navigation. Mangyaring i-double-check sa opisina.',
+      'Your progress only':
+      'Sarili mong progreso lamang',
+      'Marking a step as done only tracks your own progress. It won’t update your actual transaction.':
+      'Ang pagmamarka ng hakbang bilang tapos ay para lang masubaybayan ang sarili mong progreso. Hindi nito ia-update ang aktwal mong transaksyon.',
+      'Delete Account?':
+      'Burahin ang Account?',
+      'This will completely remove or delete your account, as well as your credentials and service history.':
+      'Ganap nitong buburahin ang iyong account, pati ang iyong mga kredensyal at kasaysayan ng serbisyo.',
+      'Yes, Delete':
+      'Oo, Burahin',
+      'No':
+      'Hindi',
+      'Complete the Previous Step':
+      'Kumpletuhin Muna ang Nakaraang Hakbang',
+      'Please mark the previous step as done before proceeding to the next step.':
+      'Pakimarkahan muna bilang tapos ang nakaraang hakbang bago magpatuloy sa susunod.',
+      'Continue':
+      'Magpatuloy',
+      'Loading Service...':
+      'Naglo-load ng Serbisyo...',
 
       // Information screen
       'No description available.': 'Walang available na paglalarawan.',
@@ -247,7 +295,7 @@ class AppLocalizations {
       'Find the office and contact details.': 'Hanapin ang opisina at mga detalye ng pakikipag-ugnayan.',
 
       'A mobile assistant designed to help citizens navigate government services more easily in Binan City Hall. It provides clear information, guided steps, and smart navigation to simplify document processing in government offices.':
-          'Isang mobile assistant na idinisenyo upang tulungan ang mga mamamayan na mas madaling mag-navigate sa mga serbisyo ng gobyerno sa Binan City Hall. Nagbibigay ito ng malinaw na impormasyon, mga gabay na hakbang, at matalinong nabigasyon upang gawing simple ang pagproseso ng mga dokumento sa mga tanggapan ng gobyerno.',
+      'Isang mobile assistant na idinisenyo upang tulungan ang mga mamamayan na mas madaling mag-navigate sa mga serbisyo ng gobyerno sa Binan City Hall. Nagbibigay ito ng malinaw na impormasyon, mga gabay na hakbang, at matalinong nabigasyon upang gawing simple ang pagproseso ng mga dokumento sa mga tanggapan ng gobyerno.',
       'Service details not found.': 'Hindi nakita ang detalye ng serbisyo.',
     },
   };
