@@ -23,13 +23,16 @@ class ChatService {
   }
 
   /// Save a message to a conversation
-  Future<void> saveMessage(String convoId, String text, bool isUser, {Map<String, dynamic>? extra}) async {
+  Future<void> saveMessage(String convoId, String text, bool isUser,
+      {Map<String, dynamic>? extra, DateTime? at}) async {
     if (_uid == null) return;
-    // Write message and update timestamp in parallel
+    // clientTime = the time the user saw on screen. Used for ordering and display.
+    final when = Timestamp.fromDate(at ?? DateTime.now());
     _conversationsRef.doc(convoId).collection('messages').add({
       'text': text,
       'isUser': isUser,
       'timestamp': FieldValue.serverTimestamp(),
+      'clientTime': when,
       ...?extra,
     });
     _conversationsRef.doc(convoId).update({
@@ -46,12 +49,13 @@ class ChatService {
   /// Get all messages in a conversation
   Future<List<Map<String, dynamic>>> getMessages(String convoId) async {
     if (_uid == null) return [];
-    final snap = await _conversationsRef
-        .doc(convoId)
-        .collection('messages')
-        .orderBy('timestamp')
-        .get();
-    return snap.docs.map((d) => d.data()).toList();
+    final snap = await _conversationsRef.doc(convoId).collection('messages').get();
+    final list = snap.docs.map((d) => d.data()).toList();
+    // Old messages have no clientTime, so fall back to the server timestamp
+    DateTime timeOf(Map<String, dynamic> m) =>
+        ((m['clientTime'] ?? m['timestamp']) as Timestamp?)?.toDate() ?? DateTime.now();
+    list.sort((a, b) => timeOf(a).compareTo(timeOf(b)));
+    return list;
   }
 
   /// Get the most recent conversation ID

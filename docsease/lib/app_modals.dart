@@ -1112,29 +1112,6 @@ class StepLockedModal {
   }
 }
 
-//Appears after the app logs the user out for being idle
-class SessionExpiredModal {
-  static Future<void> show(BuildContext context) {
-    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
-    String tr(String key) => AppLocalizations.translate(key, lang);
-
-    return _showAppModal<void>(
-      context: context,
-      child: _AppModalBase(
-        iconData: Icons.lock_outline_rounded,
-        iconColor: _kBlue,
-        iconBgColor: _kIconBgBlue,
-        title: tr('Session Expired'),
-        subtitle: tr(
-            'For your security, you were logged out because the app was inactive for 15 minutes. Please sign in again.'),
-        primaryLabel: tr('Got it'),
-        singleAction: true,
-        onPrimary: () => Navigator.of(context, rootNavigator: true).pop(),
-      ),
-    );
-  }
-}
-
 //Shown when an action needs internet but the phone is offline
 class NoInternetModal {
   static Future<void> show(BuildContext context) {
