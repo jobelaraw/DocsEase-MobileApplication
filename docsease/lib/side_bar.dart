@@ -305,11 +305,12 @@ class _SideBarState extends State<SideBar> {
     final bool hideBell = widget.isGuest || FirebaseAuth.instance.currentUser == null;
     final bool onServicesTab = selectedIndex == 0 && currentTitle == 'Services';
     final bool onChatbot = selectedIndex == 0 && currentTitle == 'Chatbot';
+    final bool onInformation = selectedIndex == 0 && currentTitle == 'Information';
 
     return WillPopScope(
       onWillPop: _handleBackNavigation,
       child: Scaffold(
-        endDrawerEnableOpenDragGesture: !onChatbot,
+        endDrawerEnableOpenDragGesture: !onChatbot && !onInformation,
         appBar: AppBar(
           // No reserved space for the bell when a guest is on the Services tab
           leadingWidth: (onServicesTab && hideBell) ? 0 : 60,
@@ -517,8 +518,23 @@ class _SideBarState extends State<SideBar> {
                 icon: NewChatIcon(color: Theme.of(context).colorScheme.onPrimary),
               ),
             ],
-            // --- HAMBURGER MENU (hidden on the chatbot screen) ---
-            if (!onChatbot)
+            // --- DISCLAIMER BUTTON (Information screen only) ---
+            if (onInformation)
+              Padding(
+                padding: const EdgeInsets.only(right: 15),
+                child: IconButton(
+                  splashRadius: 20.0,
+                  tooltip: 'Reminders',
+                  onPressed: () => RemindersModal.show(context, fromTopBar: true),
+                  icon: Icon(
+                    Icons.info_outline_rounded,
+                    size: 26,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                ),
+              )
+            // --- HAMBURGER MENU (hidden on the chatbot and Information screens) ---
+            else if (!onChatbot)
               Builder(
                 builder: (BuildContext context) {
                   return Padding(

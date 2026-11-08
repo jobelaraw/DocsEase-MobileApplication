@@ -34,6 +34,16 @@ class _InformationScreenState extends State<InformationScreen>
   final Color accentBlue = const Color(0xFF2458B8);
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !RemindersModal.isHidden) {
+        RemindersModal.show(context);
+      }
+    });
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _updateTabController();
