@@ -563,45 +563,6 @@ class _ContentList extends StatelessWidget {
             subtitle: 'Follow each step to complete your transaction.',
           ),
 
-          if (FirebaseAuth.instance.currentUser != null)
-            Builder(builder: (context) {
-              final prefix = '${tab.name} : ';
-              final done = tab.steps
-                  .where((st) => completedSteps.contains('$prefix${st.title}'))
-                  .length;
-              final value = done / tab.steps.length;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: LinearProgressIndicator(
-                          value: value,
-                          minHeight: 6,
-                          backgroundColor: Colors.grey.shade300,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            value >= 1.0
-                                ? const Color(0xFF4CAF50)
-                                : accentColor,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      '${(value * 100).toInt()}%  ($done/${tab.steps.length})',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: cs.onSurface.withValues(alpha: 0.65),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
 
 
           ...tab.steps.asMap().entries.map(
