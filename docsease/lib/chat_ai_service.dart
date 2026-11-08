@@ -31,6 +31,13 @@ class ChatAiException implements Exception {
   String toString() => 'ChatAiException($statusCode): $body';
 }
 
+/// The model ran out of room (max_tokens) in the middle of its answer, so the
+/// JSON is incomplete and can't be read.
+class ChatAiTruncatedException extends ChatAiException {
+  const ChatAiTruncatedException()
+      : super(200, 'Reply cut off', 'finish_reason=length: the answer hit max_tokens');
+}
+
 // ─── Chat AI Service: Answers only from Biñan City Hall's offices and services in Firestore ───
 // Every request carries a compact catalog (offices + service names). Full service details
 // (requirements, steps, fees, persons in charge) are fetched by the model through a tool call
@@ -102,7 +109,7 @@ class ChatAiService {
             'model': _model,
             'messages': messages,
             'temperature': 0.2,
-            'max_tokens': 700,
+            'max_tokens': 1500,
             'response_format': _responseFormat,
             'tools': _tools,
             'tool_choice': toolChoice,
@@ -115,7 +122,10 @@ class ChatAiService {
     }
     // Decode as UTF-8 explicitly so "Biñan" and other accents come through intact
     final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-    return data['choices'][0]['message'] as Map<String, dynamic>;
+    final choice = data['choices'][0] as Map<String, dynamic>;
+    // "length" = the answer was cut off at max_tokens, so its JSON is incomplete
+    if (choice['finish_reason'] == 'length') throw const ChatAiTruncatedException();
+    return choice['message'] as Map<String, dynamic>;
   }
 
   // ─── Compose Answer: Builds Markdown with a bold main point and indented details per item ───
@@ -380,7 +390,7 @@ class ChatAiService {
   };
 
   static const _systemPrompt = '''
-You are DocsEase Bot, the virtual assistant of Biñan City Hall (City of Biñan, Laguna, Philippines). You ONLY help people with Biñan City Hall offices, services, and document processes.
+You are GaBayan Bot, the virtual assistant of Biñan City Hall (City of Biñan, Laguna, Philippines). You ONLY help people with Biñan City Hall offices, services, and document processes.
 
 KNOWLEDGE RULES
 - Your only source of truth is the Biñan City Hall data below and the get_service_details tool. Never use general knowledge about other city halls, other cities, or the internet. Never invent requirements, fees, steps, processing times, names, schedules, or contacts.

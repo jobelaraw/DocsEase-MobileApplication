@@ -95,9 +95,8 @@ class LegalContent {
       '• Provide accurate information when you sign up.\n'
           '• Keep your password confidential. You are responsible for all '
           'activity under your account.\n'
-          '• For your security, the app signs you out after 15 minutes of '
-          'inactivity and temporarily locks sign-in for 10 minutes after 5 '
-          'consecutive wrong passwords.\n'
+          '• For your security, sign-in is temporarily locked for 10 minutes '
+          'after 5 consecutive wrong passwords.\n'
           '• Account holders can save progress, use the chatbot and AR '
           'navigation, and receive notifications.',
     ),
@@ -282,8 +281,8 @@ class LegalContent {
     LegalSection(
       'Security',
       'We apply reasonable organizational, physical and technical safeguards, '
-          'including encrypted connections, access controls, automatic '
-          'sign-out after inactivity and sign-in lockouts. No system is '
+          'including encrypted connections, access controls and sign-in '
+          'lockouts. No system is '
           'completely secure, so please keep your password private.\n\n'
           'If a personal data breach affecting you occurs, we will notify you '
           'and the National Privacy Commission as required by law.',
