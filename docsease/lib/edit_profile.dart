@@ -592,7 +592,15 @@ class _EditProfileState extends State<EditProfile> {
               // Delete Account
               Column(
                 children: [
-                  Text('Do you want to delete your account?', style: GoogleFonts.inter(fontSize: 12, color: Colors.black54)),
+                  Text(
+                    'Do you want to delete your account?',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white70
+                          : Colors.black54,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   GestureDetector(
                     onTap: _startDeleteFlow,
