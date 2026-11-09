@@ -924,28 +924,37 @@ class _SideBarState extends State<SideBar> {
 
                                 if (widget.isGuest) {
                                   Hive.box('auth_box').put('continueGuest', false);
-                                } else {
+                                }
+
+                                final placeholderRoute = PageRouteBuilder<void>(
+                                  transitionDuration: Duration.zero,
+                                  reverseTransitionDuration: Duration.zero,
+                                  pageBuilder: (context, _, __) => const SizedBox.shrink(),
+                                );
+
+                                final authRoute = PageRouteBuilder<void>(
+                                  transitionDuration: Duration.zero,
+                                  reverseTransitionDuration: Duration.zero,
+                                  pageBuilder: (context, _, __) => const Authentication(),
+                                );
+                                nav.pushAndRemoveUntil(placeholderRoute, (route) => false);
+                                nav.push(authRoute);
+                                await WidgetsBinding.instance.endOfFrame;
+
+                                if (!widget.isGuest) {
                                   await FirebaseServices().signOutUser();
                                 }
 
-                                if (context.mounted) {
-                                  await Provider.of<SettingsProvider>(
-                                    context,
-                                    listen: false,
-                                  ).loadSettings();
-                                  await settingsProvider.saveSettings(
-                                    false,
-                                    settingsProvider.language,
-                                    0.5,
-                                  );
-                                }
-
-                                nav.pushAndRemoveUntil(
-                                  MaterialPageRoute(builder: (context) => const AuthWrapper()),
-                                      (route) => false,
+                                await settingsProvider.loadSettings();
+                                await settingsProvider.saveSettings(
+                                  false,
+                                  settingsProvider.language,
+                                  0.5,
                                 );
-                                nav.push(
-                                  MaterialPageRoute(builder: (context) => const Authentication()),
+
+                                nav.replaceRouteBelow(
+                                  anchorRoute: authRoute,
+                                  newRoute: MaterialPageRoute<void>(builder: (context) => const AuthWrapper()),
                                 );
                               },
                             );
