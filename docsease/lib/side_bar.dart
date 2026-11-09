@@ -1,4 +1,5 @@
 import 'package:docsease/about_us.dart';
+import 'package:docsease/app_tutorial.dart';
 import 'package:docsease/chatbot.dart';
 import 'package:docsease/app_modals.dart';
 import 'package:docsease/authentication.dart';
@@ -204,6 +205,13 @@ class _SideBarState extends State<SideBar> {
         selectedIndex = targetIndex;
         currentTitle = _tabTitles[targetIndex];
       });
+
+      // First-time tutorial
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (targetIndex == 1) AppTutorial.run(context, TutorialSection.profile);
+        if (targetIndex == 3) AppTutorial.run(context, TutorialSection.settings);
+      });
     }
   }
 
@@ -307,7 +315,7 @@ class _SideBarState extends State<SideBar> {
     final bool onChatbot = selectedIndex == 0 && currentTitle == 'Chatbot';
     final bool onInformation = selectedIndex == 0 && currentTitle == 'Information';
 
-    return WillPopScope(
+    return TutorialTarget(id: 'sidebar.root', child: WillPopScope(
       onWillPop: _handleBackNavigation,
       child: Scaffold(
         endDrawerEnableOpenDragGesture: !onChatbot && !onInformation,
@@ -505,24 +513,24 @@ class _SideBarState extends State<SideBar> {
           actions: [
             // --- SEARCH + NEW CHAT / CHAT HISTORY (chatbot only) ---
             if (selectedIndex == 0 && currentTitle == 'Chatbot') ...[
-              IconButton(
+              TutorialTarget(id: 'chat.search', child: IconButton(
                 splashRadius: 20.0,
                 visualDensity: VisualDensity.compact,
                 onPressed: ChatBotScreen.openSearch,
                 icon: Icon(Icons.search, color: Theme.of(context).colorScheme.onPrimary, size: 24),
-              ),
-              IconButton(
+              )),
+              TutorialTarget(id: 'chat.history', child: IconButton(
                 splashRadius: 20.0,
                 visualDensity: VisualDensity.compact,
                 onPressed: ChatBotScreen.openHistory,
                 icon: NewChatIcon(color: Theme.of(context).colorScheme.onPrimary),
-              ),
+              )),
             ],
             // --- DISCLAIMER BUTTON (Information screen only) ---
             if (onInformation)
               Padding(
                 padding: const EdgeInsets.only(right: 15),
-                child: IconButton(
+                child: TutorialTarget(id: 'info.reminders', child: IconButton(
                   splashRadius: 20.0,
                   tooltip: 'Reminders',
                   onPressed: () => RemindersModal.show(context, fromTopBar: true),
@@ -531,7 +539,7 @@ class _SideBarState extends State<SideBar> {
                     size: 26,
                     color: Theme.of(context).colorScheme.onPrimary,
                   ),
-                ),
+                )),
               )
             // --- HAMBURGER MENU (hidden on the chatbot and Information screens) ---
             else if (!onChatbot)
@@ -539,7 +547,7 @@ class _SideBarState extends State<SideBar> {
                 builder: (BuildContext context) {
                   return Padding(
                     padding: const EdgeInsets.only(left: 0, right: 15),
-                    child: IconButton(
+                    child: TutorialTarget(id: 'home.menu', child: IconButton(
                       splashRadius: 20.0,
                       onPressed: () {
                         Scaffold.of(context).openEndDrawer();
@@ -549,7 +557,7 @@ class _SideBarState extends State<SideBar> {
                         size: 20,
                         color: Theme.of(context).colorScheme.onPrimary,
                       ),
-                    ),
+                    )),
                   );
                 },
               ),
@@ -742,7 +750,7 @@ class _SideBarState extends State<SideBar> {
                                   },
                                 ),
                                 const SizedBox(height: 13),
-                                SideBarOption(
+                                TutorialTarget(id: 'drawer.profile', child: SideBarOption(
                                   selectedImage: 'assets/profile_icon.png',
                                   unselectedImage: 'assets/profile_outlined_icon.png',
                                   optionName: AppLocalizations.translate(
@@ -782,10 +790,10 @@ class _SideBarState extends State<SideBar> {
                                       if (mounted) _handleDrawerNavigation(1);
                                     });
                                   },
-                                ),
+                                )),
                                 const SizedBox(height: 13),
                                 // ─── NAVIGATE OFFICE/ROOM (AR placeholder) ───
-                                SideBarOption(
+                                TutorialTarget(id: 'drawer.navigate', child: SideBarOption(
                                   selectedImage: 'assets/navigate_icon.png',
                                   unselectedImage: 'assets/navigate_outlined_icon.png',
                                   iconData: Icons.location_on_outlined,
@@ -851,7 +859,7 @@ class _SideBarState extends State<SideBar> {
                                     });
                                   },
 
-                                ),
+                                )),
                                 const SizedBox(height: 13),
                                 SideBarOption(
                                   selectedImage: 'assets/about_icon.png',
@@ -869,7 +877,7 @@ class _SideBarState extends State<SideBar> {
                                   },
                                 ),
                                 const SizedBox(height: 13),
-                                SideBarOption(
+                                TutorialTarget(id: 'drawer.settings', child: SideBarOption(
                                   selectedImage: 'assets/settings_icon.png',
                                   unselectedImage: 'assets/settings_outlined_icon.png',
                                   optionName: AppLocalizations.translate(
@@ -883,7 +891,7 @@ class _SideBarState extends State<SideBar> {
                                       if (mounted) _handleDrawerNavigation(3);
                                     });
                                   },
-                                ),
+                                )),
                               ],
                             ),
                           ),
@@ -990,7 +998,7 @@ class _SideBarState extends State<SideBar> {
         ),
         body: IndexedStack(index: selectedIndex, children: screens),
       ),
-    );
+    ));
   }
 }
 

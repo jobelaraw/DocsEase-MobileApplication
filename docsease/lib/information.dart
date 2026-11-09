@@ -1,4 +1,5 @@
 import 'package:docsease/app_modals.dart';
+import 'package:docsease/app_tutorial.dart';
 import 'package:docsease/authentication.dart';
 import 'package:docsease/main.dart';
 import 'package:docsease/info_model.dart';
@@ -40,6 +41,8 @@ class _InformationScreenState extends State<InformationScreen>
       if (mounted && !RemindersModal.isHidden) {
         RemindersModal.show(context);
       }
+      // First-time tutorial (waits until the reminders popup is closed)
+      if (mounted) AppTutorial.run(context, TutorialSection.information);
     });
   }
 
@@ -534,7 +537,7 @@ class _ContentList extends StatelessWidget {
 
         const SizedBox(height: 22),
 
-        TransactionSummaryCard(
+        TutorialTarget(id: 'info.summary', child: TransactionSummaryCard(
           transactionType: tab.transactionType,
           whoMayAvail: tab.getWhoMayAvail(language).isNotEmpty
               ? tab.getWhoMayAvail(language)
@@ -542,7 +545,7 @@ class _ContentList extends StatelessWidget {
           totalFee: tab.getTotalFee(language),
           totalTime: tab.getTotalProcessingTime(language),
           language: language,
-        ),
+        )),
 
         const SizedBox(height: 30),
 
@@ -553,7 +556,7 @@ class _ContentList extends StatelessWidget {
             subtitle: 'Prepare these documents before your visit.',
           ),
 
-          _RequirementsCard(
+          TutorialTarget(id: 'info.requirements', child: _RequirementsCard(
             requirements: tab.requirements,
             iconColor: accentColor,
             title: detail.title,
@@ -561,17 +564,17 @@ class _ContentList extends StatelessWidget {
             checkedReqs: checkedReqs,
             onToggle: onToggleReq,
             language: language,
-          ),
+          )),
 
           const SizedBox(height: 30),
         ],
 
         if (tab.steps.isNotEmpty) ...[
-          sectionHeading(
+          TutorialTarget(id: 'info.steps', child: sectionHeading(
             icon: Icons.assignment_turned_in_outlined,
             title: tr('Step-by-Step Guide'),
             subtitle: 'Follow each step to complete your transaction.',
-          ),
+          )),
 
 
 
@@ -992,7 +995,7 @@ class _StepItem extends StatelessWidget {
                     children: [
                       if (hasNavigation) ...[
                         Expanded(
-                          child: SizedBox(
+                          child: TutorialTarget(id: 'info.navigate', enabled: num == 1, child: SizedBox(
                             height: 44,
                             child: ElevatedButton.icon(
                               onPressed: () =>
@@ -1025,12 +1028,12 @@ class _StepItem extends StatelessWidget {
                                 ),
                               ),
                             ),
-                          ),
+                          )),
                         ),
                         const SizedBox(width: 10),
                       ],
                       Expanded(
-                        child: SizedBox(
+                        child: TutorialTarget(id: 'info.complete', enabled: num == 1, child: SizedBox(
                           height: 44,
                           child: isDone
                               ? ElevatedButton.icon(
@@ -1106,7 +1109,7 @@ class _StepItem extends StatelessWidget {
                               TextOverflow.ellipsis,
                             ),
                           ),
-                        ),
+                        )),
                       ),
                     ],
                   ),

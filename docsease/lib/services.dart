@@ -1,4 +1,5 @@
 import 'package:docsease/app_modals.dart';
+import 'package:docsease/app_tutorial.dart';
 import 'package:docsease/authentication.dart';
 import 'package:docsease/main.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -28,6 +29,7 @@ class _ServicesContent extends State<Services> {
   String searchQuery = '';
 
   late Stream<List<Office>> _officesStream;
+  bool _tutorialStarted = false;
 
   final FirebaseServices _getService = FirebaseServices();
 
@@ -40,6 +42,14 @@ class _ServicesContent extends State<Services> {
     // Keep the ChatBot's cached offices in sync with the live stream too.
     _officesStream.listen((offices) {
       ChatBotScreen.setCachedOffices(offices);
+
+      // First-time tutorial: starts once the services have loaded.
+      if (!_tutorialStarted && offices.isNotEmpty && mounted) {
+        _tutorialStarted = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) AppTutorial.run(context, TutorialSection.home);
+        });
+      }
     });
   }
 
@@ -56,7 +66,7 @@ class _ServicesContent extends State<Services> {
     return Future.delayed(const Duration(milliseconds: 400));
   }
 
-  Widget buildFilteredCategory(Office office) {
+  Widget buildFilteredCategory(Office office, {bool isFirst = false}) {
     // Safety net: never render an office that has no services.
     if (office.services.isEmpty) return const SizedBox.shrink();
 
@@ -78,13 +88,13 @@ class _ServicesContent extends State<Services> {
 
     return Column(
       children: [
-        ServiceCategory(
+        TutorialTarget(id: 'home.services', enabled: isFirst, child: ServiceCategory(
           title: office.getOfficeName(lang),
           services: filteredServices.isNotEmpty
               ? filteredServices
               : office.services,
           onTitleChange: widget.onTitleChange,
-        ),
+        )),
         const SizedBox(height: 30),
       ],
     );
@@ -248,7 +258,7 @@ class _ServicesContent extends State<Services> {
                               sliver: SliverList(
                                 delegate: SliverChildBuilderDelegate(
                                   (context, index) =>
-                                      buildFilteredCategory(offices[index]),
+                                      buildFilteredCategory(offices[index], isFirst: index == 0),
                                   childCount: offices.length,
                                 ),
                               ),
@@ -265,7 +275,7 @@ class _ServicesContent extends State<Services> {
             Positioned(
               bottom: 20,
               right: 20,
-              child: Material(
+              child: TutorialTarget(id: 'home.chatbot', child: Material(
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
@@ -329,7 +339,7 @@ class _ServicesContent extends State<Services> {
                     ),
                   ),
                 ),
-              ),
+              )),
             ),
           ],
         ),

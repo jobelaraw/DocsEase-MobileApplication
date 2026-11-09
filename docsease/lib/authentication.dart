@@ -1,4 +1,5 @@
 import 'package:docsease/custom_button.dart';
+import 'package:docsease/app_tutorial.dart';
 import 'package:docsease/firebase_services.dart';
 import 'package:docsease/custom_textfield.dart';
 import 'package:docsease/app_modals.dart';
@@ -1006,11 +1007,14 @@ class _SignUpState extends State<SignUp> {
               settings.setPauseUpdates(true);
               setState(() => _isEmailLoading = true);
 
+              await AppTutorial.markSignupPending();
               await _authService.signUp(
                 widget.emailController.text.trim(),
                 widget.passwordController.text.trim(),
                 widget.usernameController.text.trim(),
               );
+              // Account created -> enable the first-time tutorial.
+              await AppTutorial.begin();
 
               if (mounted) {
                 setState(() => _isEmailLoading = false);
@@ -1026,6 +1030,7 @@ class _SignUpState extends State<SignUp> {
                 );
               }
             } catch (e) {
+              AppTutorial.cancelSignupPending();
               settings.setPauseUpdates(false);
               if (e is FirebaseAuthException &&
                   e.code == 'network-request-failed') {
@@ -1082,7 +1087,14 @@ class _SignUpState extends State<SignUp> {
               settings.setPauseUpdates(true);
 
               final authService = FirebaseServices();
+              await AppTutorial.markSignupPending();
               final result = await authService.signUpWithGoogle();
+              if (result != null) {
+                // Account created -> enable the first-time tutorial.
+                await AppTutorial.begin();
+              } else {
+                await AppTutorial.cancelSignupPending();
+              }
 
               if (mounted) {
                 setState(() => _isGoogleLoading = false);
@@ -1103,6 +1115,7 @@ class _SignUpState extends State<SignUp> {
                 }
               }
             } catch (e) {
+              AppTutorial.cancelSignupPending();
               settings.setPauseUpdates(false);
               if (mounted) {
                 setState(() => _isGoogleLoading = false);
