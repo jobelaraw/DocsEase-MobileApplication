@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:docsease/app_tutorial.dart';
 import 'dart:math';
 import 'dart:io' show SocketException;
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -170,6 +171,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         _isLoadingHistory = false;
         // Chips are only for a fresh chat, not a conversation that has history
         _showSuggestions = !_messages.any((m) => m.isUser);
+      });
+
+      // First-time tutorial
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) AppTutorial.run(context, TutorialSection.chatbot);
       });
     }
   }
@@ -685,7 +691,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                     left: 0,
                     right: 0,
                     bottom: 8,
-                    child: _buildSuggestionCards(),
+                    child: TutorialTarget(id: 'chat.chips', child: _buildSuggestionCards()),
                   ),
               ],
             ),
@@ -706,7 +712,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: Container(
+                  child: TutorialTarget(id: 'chat.input', child: Container(
                     height: 50,
                     decoration: BoxDecoration(
                       color: Theme.of(context).brightness == Brightness.dark
@@ -724,10 +730,10 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                       ),
                     ),
-                  ),
+                  )),
                 ),
                 const SizedBox(width: 10),
-                GestureDetector(
+                TutorialTarget(id: 'chat.send', child: GestureDetector(
                   onTap: _sendMessage,
                   child: Container(
                     width: 50,
@@ -744,7 +750,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                       size: 24,
                     ),
                   ),
-                ),
+                )),
               ],
             ),
           ),
@@ -1357,7 +1363,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             style: GoogleFonts.inter(fontSize: 14, height: 1.4, color: onSurface.withValues(alpha: 0.8)),
           ),
           const SizedBox(height: 18),
-          ...services.map(_buildWelcomeServiceCard),
+          TutorialTarget(
+            id: 'chat.cards',
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: services.map(_buildWelcomeServiceCard).toList(),
+            ),
+          ),
         ],
       ),
     );

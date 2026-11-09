@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:docsease/app_tutorial.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -193,7 +194,7 @@ class _ProfileState extends State<Profile> {
                             Positioned(
                               bottom: 0,
                               right: 0,
-                              child: GestureDetector(
+                              child: TutorialTarget(id: 'profile.edit', child: GestureDetector(
                                 onTap: () {
                                   widget.onTitleChange('Edit Profile');
                                   Navigator.push(
@@ -223,7 +224,7 @@ class _ProfileState extends State<Profile> {
                                     fit: BoxFit.contain,
                                   ),
                                 ),
-                              ),
+                              )),
                             ),
                           ],
                         ),
@@ -274,7 +275,7 @@ class _ProfileState extends State<Profile> {
                 // Replaced SingleChildScrollView with Padding
                 Padding(
                   padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
-                  child: Container(
+                  child: TutorialTarget(id: 'profile.history', child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -308,7 +309,7 @@ class _ProfileState extends State<Profile> {
                         Flexible(child: _buildServiceHistoryStream()),
                       ],
                     ),
-                  ),
+                  )),
                 ),
               ],
             ),

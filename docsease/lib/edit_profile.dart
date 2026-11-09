@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:docsease/app_tutorial.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:docsease/custom_button.dart';
 import 'package:docsease/custom_textfield.dart';
@@ -61,6 +62,10 @@ class _EditProfileState extends State<EditProfile> {
   void initState() {
     super.initState();
     _fetchUserData();
+    // First-time tutorial
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) AppTutorial.run(context, TutorialSection.editProfile);
+    });
   }
 
   @override
@@ -285,7 +290,7 @@ class _EditProfileState extends State<EditProfile> {
                             Positioned(
                               bottom: 0,
                               right: 0,
-                              child: GestureDetector(
+                              child: TutorialTarget(id: 'edit.photo', child: GestureDetector(
                                 onTap: _showImagePickerOptions,
                                 child: Container(
                                   padding: const EdgeInsets.all(6),
@@ -298,7 +303,7 @@ class _EditProfileState extends State<EditProfile> {
                                   ),
                                   child: Image.asset('assets/camera_icon.png', width: 20, height: 20, color: Colors.black),
                                 ),
-                              ),
+                              )),
                             ),
                           ],
                         ),
@@ -338,7 +343,7 @@ class _EditProfileState extends State<EditProfile> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CustomTextField(
+                        TutorialTarget(id: 'edit.username', child: CustomTextField(
                           inputLabel: 'USERNAME',
                           inputHint: currentUsername,
                           inputType: TextInputType.text,
@@ -361,7 +366,7 @@ class _EditProfileState extends State<EditProfile> {
                             });
                           },
                           forceValidate: invalidInput || _isUsernameTaken,
-                        ),
+                        )),
                         const SizedBox(height: 20),
 
                         // OTP Verification Row
@@ -374,7 +379,7 @@ class _EditProfileState extends State<EditProfile> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Row(
+                        TutorialTarget(id: 'edit.verify', child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
@@ -432,7 +437,7 @@ class _EditProfileState extends State<EditProfile> {
                               ),
                             ),
                           ],
-                        ),
+                        )),
                         if (_isOtpSent && !_isCodeVerified)
                           Padding(
                             padding: const EdgeInsets.only(top: 8),
@@ -446,7 +451,7 @@ class _EditProfileState extends State<EditProfile> {
                         const SizedBox(height: 20),
 
                         // Locked Password Fields
-                        Opacity(
+                        TutorialTarget(id: 'edit.password', child: Opacity(
                           opacity: _isCodeVerified ? 1.0 : 0.4,
                           child: IgnorePointer(
                             ignoring: !_isCodeVerified,
@@ -494,7 +499,7 @@ class _EditProfileState extends State<EditProfile> {
                               ],
                             ),
                           ),
-                        ),
+                        )),
                         const SizedBox(height: 30),
 
                         // Save Changes Button

@@ -1,4 +1,5 @@
 import 'package:docsease/settings_provider.dart';
+import 'package:docsease/app_tutorial.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -194,7 +195,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Container(
+                        TutorialTarget(id: 'settings.appearance', child: Container(
                           decoration: BoxDecoration(
                             color: Theme.of(context).brightness == Brightness.dark
                                 ? Theme.of(context).colorScheme.primary
@@ -294,7 +295,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             ],
                           ),
-                        ),
+                        )),
 
                         const SizedBox(height: 24),
 
@@ -306,7 +307,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Container(
+                        TutorialTarget(id: 'settings.fontsize', child: Container(
                           decoration: BoxDecoration(
                             color: Theme.of(context).brightness == Brightness.dark
                                 ? Theme.of(context).colorScheme.primary
@@ -382,12 +383,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             ],
                           ),
-                        ),
+                        )),
 
                         const SizedBox(height: 28),
 
                         // Save Changes Button
-                        CustomButton(
+                        TutorialTarget(id: 'settings.save', child: CustomButton(
                           buttonText: AppLocalizations.translate(
                             'Save Changes',
                             settingsProvider.pendingLanguage,
@@ -396,7 +397,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           btnRadius: 15,
                           isLoading: isChangesLoading,
                           onTapAction: _saveChanges,
-                        ),
+                        )),
                       ],
                     ),
                   ),
