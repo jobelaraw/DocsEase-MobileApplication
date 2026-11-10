@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 /// Safely converts a Firestore value into a List<String>.
@@ -88,6 +87,7 @@ class ServiceDetail {
   final List<ServiceTab> tabsFil;
   final String location;
   final String duration;
+  final String schedule;
   final String contactPhone;
   final String contactEmail;
   final String cost;
@@ -111,6 +111,7 @@ class ServiceDetail {
     required this.tabsFil,
     required this.location,
     required this.duration,
+    this.schedule = '',
     required this.contactPhone,
     required this.contactEmail,
     required this.cost,
@@ -201,6 +202,7 @@ class ServiceDetail {
           ? _stringValue(json['location'] ?? officeJson['location'])
           : 'City Hall',
       duration: '',
+      schedule: _stringValue(officeJson['schedule']),
       contactPhone: _stringValue(
         json['contact_phone'] ?? officeJson['contact_phone'],
       ),

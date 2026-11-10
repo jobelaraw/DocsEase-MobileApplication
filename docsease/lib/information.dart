@@ -613,7 +613,7 @@ class _ContentList extends StatelessWidget {
         const SizedBox(height: 24),
 
 
-        _ScheduleTile(language: language),
+        _ScheduleTile(schedule: detail.schedule, language: language),
       ],
     );
   }
@@ -1585,47 +1585,103 @@ class _InfoGrid extends StatelessWidget {
 
 }
 
-// -----------------------------------------------------------------------------
 // OFFICE SCHEDULE
-// -----------------------------------------------------------------------------
+class _ParsedSchedule {
+  final int dayFrom;
+  final int dayTo;
+  final int openMinutes;
+  final int closeMinutes;
 
+  const _ParsedSchedule(
+    this.dayFrom,
+    this.dayTo,
+    this.openMinutes,
+    this.closeMinutes,
+  );
 
+  static const _dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  static const _dayNames = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+
+  static final RegExp _pattern = RegExp(
+    r'^\s*([A-Za-z]{3})(?:\s*-\s*([A-Za-z]{3}))?\s*,?\s*'
+    r'(\d{1,2})(?::(\d{2}))?\s*(AM|PM)\s*-\s*'
+    r'(\d{1,2})(?::(\d{2}))?\s*(AM|PM)\s*$',
+    caseSensitive: false,
+  );
+
+  static int _minutes(String h, String? m, String ap) {
+    var hour = int.parse(h) % 12;
+    if (ap.toUpperCase() == 'PM') hour += 12;
+    return hour * 60 + (m == null ? 0 : int.parse(m));
+  }
+
+  /// Returns null when [raw] is empty or not in the expected format.
+  static _ParsedSchedule? parse(String raw) {
+    final m = _pattern.firstMatch(raw);
+    if (m == null) return null;
+
+    final from = _dayKeys.indexOf(m.group(1)!.toLowerCase());
+    final to = m.group(2) == null
+        ? from
+        : _dayKeys.indexOf(m.group(2)!.toLowerCase());
+    if (from < 0 || to < 0) return null;
+
+    return _ParsedSchedule(
+      from + 1,
+      to + 1,
+      _minutes(m.group(3)!, m.group(4), m.group(5)!),
+      _minutes(m.group(6)!, m.group(7), m.group(8)!),
+    );
+  }
+
+  String get dayLabel => dayFrom == dayTo
+      ? _dayNames[dayFrom - 1]
+      : '${_dayNames[dayFrom - 1]} - ${_dayNames[dayTo - 1]}';
+
+  static String _fmt(int minutes) {
+    final h24 = minutes ~/ 60;
+    final min = (minutes % 60).toString().padLeft(2, '0');
+    final h12 = h24 % 12 == 0 ? 12 : h24 % 12;
+    return '$h12:$min ${h24 >= 12 ? 'PM' : 'AM'}';
+  }
+
+  String get timeLabel => '${_fmt(openMinutes)} - ${_fmt(closeMinutes)}';
+
+  bool isOpenAt(DateTime now) {
+    final d = now.weekday;
+    final inDays = dayFrom <= dayTo
+        ? (d >= dayFrom && d <= dayTo)
+        : (d >= dayFrom || d <= dayTo);
+    if (!inDays) return false;
+
+    final t = now.hour * 60 + now.minute;
+    return openMinutes < closeMinutes
+        ? (t >= openMinutes && t < closeMinutes)
+        : (t >= openMinutes || t < closeMinutes);
+  }
+}
 
 class _ScheduleTile extends StatelessWidget {
+  final String schedule;
   final String language;
 
-  const _ScheduleTile({required this.language});
+  const _ScheduleTile({required this.schedule, required this.language});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Get the current local date and time of the device.
-    final now = DateTime.now();
-
-    // DateTime.weekday: Monday = 1, Sunday = 7.
-    final isWeekday = now.weekday >= DateTime.monday &&
-        now.weekday <= DateTime.friday;
-
-    // Open from 8:00 AM until 5:00 PM, Monday to Friday.
-    final openingTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      8,
-    );
-
-    final closingTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      17,
-    );
-
-    final isOpen = isWeekday &&
-        !now.isBefore(openingTime) &&
-        now.isBefore(closingTime);
+    final parsed = _ParsedSchedule.parse(schedule);
+    final isOpen = parsed != null && parsed.isOpenAt(DateTime.now());
 
     final statusText = isOpen ? 'OPEN NOW' : 'CLOSED NOW';
     final statusColor = isOpen
@@ -1679,7 +1735,7 @@ class _ScheduleTile extends StatelessWidget {
                 ),
               ),
 
-              // Smaller status badge with dynamic text and color.
+              if (parsed != null)
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 9,
@@ -1709,7 +1765,7 @@ class _ScheduleTile extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Monday - Friday',
+                  parsed?.dayLabel ?? 'Schedule not available',
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -1720,7 +1776,7 @@ class _ScheduleTile extends StatelessWidget {
               const SizedBox(width: 12),
               Flexible(
                 child: Text(
-                  '8:00 AM - 5:00 PM',
+                  parsed?.timeLabel ?? '',
                   textAlign: TextAlign.end,
                   style: GoogleFonts.inter(
                     fontSize: 14,
