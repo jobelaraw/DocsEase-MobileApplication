@@ -1,5 +1,5 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { onDocumentWritten } = require("firebase-functions/v2/firestore");
+const { onDocumentWritten, onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
@@ -395,5 +395,52 @@ exports.translateOffice = onDocumentWritten(
         }
 
         return event.data.after.ref.update(updates);
+    }
+);
+// Push notification: whenever a notification is added to a user's in-app list
+// (users/{uid}/notifications/{notifId}), send it to every device that user is
+// signed in on. Device tokens are saved by the app in users/{uid}.fcm_tokens.
+exports.sendPushOnNotificationCreated = onDocumentCreated(
+    "users/{uid}/notifications/{notifId}",
+    async (event) => {
+        const notif = event.data && event.data.data();
+        if (!notif) return null;
+
+        const { uid, notifId } = event.params;
+        const userRef = admin.firestore().collection("users").doc(uid);
+        const userSnap = await userRef.get();
+        const tokens = (userSnap.exists && userSnap.get("fcm_tokens")) || [];
+        if (tokens.length === 0) return null;
+
+        const response = await admin.messaging().sendEachForMulticast({
+            tokens,
+            notification: {
+                title: notif.title || "DocsEase Update", // same fallback as the in-app list
+                body: notif.body || "",
+            },
+            // Data values must be strings; the app opens the notification by this id
+            data: {
+                notification_id: notifId,
+                service_id: String(notif.service_id || ""),
+            },
+            android: { priority: "high" },
+            apns: { payload: { aps: { sound: "default" } } },
+        });
+
+        // Drop tokens of uninstalled apps / signed-out devices
+        const dead = [];
+        response.responses.forEach((r, i) => {
+            const code = r.error && r.error.code;
+            if (code === "messaging/registration-token-not-registered" ||
+                code === "messaging/invalid-registration-token") {
+                dead.push(tokens[i]);
+            }
+        });
+        if (dead.length > 0) {
+            await userRef.update({ fcm_tokens: admin.firestore.FieldValue.arrayRemove(...dead) });
+        }
+
+        console.log(`Push for ${uid}/${notifId}: ${response.successCount} sent, ${dead.length} stale tokens removed`);
+        return null;
     }
 );

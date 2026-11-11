@@ -75,6 +75,10 @@
 		<string>DocsEase needs access to your gallery so you can choose a profile picture.</string>
 		<key>NSCameraUsageDescription</key>
 		<string>DocsEase needs access to your camera so you can take a profile picture.</string>
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>remote-notification</string>
+		</array>
 		<key>UIStatusBarHidden</key>
 		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
