@@ -61,6 +61,13 @@ class NotificationService {
     });
   }
 
+  // Used when a push notification is tapped (it only carries the doc id)
+  Future<AppNotification?> getNotification(String notificationId) async {
+    final doc = await _col?.doc(notificationId).get();
+    if (doc == null || !doc.exists || doc.data() == null) return null;
+    return AppNotification.fromJson(doc.id, doc.data()!);
+  }
+
   Future<void> markNotificationAsRead(String notificationId) async {
     await _col?.doc(notificationId).update({'is_read': true});
   }

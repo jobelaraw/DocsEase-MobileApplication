@@ -9,6 +9,7 @@ import 'package:docsease/info_model.dart';
 import 'package:hive/hive.dart';
 import 'dart:io';
 import 'package:docsease/legal_content.dart';
+import 'package:docsease/push_notifications.dart';
 
 // sign in - G account already has profile
 class GoogleAccountAlreadyUsedException implements Exception {}
@@ -248,6 +249,8 @@ class FirebaseServices {
   }
 
   Future<void> signOutUser() async {
+    // Must run before signOut: removing this device's token needs the user's auth
+    await PushNotificationService.instance.unregister();
     try {
       // on web the Google session is managed by Firebase Auth
       if (!kIsWeb) {
@@ -456,6 +459,9 @@ class FirebaseServices {
     String uid = user.uid;
 
     try {
+      // Stop push for this device (tokens are also removed with the user doc below)
+      await PushNotificationService.instance.unregister();
+
       final historySnapshot = await _db.collection('users').doc(uid).collection('service_history').get();
       for (var doc in historySnapshot.docs) {
         await doc.reference.delete();
