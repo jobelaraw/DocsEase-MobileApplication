@@ -25,6 +25,7 @@ import 'package:hive/hive.dart';
 import 'dart:async';
 import 'package:docsease/faq.dart';
 import 'package:provider/provider.dart';
+import 'package:docsease/unity_navigation_screen.dart';
 
 class SideBar extends StatefulWidget {
   final bool isGuest;
@@ -880,18 +881,13 @@ class _SideBarState extends State<SideBar> {
                                       return;
                                     }
 
-                                    // Registered user: still "Coming soon" (old code)
+                                    // Registered user: open Unity with no destination (free access)
                                     Navigator.pop(context);
                                     Future.delayed(const Duration(milliseconds: 50), () {
                                       if (!mounted) return;
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            AppLocalizations.translate(
-                                              'Coming soon',
-                                              Provider.of<SettingsProvider>(context, listen: false).language,
-                                            ),
-                                          ),
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => const UnityNavigationScreen(),
                                         ),
                                       );
                                     });
