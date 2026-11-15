@@ -15,6 +15,7 @@ import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:math';
+import 'package:docsease/unity_navigation_screen.dart';
 
 class InformationScreen extends StatefulWidget {
   final ServiceDetail detail;
@@ -773,7 +774,7 @@ class _StepItem extends StatelessWidget {
     required this.language,
   });
 
-  void _startNavigation(BuildContext context) {
+    Future<void> _startNavigation(BuildContext context) async {
     if (FirebaseAuth.instance.currentUser == null) {
       RequireSignInModal.show(
         context,
@@ -802,11 +803,13 @@ class _StepItem extends StatelessWidget {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          AppLocalizations.translate('Coming soon', language),
-        ),
+    // step.navigateTo is an office or room name. Unity needs its map_slot.
+    final destination = await resolveNavigationDestination(step.navigateTo);
+    if (!context.mounted) return;
+
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute(
+        builder: (_) => UnityNavigationScreen(destination: destination),
       ),
     );
   }
