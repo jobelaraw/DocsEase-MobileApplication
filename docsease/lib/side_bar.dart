@@ -6,7 +6,6 @@ import 'package:docsease/authentication.dart';
 import 'package:docsease/firebase_services.dart';
 import 'package:docsease/notifications.dart';
 import 'package:docsease/push_notifications.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:docsease/main.dart';
 import 'package:docsease/profile.dart';
 import 'package:docsease/services.dart';
@@ -68,7 +67,6 @@ class _SideBarState extends State<SideBar> {
         if (!mounted) return;
         PushNotificationService.instance.init(
           onOpened: _openNotificationById,
-          onForeground: _showForegroundPush,
         );
       });
     }
@@ -234,24 +232,6 @@ class _SideBarState extends State<SideBar> {
     final notif = await NotificationService().getNotification(notificationId);
     if (!mounted || notif == null) return;
     _handleNotificationDeepLink(notif);
-  }
-
-  // Push arrived while the app is open: Android shows nothing by itself,
-  // so surface it here (the bell badge updates on its own via the stream).
-  void _showForegroundPush(RemoteMessage message) {
-    if (!mounted) return;
-    final title = message.notification?.title ?? 'New notification';
-    final id = message.data['notification_id'];
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 4),
-        action: (id is String && id.isNotEmpty)
-            ? SnackBarAction(label: 'View', onPressed: () => _openNotificationById(id))
-            : null,
-      ),
-    );
   }
 
   void _handleNotificationDeepLink(AppNotification notif) async {
