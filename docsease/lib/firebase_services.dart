@@ -298,6 +298,11 @@ class FirebaseServices {
     }
   }
 
+  // Services moved to Deleted Records by the Super Admin (soft delete) have isDeleted == true.
+  // Older services without the field are active.
+  static bool _isActiveService(Map<String, dynamic>? data) =>
+      data != null && data['isDeleted'] != true;
+
   Future<List<Office>> getOffices() async {
     try {
       QuerySnapshot snapshot = await _db.collection('offices').get();
@@ -309,7 +314,9 @@ class FirebaseServices {
 
         QuerySnapshot serviceSnapshot = await doc.reference.collection('services').get();
 
-        officeData['services'] = serviceSnapshot.docs.map((sDoc) {
+        officeData['services'] = serviceSnapshot.docs
+            .where((sDoc) => _isActiveService(sDoc.data() as Map<String, dynamic>?))
+            .map((sDoc) {
           var sData = sDoc.data() as Map<String, dynamic>;
           sData['service_id'] = sDoc.id;
           return sData;
@@ -371,6 +378,7 @@ class FirebaseServices {
             for (var doc in snap.docs) {
               final officeId = doc.reference.parent.parent?.id;
               if (officeId == null) continue;
+              if (!_isActiveService(doc.data())) continue;
               final data = Map<String, dynamic>.from(doc.data());
               data['service_id'] = doc.id;
               grouped.putIfAbsent(officeId, () => []).add(data);
@@ -417,6 +425,7 @@ class FirebaseServices {
 
         if (serviceDoc.exists) {
           var serviceData = serviceDoc.data() as Map<String, dynamic>;
+          if (!_isActiveService(serviceData)) return null;
           serviceData['service_id'] = serviceDoc.id;
 
           var officeData = matchedOffice.data() as Map<String, dynamic>;
@@ -433,6 +442,7 @@ class FirebaseServices {
         final sDoc = await office.reference.collection('services').doc(serviceId).get();
         if (sDoc.exists) {
           var serviceData = sDoc.data() as Map<String, dynamic>;
+          if (!_isActiveService(serviceData)) return null;
           serviceData['service_id'] = sDoc.id;
 
           var officeData = office.data() as Map<String, dynamic>;
