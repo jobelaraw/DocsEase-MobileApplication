@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:docsease/screens/auth/authentication.dart';
-import 'package:docsease/screens/shell/side_bar.dart';
+import 'package:docsease/screens/sidebar/side_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';

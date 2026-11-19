@@ -862,7 +862,6 @@ class _SideBarState extends State<SideBar> {
                                     child: SideBarOption(
                                       selectedImage: 'assets/navigate_icon.png',
                                       unselectedImage: 'assets/navigate_outlined_icon.png',
-                                      iconData: Icons.location_on_outlined,
                                       optionName: AppLocalizations.translate(
                                         'Navigate',
                                         Provider.of<SettingsProvider>(context).language,

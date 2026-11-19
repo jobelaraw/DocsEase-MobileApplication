@@ -1,5 +1,5 @@
 import 'package:docsease/screens/auth/app_start.dart';
-import 'package:docsease/screens/shell/side_bar.dart';
+import 'package:docsease/screens/sidebar/side_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
