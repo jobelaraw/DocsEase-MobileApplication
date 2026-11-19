@@ -1,5 +1,5 @@
-import 'package:docsease/app_start.dart';
-import 'package:docsease/side_bar.dart';
+import 'package:docsease/screens/auth/app_start.dart';
+import 'package:docsease/screens/sidebar/side_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -9,7 +9,7 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'firebase_options.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:docsease/settings_provider.dart';
+import 'package:docsease/providers/settings_provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 

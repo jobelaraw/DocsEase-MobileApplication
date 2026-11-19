@@ -1,0 +1,1660 @@
+import 'dart:async';
+import 'package:docsease/screens/about/about_us.dart';
+import 'package:docsease/widgets/tutorial/app_tutorial.dart';
+import 'package:docsease/screens/chat/chatbot.dart';
+import 'package:docsease/widgets/modals/app_modals.dart';
+import 'package:docsease/screens/auth/authentication.dart';
+import 'package:docsease/services/auth/firebase_services.dart';
+import 'package:docsease/services/notifications/notifications.dart';
+import 'package:docsease/services/notifications/push_notifications.dart';
+import 'package:docsease/main.dart';
+import 'package:docsease/screens/profile/profile.dart';
+import 'package:docsease/screens/services/services.dart';
+import 'package:docsease/screens/settings/settings.dart';
+import 'package:docsease/providers/settings_provider.dart';
+import 'package:docsease/core/localization/app_localizations.dart';
+import 'package:docsease/core/navigation/navigator_transition.dart';
+import 'package:docsease/models/info_model.dart';
+import 'package:docsease/screens/services/information.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:hive/hive.dart';
+import 'package:docsease/screens/about/faq.dart';
+import 'package:provider/provider.dart';
+import 'package:docsease/screens/unity/unity_navigation_screen.dart';
+
+class SideBar extends StatefulWidget {
+  final bool isGuest;
+  const SideBar({super.key, this.isGuest = false});
+
+  @override
+  State<SideBar> createState() => _SideBarState();
+}
+
+class _SideBarState extends State<SideBar> {
+  int selectedIndex = 0;
+  // ignore: unused_field
+  int _previousIndex = 0;
+  String currentTitle = 'Services';
+
+  final List<int> _tabHistory = [0];
+  final List<String> _tabTitles = [
+    'Services',
+    'Profile',
+    'About',
+    'Settings',
+    'Support & FAQs' /*,'Navigate'*/,
+  ];
+
+  final GlobalKey<NavigatorState> _servicesNavKey = GlobalKey<NavigatorState>();
+  final GlobalKey<NavigatorState> _profileNavKey = GlobalKey<NavigatorState>();
+  late final List<Widget> screens;
+
+  bool isOnline = true;
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
+
+  String currentUsername = 'Loading...';
+  String currentProfile = 'assets/default_profile.png';
+
+  bool _settingsLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _checkInitialConnection();
+    _fetchUserData();
+
+    // Push notifications: registered users only (guests have no notifications)
+    if (!widget.isGuest && FirebaseAuth.instance.currentUser != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        PushNotificationService.instance.init(onOpened: _openNotificationById);
+      });
+    }
+
+    Provider.of<SettingsProvider>(context, listen: false).loadSettings();
+
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) {
+      if (mounted) {
+        setState(() {
+          isOnline = !results.contains(ConnectivityResult.none);
+        });
+      }
+    });
+
+    screens = [
+      ServicesNavigator(
+        navigatorKey: _servicesNavKey,
+        onTitleChange: (newTitle) {
+          if (mounted) {
+            if (newTitle.startsWith('__switch_tab_')) {
+              final tabIndex = int.tryParse(newTitle.replaceFirst('__switch_tab_', '')) ?? 0;
+              setState(() {
+                _tabTitles[0] = 'Services';
+              });
+              _executeDrawerSwitch(tabIndex);
+            } else {
+              setState(() {
+                _tabTitles[0] = newTitle;
+                if (selectedIndex == 0) currentTitle = newTitle;
+              });
+            }
+          }
+        },
+      ),
+      ProfileNavigator(
+        navigatorKey: _profileNavKey,
+        onTitleChange: (newTitle) {
+          if (mounted) {
+            setState(() {
+              _tabTitles[1] = newTitle;
+              if (selectedIndex == 1) currentTitle = newTitle;
+            });
+          }
+        },
+      ),
+      const AboutUsScreen(),
+      const SettingsScreen(),
+      const FaqScreen(),
+      // const NavigateScreen(),
+    ];
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_settingsLoaded) {
+      _settingsLoaded = true;
+      Provider.of<SettingsProvider>(context, listen: false).loadSettings();
+    }
+  }
+
+  Future<void> _checkInitialConnection() async {
+    final results = await Connectivity().checkConnectivity();
+    if (mounted) {
+      setState(() {
+        isOnline = !results.contains(ConnectivityResult.none);
+      });
+    }
+  }
+
+  Future<void> _fetchUserData() async {
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      try {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          final data = userDoc.data() as Map<String, dynamic>;
+          if (mounted) {
+            setState(() {
+              currentUsername = data['username'] ?? 'Guest Account';
+              currentProfile = data['profile_img'] ?? 'assets/default_profile.png';
+            });
+          }
+        }
+      } catch (e) {
+        print("Error fetching user data: $e");
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription.cancel();
+    super.dispose();
+  }
+
+  void _handleDrawerNavigation(int targetIndex) {
+    if (selectedIndex == 3 && targetIndex != 3) {
+      final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+
+      if (settingsProvider.hasUnsavedPreview) {
+        ExitConfirmationModal.show(
+          context,
+          onPrimary: () {
+            Navigator.of(context).pop();
+            settingsProvider.revertDarkModePreview();
+            _executeDrawerSwitch(targetIndex);
+          },
+          onSecondary: () {
+            Navigator.of(context).pop();
+          },
+        );
+        return;
+      }
+      settingsProvider.revertDarkModePreview();
+    }
+
+    _executeDrawerSwitch(targetIndex);
+  }
+
+  void _executeDrawerSwitch(int targetIndex) {
+    if (selectedIndex == targetIndex) {
+      if (targetIndex == 0) {
+        _servicesNavKey.currentState?.popUntil((route) => route.isFirst);
+        setState(() {
+          _tabTitles[0] = 'Services';
+          currentTitle = 'Services';
+        });
+      } else if (targetIndex == 1) {
+        _profileNavKey.currentState?.popUntil((route) => route.isFirst);
+        setState(() {
+          _tabTitles[1] = 'Profile';
+          currentTitle = 'Profile';
+        });
+      }
+    } else {
+      setState(() {
+        _previousIndex = selectedIndex;
+        _tabHistory.remove(targetIndex);
+        _tabHistory.add(targetIndex);
+        selectedIndex = targetIndex;
+        currentTitle = _tabTitles[targetIndex];
+      });
+
+      // First-time tutorial
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (targetIndex == 1) AppTutorial.run(context, TutorialSection.profile);
+        if (targetIndex == 3) AppTutorial.run(context, TutorialSection.settings);
+      });
+    }
+  }
+
+  // Push tapped (app was in background or closed): reuse the bell's tap behavior
+  Future<void> _openNotificationById(String notificationId) async {
+    final notif = await NotificationService().getNotification(notificationId);
+    if (!mounted || notif == null) return;
+    _handleNotificationDeepLink(notif);
+  }
+
+  void _handleNotificationDeepLink(AppNotification notif) async {
+    if (widget.isGuest) return; // guests have no notifications
+    NotificationService().markNotificationAsRead(notif.id);
+
+    if (notif.serviceId.isEmpty) {
+      OfficeNotificationModal.show(context, title: notif.title, body: notif.body);
+      return;
+    }
+
+    _executeDrawerSwitch(0);
+    _servicesNavKey.currentState?.popUntil((route) => route.isFirst);
+
+    LoadingModal.show(context, title: "Loading Service...");
+    ServiceDetail? service = await FirebaseServices().getServiceById(notif.serviceId);
+    if (!mounted) return;
+    LoadingModal.hide(context);
+
+    if (service != null) {
+      setState(() {
+        _tabTitles[0] = 'Information';
+        if (selectedIndex == 0) currentTitle = 'Information';
+      });
+
+      _servicesNavKey.currentState?.push(SlideRoute(page: InformationScreen(detail: service))).then(
+        (_) {
+          if (mounted) {
+            setState(() {
+              _tabTitles[0] = 'Services';
+              if (selectedIndex == 0) currentTitle = 'Services';
+            });
+          }
+        },
+      );
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Service not found or no longer available.')));
+    }
+  }
+
+  Future<bool> _handleBackNavigation() async {
+    bool handledByNested = false;
+
+    if (selectedIndex == 0) {
+      handledByNested = await _servicesNavKey.currentState?.maybePop() ?? false;
+    } else if (selectedIndex == 1) {
+      handledByNested = await _profileNavKey.currentState?.maybePop() ?? false;
+    }
+
+    if (handledByNested) {
+      return false;
+    }
+
+    if (_tabHistory.length > 1) {
+      if (selectedIndex == 3) {
+        final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+
+        if (settingsProvider.hasUnsavedPreview) {
+          ExitConfirmationModal.show(
+            context,
+            onPrimary: () {
+              Navigator.of(context).pop();
+              settingsProvider.revertDarkModePreview();
+              setState(() {
+                _previousIndex = selectedIndex;
+                _tabHistory.removeLast();
+                selectedIndex = _tabHistory.last;
+                currentTitle = _tabTitles[selectedIndex];
+              });
+            },
+            onSecondary: () {
+              Navigator.of(context).pop();
+            },
+          );
+          return false;
+        }
+        settingsProvider.revertDarkModePreview();
+      }
+      setState(() {
+        _previousIndex = selectedIndex;
+        _tabHistory.removeLast();
+        selectedIndex = _tabHistory.last;
+        currentTitle = _tabTitles[selectedIndex];
+      });
+      return false;
+    }
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Notifications exist only for registered users. A guest is either flagged as guest
+    // or simply not signed in to Firebase, so check both.
+    final bool hideBell = widget.isGuest || FirebaseAuth.instance.currentUser == null;
+    final bool onServicesTab = selectedIndex == 0 && currentTitle == 'Services';
+    final bool onChatbot = selectedIndex == 0 && currentTitle == 'Chatbot';
+    final bool onInformation = selectedIndex == 0 && currentTitle == 'Information';
+
+    return TutorialTarget(
+      id: 'sidebar.root',
+      child: WillPopScope(
+        onWillPop: _handleBackNavigation,
+        child: Scaffold(
+          endDrawerEnableOpenDragGesture: !onChatbot && !onInformation,
+          appBar: AppBar(
+            // No reserved space for the bell when a guest is on the Services tab
+            leadingWidth: (onServicesTab && hideBell) ? 0 : 60,
+            leading: onServicesTab
+                ? (hideBell
+                      ? const SizedBox.shrink() // Guests: no notification bell at all
+                      : Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 6, 0, 6),
+                          child: StreamBuilder<List<AppNotification>>(
+                            stream: NotificationService().streamNotifications(),
+                            builder: (context, notifSnapshot) {
+                              int unreadCount = 0;
+                              List<AppNotification> activeNotifs = [];
+
+                              if (notifSnapshot.hasData) {
+                                activeNotifs = notifSnapshot.data!;
+                                // Check isRead directly from the model
+                                unreadCount = activeNotifs.where((n) => !n.isRead).length;
+                              }
+
+                              return Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  IconButton(
+                                    splashRadius: 20.0,
+                                    icon: Icon(
+                                      Icons.notifications_none_rounded,
+                                      color: Theme.of(context).colorScheme.onPrimary,
+                                      size: 26,
+                                    ),
+                                    onPressed: () {
+                                      NotificationPopupRoute.show(
+                                        context: context,
+                                        child: NotificationModal(
+                                          notifications: activeNotifs,
+                                          onNotificationTap: _handleNotificationDeepLink,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  if (unreadCount > 0)
+                                    Positioned(
+                                      top: 10,
+                                      right: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(3),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFEF4444),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Theme.of(context).colorScheme.primary,
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        constraints: const BoxConstraints(
+                                          minWidth: 10,
+                                          minHeight: 10,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
+                          ),
+                        ))
+                : (selectedIndex == 2
+                      // "?" button: only on the About tab
+                      ? Padding(
+                          padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.help_outline_rounded,
+                              size: 28,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
+                            onPressed: () => _executeDrawerSwitch(4),
+                          ),
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.fromLTRB(15, 15, 6, 15),
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.arrow_back,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
+                            onPressed: _handleBackNavigation,
+                          ),
+                        )),
+            centerTitle: (selectedIndex == 0 && currentTitle == 'Chatbot') ? false : true,
+            titleSpacing: 0,
+            title: selectedIndex == 0 && currentTitle == 'Chatbot'
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(width: 9),
+                      Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 20,
+                            child: ClipOval(
+                              child: Image.asset(
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? 'assets/chatbot_darkmode.png'
+                                    : 'assets/chatbot_icon.png',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: isOnline
+                                ? Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF39D236),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Theme.of(context).colorScheme.primary,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                  )
+                                : Stack(
+                                    children: [
+                                      Container(
+                                        width: 12,
+                                        height: 12,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Theme.of(context).colorScheme.primary,
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 4,
+                                        left: 4,
+                                        child: Container(
+                                          width: 4,
+                                          height: 4,
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context).colorScheme.primary,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              "GaBayan Bot",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              isOnline
+                                  ? AppLocalizations.translate(
+                                      'Online Assistant',
+                                      Provider.of<SettingsProvider>(context).language,
+                                    )
+                                  : AppLocalizations.translate(
+                                      'Offline - Waiting for network...',
+                                      Provider.of<SettingsProvider>(context).language,
+                                    ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                color: Colors.white60,
+                                fontSize: 11,
+                                fontWeight: FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    AppLocalizations.translate(
+                      currentTitle,
+                      Provider.of<SettingsProvider>(context).language,
+                    ),
+                    style: GoogleFonts.inter(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+            actions: [
+              // --- SEARCH + NEW CHAT / CHAT HISTORY (chatbot only) ---
+              if (selectedIndex == 0 && currentTitle == 'Chatbot') ...[
+                TutorialTarget(
+                  id: 'chat.search',
+                  child: IconButton(
+                    splashRadius: 20.0,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: ChatBotScreen.openSearch,
+                    icon: Icon(
+                      Icons.search,
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      size: 24,
+                    ),
+                  ),
+                ),
+                TutorialTarget(
+                  id: 'chat.history',
+                  child: IconButton(
+                    splashRadius: 20.0,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: ChatBotScreen.openHistory,
+                    icon: NewChatIcon(color: Theme.of(context).colorScheme.onPrimary),
+                  ),
+                ),
+              ],
+              // --- DISCLAIMER BUTTON (Information screen only) ---
+              if (onInformation)
+                Padding(
+                  padding: const EdgeInsets.only(right: 15),
+                  child: TutorialTarget(
+                    id: 'info.reminders',
+                    child: IconButton(
+                      splashRadius: 20.0,
+                      tooltip: 'Reminders',
+                      onPressed: () => RemindersModal.show(context, fromTopBar: true),
+                      icon: Icon(
+                        Icons.info_outline_rounded,
+                        size: 26,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                      ),
+                    ),
+                  ),
+                )
+              // --- HAMBURGER MENU (hidden on the chatbot and Information screens) ---
+              else if (!onChatbot)
+                Builder(
+                  builder: (BuildContext context) {
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 0, right: 15),
+                      child: TutorialTarget(
+                        id: 'home.menu',
+                        child: IconButton(
+                          splashRadius: 20.0,
+                          onPressed: () {
+                            Scaffold.of(context).openEndDrawer();
+                          },
+                          icon: ImageIcon(
+                            const AssetImage('assets/hamburger_icon.png'),
+                            size: 20,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              // keeps the chatbot icons off the screen edge now that the hamburger is gone
+              if (onChatbot) const SizedBox(width: 8),
+            ],
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            surfaceTintColor: Colors.transparent,
+            elevation: 1.0,
+            shadowColor: Colors.black.withValues(alpha: 0.3),
+            toolbarHeight: 70,
+          ),
+          endDrawer: Drawer(
+            width: MediaQuery.of(context).size.width > 400
+                ? 300
+                : MediaQuery.of(context).size.width * 0.75,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.only(
+                topRight: Radius.circular(0.0),
+                bottomRight: Radius.circular(0.0),
+              ),
+            ),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: ListView(
+                          padding: EdgeInsets.zero,
+                          children: [
+                            Container(
+                              padding: MediaQuery.of(context).padding.top < 20
+                                  ? const EdgeInsets.all(20)
+                                  : EdgeInsets.fromLTRB(
+                                      20,
+                                      MediaQuery.of(context).padding.top + 20,
+                                      20,
+                                      20,
+                                    ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              child: StreamBuilder<DocumentSnapshot>(
+                                stream: FirebaseAuth.instance.currentUser != null
+                                    ? FirebaseFirestore.instance
+                                          .collection('users')
+                                          .doc(FirebaseAuth.instance.currentUser!.uid)
+                                          .snapshots()
+                                    : null,
+                                builder: (context, snapshot) {
+                                  if (widget.isGuest) {
+                                    return Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      mainAxisAlignment: MainAxisAlignment.start,
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 40,
+                                          backgroundColor: Theme.of(context).colorScheme.primary,
+                                          child: ClipOval(
+                                            child: Image.asset(
+                                              'assets/default_profile.png',
+                                              width: 75,
+                                              height: 75,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Text(
+                                          'Guest Account',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: Theme.of(context).colorScheme.onPrimary,
+                                          ),
+                                        ),
+                                        Text(
+                                          AppLocalizations.translate(
+                                            'Citizen User',
+                                            Provider.of<SettingsProvider>(context).language,
+                                          ),
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.normal,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onPrimary.withValues(alpha: 0.7),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }
+
+                                  if (snapshot.connectionState == ConnectionState.waiting ||
+                                      !snapshot.hasData ||
+                                      !snapshot.data!.exists) {
+                                    return const _SkeletonProfileHeader();
+                                  }
+
+                                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                                  String currentUsername = data['username'] ?? 'Unknown User';
+                                  String currentProfile =
+                                      data['profile_img'] ?? 'assets/default_profile.png';
+                                  bool hasDefaultProfile =
+                                      currentProfile == 'assets/default_profile.png';
+
+                                  return Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 40,
+                                        backgroundColor: Theme.of(context).colorScheme.primary,
+                                        child: ClipOval(
+                                          child: hasDefaultProfile
+                                              ? Image.asset(
+                                                  currentProfile,
+                                                  width: 75,
+                                                  height: 75,
+                                                  fit: BoxFit.cover,
+                                                )
+                                              : Image.network(
+                                                  currentProfile,
+                                                  width: 75,
+                                                  height: 75,
+                                                  fit: BoxFit.cover,
+                                                  loadingBuilder:
+                                                      (context, child, loadingProgress) {
+                                                        if (loadingProgress == null) return child;
+                                                        return _ShimmerEffect(
+                                                          child: Container(
+                                                            width: 75,
+                                                            height: 75,
+                                                            color: Colors.white.withValues(
+                                                              alpha: 0.5,
+                                                            ),
+                                                          ),
+                                                        );
+                                                      },
+                                                  errorBuilder: (_, __, ___) => Image.asset(
+                                                    'assets/default_profile.png',
+                                                    width: 75,
+                                                    height: 75,
+                                                    fit: BoxFit.cover,
+                                                  ),
+                                                ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        currentUsername,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(context).colorScheme.onPrimary,
+                                        ),
+                                      ),
+                                      Text(
+                                        AppLocalizations.translate(
+                                          'Citizen User',
+                                          Provider.of<SettingsProvider>(context).language,
+                                        ),
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.normal,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary.withValues(alpha: 0.7),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(15, 25, 15, 15),
+                              child: Column(
+                                children: [
+                                  SideBarOption(
+                                    selectedImage: 'assets/home_icon.png',
+                                    unselectedImage: 'assets/home_outlined_icon.png',
+                                    optionName: AppLocalizations.translate(
+                                      'Home',
+                                      Provider.of<SettingsProvider>(context).language,
+                                    ),
+                                    isSelected: selectedIndex == 0,
+                                    onTapAction: () {
+                                      Navigator.pop(context);
+                                      Future.delayed(const Duration(milliseconds: 50), () {
+                                        if (mounted) _handleDrawerNavigation(0);
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(height: 13),
+                                  TutorialTarget(
+                                    id: 'drawer.profile',
+                                    child: SideBarOption(
+                                      selectedImage: 'assets/profile_icon.png',
+                                      unselectedImage: 'assets/profile_outlined_icon.png',
+                                      optionName: AppLocalizations.translate(
+                                        'Profile',
+                                        Provider.of<SettingsProvider>(context).language,
+                                      ),
+                                      isSelected: selectedIndex == 1,
+                                      onTapAction: () async {
+                                        if (widget.isGuest) {
+                                          Navigator.pop(context);
+                                          await Future.delayed(const Duration(milliseconds: 200));
+                                          RequireSignInModal.show(
+                                            context,
+                                            title: 'Profile',
+                                            onPrimary: () async {
+                                              Hive.box('auth_box').put('continueGuest', false);
+
+                                              Navigator.pop(context);
+
+                                              Navigator.of(context).pushAndRemoveUntil(
+                                                MaterialPageRoute(
+                                                  builder: (context) => const AuthWrapper(),
+                                                ),
+                                                (route) => false,
+                                              );
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (context) => const Authentication(),
+                                                ),
+                                              );
+                                            },
+                                          );
+                                          return;
+                                        }
+                                        Navigator.pop(context);
+                                        Future.delayed(const Duration(milliseconds: 50), () {
+                                          if (mounted) _handleDrawerNavigation(1);
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(height: 13),
+                                  // ─── NAVIGATE OFFICE/ROOM (AR placeholder) ───
+                                  TutorialTarget(
+                                    id: 'drawer.navigate',
+                                    child: SideBarOption(
+                                      selectedImage: 'assets/navigate_icon.png',
+                                      unselectedImage: 'assets/navigate_outlined_icon.png',
+                                      optionName: AppLocalizations.translate(
+                                        'Navigate',
+                                        Provider.of<SettingsProvider>(context).language,
+                                      ),
+                                      isSelected: false,
+
+                                      onTapAction: () async {
+                                        debugPrint(
+                                          'NAV TAP -> isGuest: ${widget.isGuest}, '
+                                          'user: ${FirebaseAuth.instance.currentUser}, '
+                                          'hive: ${Hive.box('auth_box').get('continueGuest', defaultValue: false)}',
+                                        );
+
+                                        final bool isGuestUser =
+                                            widget.isGuest ||
+                                            FirebaseAuth.instance.currentUser == null ||
+                                            Hive.box(
+                                                  'auth_box',
+                                                ).get('continueGuest', defaultValue: false) ==
+                                                true;
+
+                                        // Guest: show the sign-in modal (same as Profile)
+                                        if (isGuestUser) {
+                                          Navigator.pop(context);
+                                          await Future.delayed(const Duration(milliseconds: 200));
+                                          if (!mounted) return;
+                                          RequireSignInModal.show(
+                                            context,
+                                            title: 'Navigate',
+                                            onPrimary: () async {
+                                              Hive.box('auth_box').put('continueGuest', false);
+
+                                              Navigator.pop(context);
+
+                                              Navigator.of(context).pushAndRemoveUntil(
+                                                MaterialPageRoute(
+                                                  builder: (context) => const AuthWrapper(),
+                                                ),
+                                                (route) => false,
+                                              );
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (context) => const Authentication(),
+                                                ),
+                                              );
+                                            },
+                                          );
+                                          return;
+                                        }
+
+                                        // Registered user: open Unity with no destination (free access)
+                                        Navigator.pop(context);
+                                        Future.delayed(const Duration(milliseconds: 50), () {
+                                          if (!mounted) return;
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (_) => const UnityNavigationScreen(),
+                                            ),
+                                          );
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(height: 13),
+                                  SideBarOption(
+                                    selectedImage: 'assets/about_icon.png',
+                                    unselectedImage: 'assets/about_outlined_icon.png',
+                                    optionName: AppLocalizations.translate(
+                                      'About',
+                                      Provider.of<SettingsProvider>(context).language,
+                                    ),
+                                    isSelected: selectedIndex == 2,
+                                    onTapAction: () {
+                                      Navigator.pop(context);
+                                      Future.delayed(const Duration(milliseconds: 50), () {
+                                        if (mounted) _handleDrawerNavigation(2);
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(height: 13),
+                                  TutorialTarget(
+                                    id: 'drawer.settings',
+                                    child: SideBarOption(
+                                      selectedImage: 'assets/settings_icon.png',
+                                      unselectedImage: 'assets/settings_outlined_icon.png',
+                                      optionName: AppLocalizations.translate(
+                                        'Settings',
+                                        Provider.of<SettingsProvider>(context).language,
+                                      ),
+                                      isSelected: selectedIndex == 3,
+                                      onTapAction: () {
+                                        Navigator.pop(context);
+                                        Future.delayed(const Duration(milliseconds: 50), () {
+                                          if (mounted) _handleDrawerNavigation(3);
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 20, bottom: 20),
+                          child: TextButton.icon(
+                            onPressed: () async {
+                              final settingsProvider = Provider.of<SettingsProvider>(
+                                context,
+                                listen: false,
+                              );
+                              final nav = Navigator.of(context, rootNavigator: true);
+
+                              Navigator.pop(context);
+                              await Future.delayed(const Duration(milliseconds: 200));
+                              if (!mounted) return;
+
+                              LogoutModal.show(
+                                context,
+                                hasUnsavedChanges: settingsProvider.hasUnsavedPreview,
+                                isGuest: widget.isGuest,
+                                onPrimary: () async {
+                                  settingsProvider.revertDarkModePreview();
+                                  nav.pop();
+
+                                  if (widget.isGuest) {
+                                    Hive.box('auth_box').put('continueGuest', false);
+                                  }
+
+                                  final placeholderRoute = PageRouteBuilder<void>(
+                                    transitionDuration: Duration.zero,
+                                    reverseTransitionDuration: Duration.zero,
+                                    pageBuilder: (context, _, __) => const SizedBox.shrink(),
+                                  );
+
+                                  final authRoute = PageRouteBuilder<void>(
+                                    transitionDuration: Duration.zero,
+                                    reverseTransitionDuration: Duration.zero,
+                                    pageBuilder: (context, _, __) => const Authentication(),
+                                  );
+                                  nav.pushAndRemoveUntil(placeholderRoute, (route) => false);
+                                  nav.push(authRoute);
+                                  await WidgetsBinding.instance.endOfFrame;
+
+                                  if (!widget.isGuest) {
+                                    await FirebaseServices().signOutUser();
+                                  }
+
+                                  await settingsProvider.loadSettings();
+                                  await settingsProvider.saveSettings(
+                                    false,
+                                    settingsProvider.language,
+                                    0.5,
+                                  );
+
+                                  nav.replaceRouteBelow(
+                                    anchorRoute: authRoute,
+                                    newRoute: MaterialPageRoute<void>(
+                                      builder: (context) => const AuthWrapper(),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                            icon: ImageIcon(
+                              AssetImage(
+                                widget.isGuest
+                                    ? "assets/logout_icon.png"
+                                    : "assets/logout_icon.png",
+                              ),
+                              size: 20,
+                              color: const Color.fromRGBO(252, 64, 64, 1),
+                            ),
+                            label: Text(
+                              AppLocalizations.translate(
+                                widget.isGuest ? 'Exit' : 'Logout',
+                                Provider.of<SettingsProvider>(context).language,
+                              ),
+                              style: GoogleFonts.inter(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                                color: const Color.fromRGBO(252, 64, 64, 1),
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color.fromRGBO(252, 64, 64, 1),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 8,
+                  left: 8,
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.close,
+                      size: 30,
+                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7),
+                      fontWeight: FontWeight.w100,
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          body: IndexedStack(index: selectedIndex, children: screens),
+        ),
+      ),
+    );
+  }
+}
+
+// NOTIFICATION MODAL & LOGIC
+
+class NotificationModal extends StatefulWidget {
+  final List<AppNotification> notifications;
+  final Function(AppNotification) onNotificationTap;
+
+  const NotificationModal({
+    super.key,
+    required this.notifications,
+    required this.onNotificationTap,
+  });
+
+  @override
+  State<NotificationModal> createState() => _NotificationModalState();
+}
+
+class _NotificationModalState extends State<NotificationModal> {
+  String _activeTab = 'Today';
+
+  // Local copy so deleted items disappear from the open modal right away
+  late List<AppNotification> _items;
+  bool _selectMode = false;
+  final Set<String> _selectedIds = {};
+  bool _deleting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _items = List.of(widget.notifications);
+  }
+
+  String get _title {
+    if (!_selectMode) return 'Notifications';
+    if (_selectedIds.isEmpty) return 'Select items';
+    return 'Selected items (${_selectedIds.length})';
+  }
+
+  void _enterSelectMode() => setState(() => _selectMode = true);
+
+  void _exitSelectMode() => setState(() {
+    _selectMode = false;
+    _selectedIds.clear();
+  });
+
+  void _toggle(String id) => setState(() {
+    _selectedIds.contains(id) ? _selectedIds.remove(id) : _selectedIds.add(id);
+  });
+
+  Future<void> _confirmAndDelete() async {
+    final count = _selectedIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete notifications?'),
+        content: Text(
+          count == 1
+              ? 'This notification will be permanently deleted.'
+              : '$count notifications will be permanently deleted.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _deleting = true);
+    try {
+      final ids = _selectedIds.toList();
+      await NotificationService().deleteNotifications(ids);
+      if (!mounted) return;
+      setState(() {
+        _items.removeWhere((n) => ids.contains(n.id));
+        _selectMode = false;
+        _selectedIds.clear();
+      });
+    } catch (e) {
+      debugPrint('Delete notifications error: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Could not delete. Please try again.')));
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+  String _timeAgo(DateTime d) {
+    Duration diff = DateTime.now().difference(d);
+    if (diff.inMinutes < 1) return 'Just Now';
+    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+    if (diff.inDays < 1) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${d.month}/${d.day}/${d.year}';
+  }
+
+  List<AppNotification> _getFilteredNotifications() {
+    final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    final startOfWeek = startOfToday.subtract(Duration(days: startOfToday.weekday - 1));
+
+    final filtered = _items.where((notif) {
+      if (_activeTab == 'Today') {
+        return notif.timestamp.isAfter(startOfToday) ||
+            notif.timestamp.isAtSameMomentAs(startOfToday);
+      } else if (_activeTab == 'This Week') {
+        return notif.timestamp.isAfter(startOfWeek) && notif.timestamp.isBefore(startOfToday);
+      } else {
+        return notif.timestamp.isBefore(startOfWeek);
+      }
+    }).toList();
+
+    // Unread on top, read at the bottom. Newest first inside each group.
+    filtered.sort((a, b) {
+      if (a.isRead != b.isRead) return a.isRead ? 1 : -1;
+      return b.timestamp.compareTo(a.timestamp);
+    });
+
+    return filtered;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredNotifs = _getFilteredNotifications();
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: isDark ? Theme.of(context).colorScheme.primary : Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.75),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _selectMode
+                    ? const SizedBox(width: 24) // keeps the title centered
+                    : IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        tooltip: 'Select notifications to delete',
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: isDark ? Colors.white70 : Colors.black54,
+                        ),
+                        onPressed: _enterSelectMode,
+                      ),
+                Text(
+                  _title,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: Icon(Icons.close, color: isDark ? Colors.white70 : Colors.black54),
+                  onPressed: _selectMode ? _exitSelectMode : () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Segmented Tabs
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isDark ? Theme.of(context).colorScheme.surface : Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: ['Today', 'This Week', 'Earlier'].map((tab) {
+                  bool isActive = _activeTab == tab;
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _activeTab = tab),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? (isDark ? Theme.of(context).colorScheme.secondary : Colors.white)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: isActive
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.1),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : [],
+                        ),
+                        child: Center(
+                          child: Text(
+                            tab,
+                            style: GoogleFonts.inter(
+                              fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                              color: isActive
+                                  ? (isDark ? Colors.white : Colors.black)
+                                  : Colors.grey.shade500,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Notification List
+            Expanded(
+              child: filteredNotifs.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No notifications',
+                        style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 13),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: filteredNotifs.length,
+                      separatorBuilder: (context, index) =>
+                          Divider(color: Colors.grey.shade300, height: 1, thickness: 1),
+                      itemBuilder: (context, index) {
+                        final notif = filteredNotifs[index];
+                        final isRead = notif.isRead; // Check read status directly from the model
+                        final isSelected = _selectedIds.contains(notif.id);
+
+                        return InkWell(
+                          onTap: () {
+                            if (_selectMode) {
+                              _toggle(notif.id);
+                              return;
+                            }
+                            Navigator.pop(context);
+                            widget.onNotificationTap(notif);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (_selectMode) ...[
+                                  SizedBox(
+                                    height: 40,
+                                    child: Checkbox(
+                                      value: isSelected,
+                                      onChanged: (_) => _toggle(notif.id),
+                                      visualDensity: VisualDensity.compact,
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                // Left Icon
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: UIHelper.getBgColorForService(
+                                      notif.title,
+                                    ).withValues(alpha: 0.3), // Soften background
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    UIHelper.getIconForService(notif.title),
+                                    size: 20,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Text Content
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          if (!isRead)
+                                            Container(
+                                              margin: const EdgeInsets.only(right: 6),
+                                              width: 6,
+                                              height: 6,
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF2563EB),
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                          Expanded(
+                                            child: Text(
+                                              notif.title,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: isDark ? Colors.white : Colors.black87,
+                                              ),
+                                            ),
+                                          ),
+                                          Text(
+                                            _timeAgo(notif.timestamp),
+                                            style: GoogleFonts.inter(
+                                              fontSize: 11,
+                                              color: Colors.grey.shade500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        notif.body,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          height: 1.4,
+                                          color: isDark ? Colors.white70 : const Color(0xFF4B5563),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+
+            // Delete button: only when something is selected
+            if (_selectMode && _selectedIds.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _deleting ? null : _confirmAndDelete,
+                  child: _deleting
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(
+                          'Delete selected',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 6),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// SKELETON WIDGETS AND REMAINING CODE
+class SideBarOption extends StatelessWidget {
+  final String selectedImage;
+  final String unselectedImage;
+  final String optionName;
+  final bool isSelected;
+  final VoidCallback onTapAction;
+  final double iconScale;
+  final IconData? iconData;
+
+  const SideBarOption({
+    super.key,
+    required this.selectedImage,
+    required this.unselectedImage,
+    required this.optionName,
+    required this.isSelected,
+    required this.onTapAction,
+    this.iconScale = 1.0,
+    this.iconData,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color currentColor = isSelected
+        ? const Color.fromRGBO(59, 115, 224, 1.0)
+        : Theme.of(context).colorScheme.onSurface;
+
+    return Material(
+      color: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(context).colorScheme.tertiary
+          : Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+        side: BorderSide(color: Colors.black.withValues(alpha: 0.2)),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(15),
+        onTap: onTapAction,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 50),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 25,
+                height: 25,
+                child: iconData != null
+                    ? Icon(iconData, size: 26, color: currentColor)
+                    : Transform.scale(
+                        scale: iconScale,
+                        child: Image.asset(
+                          isSelected ? selectedImage : unselectedImage,
+                          width: 25,
+                          height: 25,
+                          color: currentColor,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) =>
+                              Icon(Icons.explore_outlined, size: 25, color: currentColor),
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Text(
+                  optionName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: isSelected
+                      ? GoogleFonts.archivoBlack(fontSize: 15, color: currentColor)
+                      : GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w400,
+                          color: currentColor,
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ServicesNavigator extends StatelessWidget {
+  final Function(String) onTitleChange;
+  final GlobalKey<NavigatorState> navigatorKey;
+
+  const ServicesNavigator({super.key, required this.onTitleChange, required this.navigatorKey});
+
+  @override
+  Widget build(BuildContext context) {
+    return Navigator(
+      key: navigatorKey,
+      onGenerateRoute: (settings) {
+        return MaterialPageRoute(builder: (context) => Services(onTitleChange: onTitleChange));
+      },
+    );
+  }
+}
+
+class ProfileNavigator extends StatelessWidget {
+  final Function(String) onTitleChange;
+  final GlobalKey<NavigatorState> navigatorKey;
+
+  const ProfileNavigator({super.key, required this.onTitleChange, required this.navigatorKey});
+
+  @override
+  Widget build(BuildContext context) {
+    return Navigator(
+      key: navigatorKey,
+      onGenerateRoute: (settings) {
+        return MaterialPageRoute(builder: (context) => Profile(onTitleChange: onTitleChange));
+      },
+    );
+  }
+}
+
+class _ShimmerEffect extends StatefulWidget {
+  final Widget child;
+  const _ShimmerEffect({required this.child});
+
+  @override
+  State<_ShimmerEffect> createState() => _ShimmerEffectState();
+}
+
+class _ShimmerEffectState extends State<_ShimmerEffect> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))
+      ..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.3, end: 0.8).animate(_controller),
+      child: widget.child,
+    );
+  }
+}
+
+class _SkeletonProfileHeader extends StatelessWidget {
+  const _SkeletonProfileHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final textScaler = MediaQuery.textScalerOf(context);
+
+    return _ShimmerEffect(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Container(
+            width: 78,
+            height: 78,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.5),
+              shape: BoxShape.circle,
+            ),
+          ),
+          SizedBox(height: 17),
+          Container(
+            width: 120,
+            height: textScaler.scale(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          SizedBox(height: textScaler.scale(5)),
+          Container(
+            width: 80,
+            height: textScaler.scale(10.5),
+            margin: EdgeInsets.only(top: textScaler.scale(3)),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
