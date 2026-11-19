@@ -298,9 +298,10 @@ class FirebaseServices {
     }
   }
 
-  // Services moved to Deleted Records by the Super Admin (soft delete) have isDeleted == true.
-  // Older services without the field are active.
-  static bool _isActiveService(Map<String, dynamic>? data) =>
+  // Offices and services moved to Deleted Records by the Super Admin (soft delete)
+  // have isDeleted == true. Older docs without the field are active.
+  // A deleted office hides all of its services too.
+  static bool _isActive(Map<String, dynamic>? data) =>
       data != null && data['isDeleted'] != true;
 
   Future<List<Office>> getOffices() async {
@@ -309,13 +310,14 @@ class FirebaseServices {
       List<Office> offices = [];
 
       for (var doc in snapshot.docs) {
+        if (!_isActive(doc.data() as Map<String, dynamic>?)) continue;
         Map<String, dynamic> officeData = doc.data() as Map<String, dynamic>;
         officeData['office_id'] = doc.id;
 
         QuerySnapshot serviceSnapshot = await doc.reference.collection('services').get();
 
         officeData['services'] = serviceSnapshot.docs
-            .where((sDoc) => _isActiveService(sDoc.data() as Map<String, dynamic>?))
+            .where((sDoc) => _isActive(sDoc.data() as Map<String, dynamic>?))
             .map((sDoc) {
           var sData = sDoc.data() as Map<String, dynamic>;
           sData['service_id'] = sDoc.id;
@@ -361,7 +363,8 @@ class FirebaseServices {
         officesSub = _db.collection('offices').snapshots().listen(
           (snap) {
             officesById = {
-              for (var doc in snap.docs) doc.id: doc.data(),
+              for (var doc in snap.docs)
+                if (_isActive(doc.data())) doc.id: doc.data(),
             };
             officesLoaded = true;
             emitIfReady();
@@ -378,7 +381,7 @@ class FirebaseServices {
             for (var doc in snap.docs) {
               final officeId = doc.reference.parent.parent?.id;
               if (officeId == null) continue;
-              if (!_isActiveService(doc.data())) continue;
+              if (!_isActive(doc.data())) continue;
               final data = Map<String, dynamic>.from(doc.data());
               data['service_id'] = doc.id;
               grouped.putIfAbsent(officeId, () => []).add(data);
@@ -406,7 +409,10 @@ class FirebaseServices {
     try {
       final officesSnap = await _db.collection('offices').get();
 
-      final officeDocs = officesSnap.docs.toList();
+      // Services in a deleted office are not shown (e.g. opened from a notification or history)
+      final officeDocs = officesSnap.docs
+          .where((d) => _isActive(d.data() as Map<String, dynamic>?))
+          .toList();
       officeDocs.sort((a, b) => b.id.length.compareTo(a.id.length));
 
       QueryDocumentSnapshot? matchedOffice;
@@ -425,7 +431,7 @@ class FirebaseServices {
 
         if (serviceDoc.exists) {
           var serviceData = serviceDoc.data() as Map<String, dynamic>;
-          if (!_isActiveService(serviceData)) return null;
+          if (!_isActive(serviceData)) return null;
           serviceData['service_id'] = serviceDoc.id;
 
           var officeData = matchedOffice.data() as Map<String, dynamic>;
@@ -442,7 +448,7 @@ class FirebaseServices {
         final sDoc = await office.reference.collection('services').doc(serviceId).get();
         if (sDoc.exists) {
           var serviceData = sDoc.data() as Map<String, dynamic>;
-          if (!_isActiveService(serviceData)) return null;
+          if (!_isActive(serviceData)) return null;
           serviceData['service_id'] = sDoc.id;
 
           var officeData = office.data() as Map<String, dynamic>;
