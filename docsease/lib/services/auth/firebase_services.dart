@@ -295,18 +295,27 @@ class FirebaseServices {
     }
   }
 
+  // Offices and services moved to Deleted Records by the Super Admin (soft delete)
+  // have isDeleted == true. Older docs without the field are active.
+  // A deleted office hides all of its services too.
+  static bool _isActive(Map<String, dynamic>? data) =>
+      data != null && data['isDeleted'] != true;
+
   Future<List<Office>> getOffices() async {
     try {
       QuerySnapshot snapshot = await _db.collection('offices').get();
       List<Office> offices = [];
 
       for (var doc in snapshot.docs) {
+        if (!_isActive(doc.data() as Map<String, dynamic>?)) continue;
         Map<String, dynamic> officeData = doc.data() as Map<String, dynamic>;
         officeData['office_id'] = doc.id;
 
         QuerySnapshot serviceSnapshot = await doc.reference.collection('services').get();
 
-        officeData['services'] = serviceSnapshot.docs.map((sDoc) {
+        officeData['services'] = serviceSnapshot.docs
+            .where((sDoc) => _isActive(sDoc.data() as Map<String, dynamic>?))
+            .map((sDoc) {
           var sData = sDoc.data() as Map<String, dynamic>;
           sData['service_id'] = sDoc.id;
           return sData;
@@ -348,43 +357,41 @@ class FirebaseServices {
 
     controller = StreamController<List<Office>>.broadcast(
       onListen: () {
-        officesSub = _db
-            .collection('offices')
-            .snapshots()
-            .listen(
-              (snap) {
-                officesById = {for (var doc in snap.docs) doc.id: doc.data()};
-                officesLoaded = true;
-                emitIfReady();
-              },
-              onError: (e) {
-                print("Error streaming offices: $e");
-                controller.addError(e);
-              },
-            );
+        officesSub = _db.collection('offices').snapshots().listen(
+          (snap) {
+            officesById = {
+              for (var doc in snap.docs)
+                if (_isActive(doc.data())) doc.id: doc.data(),
+            };
+            officesLoaded = true;
+            emitIfReady();
+          },
+          onError: (e) {
+            print("Error streaming offices: $e");
+            controller.addError(e);
+          },
+        );
 
-        servicesSub = _db
-            .collectionGroup('services')
-            .snapshots()
-            .listen(
-              (snap) {
-                final grouped = <String, List<Map<String, dynamic>>>{};
-                for (var doc in snap.docs) {
-                  final officeId = doc.reference.parent.parent?.id;
-                  if (officeId == null) continue;
-                  final data = Map<String, dynamic>.from(doc.data());
-                  data['service_id'] = doc.id;
-                  grouped.putIfAbsent(officeId, () => []).add(data);
-                }
-                servicesByOfficeId = grouped;
-                servicesLoaded = true;
-                emitIfReady();
-              },
-              onError: (e) {
-                print("Error streaming services: $e");
-                controller.addError(e);
-              },
-            );
+        servicesSub = _db.collectionGroup('services').snapshots().listen(
+          (snap) {
+            final grouped = <String, List<Map<String, dynamic>>>{};
+            for (var doc in snap.docs) {
+              final officeId = doc.reference.parent.parent?.id;
+              if (officeId == null) continue;
+              if (!_isActive(doc.data())) continue;
+              final data = Map<String, dynamic>.from(doc.data());
+              data['service_id'] = doc.id;
+              grouped.putIfAbsent(officeId, () => []).add(data);
+            }
+            servicesByOfficeId = grouped;
+            servicesLoaded = true;
+            emitIfReady();
+          },
+          onError: (e) {
+            print("Error streaming services: $e");
+            controller.addError(e);
+          },
+        );
       },
       onCancel: () {
         officesSub?.cancel();
@@ -399,7 +406,10 @@ class FirebaseServices {
     try {
       final officesSnap = await _db.collection('offices').get();
 
-      final officeDocs = officesSnap.docs.toList();
+      // Services in a deleted office are not shown (e.g. opened from a notification or history)
+      final officeDocs = officesSnap.docs
+          .where((d) => _isActive(d.data() as Map<String, dynamic>?))
+          .toList();
       officeDocs.sort((a, b) => b.id.length.compareTo(a.id.length));
 
       QueryDocumentSnapshot? matchedOffice;
@@ -418,6 +428,7 @@ class FirebaseServices {
 
         if (serviceDoc.exists) {
           var serviceData = serviceDoc.data() as Map<String, dynamic>;
+          if (!_isActive(serviceData)) return null;
           serviceData['service_id'] = serviceDoc.id;
 
           var officeData = matchedOffice.data() as Map<String, dynamic>;
@@ -434,6 +445,7 @@ class FirebaseServices {
         final sDoc = await office.reference.collection('services').doc(serviceId).get();
         if (sDoc.exists) {
           var serviceData = sDoc.data() as Map<String, dynamic>;
+          if (!_isActive(serviceData)) return null;
           serviceData['service_id'] = sDoc.id;
 
           // ignore: unnecessary_cast
