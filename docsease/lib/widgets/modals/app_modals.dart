@@ -1,0 +1,1154 @@
+import 'package:flutter/material.dart';
+import 'package:docsease/core/localization/app_localizations.dart';
+import 'package:docsease/providers/settings_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:hive/hive.dart';
+
+Future<T?> _showAppModal<T>({required BuildContext context, required Widget child}) {
+  return showDialog<T>(
+    context: context,
+    barrierColor: Colors.black54,
+    barrierDismissible: false, // Locked: cannot click outside to dismiss
+    builder: (_) => PopScope(
+      canPop: false, // Locked: prevents Android physical back button dismissal
+      child: child,
+    ),
+  );
+}
+
+const _kBlue = Color(0xFF2563EB);
+const _kRed = Color(0xFFEF4444);
+const _kGreen = Color(0xFF22C55E);
+const _kIconBgRed = Color(0xFFFFE4E6);
+const _kIconBgGreen = Color(0xFFDCFCE7);
+const _kIconBgBlue = Color(0xFFDBEAFE);
+
+class _AppModalBase extends StatefulWidget {
+  const _AppModalBase({
+    required this.iconData,
+    required this.iconColor,
+    required this.iconBgColor,
+    required this.title,
+    this.subtitle,
+    this.primaryLabel = 'Yes',
+    this.primaryColor = _kBlue,
+    this.secondaryLabel,
+    required this.onPrimary,
+    this.onSecondary,
+    this.singleAction = false,
+    this.extraContent,
+  });
+
+  final IconData iconData;
+  final Color iconColor;
+  final Color iconBgColor;
+  final String title;
+  final String? subtitle;
+  final String primaryLabel;
+  final Color primaryColor;
+  final String? secondaryLabel;
+  final Function onPrimary; // Changed to dynamic Function to accept async callbacks
+  final VoidCallback? onSecondary;
+  final bool singleAction;
+  final Widget? extraContent;
+
+  @override
+  State<_AppModalBase> createState() => _AppModalBaseState();
+}
+
+class _AppModalBaseState extends State<_AppModalBase> {
+  bool _isLoading = false;
+
+  Future<void> _handlePrimary() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Execute the callback. If it is asynchronous, await it!
+    var result = widget.onPrimary();
+    if (result is Future) {
+      await result;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(context).colorScheme.primary
+          : Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        child: IntrinsicHeight(
+          child: Stack(
+            children: [
+              // contents
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // icons
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: widget.iconBgColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(widget.iconData, color: widget.iconColor, size: 24),
+                    ),
+                    const SizedBox(height: 15),
+
+                    // Title
+                    Text(
+                      widget.title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+
+                    //subtitle
+                    if (widget.subtitle != null) ...[
+                      Text(
+                        widget.subtitle!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : const Color(0xFF4B5563),
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+
+                    if (widget.extraContent != null) ...[
+                      const SizedBox(height: 12),
+                      widget.extraContent!,
+                    ],
+
+                    // Buttons
+                    if (widget.singleAction)
+                      _buildSecondaryButton(context, widget.primaryLabel, _handlePrimary)
+                    else ...[
+                      _buildPrimaryButton(context, widget.primaryLabel, _handlePrimary),
+                      const SizedBox(height: 12),
+                      _buildSecondaryButton(
+                        context,
+                        widget.secondaryLabel ?? 'Cancel',
+                        widget.onSecondary ?? () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  //first button
+  Widget _buildPrimaryButton(BuildContext context, String label, VoidCallback onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      height: 35,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: widget.primaryColor,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: widget.primaryColor,
+          disabledForegroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+        ),
+        onPressed: _isLoading ? null : onPressed,
+        child: _isLoading
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+              )
+            : Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  //second button
+  Widget _buildSecondaryButton(BuildContext context, String label, VoidCallback onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      height: 35,
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF374151),
+          side: const BorderSide(color: Color(0xFFE5E7EB)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+        ),
+        onPressed: _isLoading ? null : onPressed,
+        child: _isLoading && widget.singleAction
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(color: Color(0xFF374151), strokeWidth: 2.5),
+              )
+            : Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : const Color(0xFF374151),
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+//Exit confirmation modal
+class ExitConfirmationModal {
+  static Future<void> show(BuildContext context, {Function? onPrimary, VoidCallback? onSecondary}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.warning_amber_rounded,
+        iconColor: _kRed,
+        iconBgColor: _kIconBgRed,
+        title: tr('Are you sure you want to exit?'),
+        subtitle: tr('Changes will not be saved if you leave this page.'),
+        primaryLabel: tr('Yes'),
+        primaryColor: _kRed,
+        onPrimary: onPrimary ?? () => Navigator.of(context).pop(),
+        secondaryLabel: tr('Cancel'),
+        onSecondary: onSecondary ?? () => Navigator.of(context).pop(),
+      ),
+    );
+  }
+}
+
+//Delete chat options modal
+class DeleteChatOptionsModal {
+  // onDeleteCurrent is null when there is no saved conversation open, which disables that option
+  static Future<void> show(
+    BuildContext context, {
+    VoidCallback? onDeleteCurrent,
+    required VoidCallback onDeleteMultiple,
+  }) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+    void close() => Navigator.of(context, rootNavigator: true).pop();
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.delete_outline_rounded,
+        iconColor: _kRed,
+        iconBgColor: _kIconBgRed,
+        title: tr('Delete chat'),
+        subtitle: tr('What would you like to delete?'),
+        primaryLabel: tr('Cancel'),
+        singleAction: true,
+        onPrimary: close,
+        extraContent: Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            children: [
+              _buildOption(
+                icon: Icons.delete_outline_rounded,
+                label: tr('Delete current conversation'),
+                filled: true,
+                onPressed: onDeleteCurrent == null
+                    ? null
+                    : () {
+                        close();
+                        onDeleteCurrent();
+                      },
+              ),
+              const SizedBox(height: 12),
+              _buildOption(
+                icon: Icons.checklist_rounded,
+                label: tr('Delete multiple conversations'),
+                filled: false,
+                onPressed: () {
+                  close();
+                  onDeleteMultiple();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Widget _buildOption({
+    required IconData icon,
+    required String label,
+    required bool filled,
+    required VoidCallback? onPressed,
+  }) {
+    final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(5));
+    final content = Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 18),
+        const SizedBox(width: 8),
+        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+      ],
+    );
+
+    return SizedBox(
+      width: double.infinity,
+      height: 35,
+      child: filled
+          ? ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _kRed,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: _kRed.withValues(alpha: 0.35),
+                disabledForegroundColor: Colors.white,
+                elevation: 0,
+                shape: shape,
+              ),
+              onPressed: onPressed,
+              child: content,
+            )
+          : OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _kRed,
+                side: const BorderSide(color: _kRed),
+                shape: shape,
+              ),
+              onPressed: onPressed,
+              child: content,
+            ),
+    );
+  }
+}
+
+//Reminders shown on the Information screen
+class RemindersModal {
+  static const String prefKey = 'hideServiceReminders';
+
+  static bool get isHidden => Hive.box('auth_box').get(prefKey, defaultValue: false) == true;
+
+  /// [fromTopBar] = true -> no checkbox, just a "Got it" button.
+  static Future<void> show(BuildContext context, {bool fromTopBar = false}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    return _showAppModal<void>(
+      context: context,
+      child: _RemindersDialog(fromTopBar: fromTopBar, language: lang),
+    );
+  }
+}
+
+class _ReminderItem {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String text;
+  const _ReminderItem(this.icon, this.color, this.title, this.text);
+}
+
+const List<_ReminderItem> _kReminders = [
+  _ReminderItem(
+    Icons.menu_book_rounded,
+    Color(0xFF2563EB),
+    'Guide only',
+    'You can’t submit documents or pay in the app. Please do it in person at the office.',
+  ),
+  _ReminderItem(
+    Icons.description_rounded,
+    Color(0xFF0D9488),
+    'Based on the Citizen’s Charter',
+    'Requirements, fees, and processing times come from the 2026 Citizen’s Charter of Biñan, Laguna.',
+  ),
+  _ReminderItem(
+    Icons.update_rounded,
+    Color(0xFFD97706),
+    'May change',
+    'Details can change without notice. What the City Hall officer tells you is final.',
+  ),
+  _ReminderItem(
+    Icons.hourglass_bottom_rounded,
+    Color(0xFFE11D48),
+    'Processing time varies',
+    'Times are only estimates. Long lines or busy days can cause delays, and we can’t control them.',
+  ),
+  _ReminderItem(
+    Icons.smart_toy_rounded,
+    Color(0xFF475569),
+    'Bot & navigation',
+    'The Bot and AR navigation can make mistakes. Please double-check with the office.',
+  ),
+  _ReminderItem(
+    Icons.checklist_rounded,
+    Color(0xFF16A34A),
+    'Your progress only',
+    'Marking a step as done only tracks your own progress. It won’t update your actual transaction.',
+  ),
+];
+
+class _RemindersDialog extends StatelessWidget {
+  const _RemindersDialog({required this.fromTopBar, required this.language});
+
+  final bool fromTopBar;
+  final String language;
+
+  @override
+  Widget build(BuildContext context) {
+    String tr(String key) => AppLocalizations.translate(key, language);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = isDark ? cs.onPrimary : const Color(0xFF111827);
+    final textColor = isDark ? cs.onPrimary.withValues(alpha: 0.75) : const Color(0xFF6B7280);
+    final maxHeight = MediaQuery.of(context).size.height * 0.85;
+    final dontShowAgain = ValueNotifier<bool>(false);
+
+    return Dialog(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      backgroundColor: isDark ? cs.primary : Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Header ─────────────────────────────────────────────
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 11, 20, 11),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF1D4ED8), Color(0xFF3B82F6)],
+                ),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                    ),
+                    child: const Icon(
+                      Icons.lightbulb_outline_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    tr('Reminders'),
+                    style: const TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    tr('Good to know before you start your transaction.'),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.85)),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Reminder cards ─────────────────────────────────────
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+                child: Column(
+                  children: _kReminders.map((item) {
+                    return Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : const Color(0xFFE5E7EB),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: item.color.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(item.icon, size: 20, color: item.color),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  tr(item.title),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: titleColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  tr(item.text),
+                                  style: TextStyle(fontSize: 12, height: 1.45, color: textColor),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+
+            // ── Footer ─────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!fromTopBar)
+                    ValueListenableBuilder<bool>(
+                      valueListenable: dontShowAgain,
+                      builder: (context, value, _) => InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () => dontShowAgain.value = !value,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: Checkbox(
+                                  value: value,
+                                  onChanged: (v) => dontShowAgain.value = v ?? false,
+                                  visualDensity: VisualDensity.compact,
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                tr("Don't show this again"),
+                                style: TextStyle(fontSize: 12, color: textColor),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (!fromTopBar) const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _kBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: () {
+                        if (!fromTopBar) {
+                          Hive.box('auth_box').put(RemindersModal.prefKey, dontShowAgain.value);
+                        }
+                        Navigator.of(context, rootNavigator: true).pop();
+                      },
+                      child: Text(
+                        tr('Got it'),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+//Delete conversations modal
+class DeleteConversationsModal {
+  static Future<void> show(
+    BuildContext context, {
+    required int count,
+    required Function onPrimary,
+  }) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.delete_outline_rounded,
+        iconColor: _kRed,
+        iconBgColor: _kIconBgRed,
+        title: count == 1
+            ? tr('Delete conversation?')
+            : tr('Delete {n} conversations?').replaceAll('{n}', '$count'),
+        subtitle: tr('This cannot be undone.'),
+        primaryLabel: tr('Delete'),
+        primaryColor: _kRed,
+        onPrimary: onPrimary,
+        secondaryLabel: tr('Cancel'),
+        onSecondary: () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
+//Changes saved modal
+class ChangesSavedModal {
+  static Future<void> show(BuildContext context, {required Function onPrimary, String? subtitle}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.check_circle_outline_rounded,
+        iconColor: _kGreen,
+        iconBgColor: _kIconBgGreen,
+        title: tr('Changes Saved!'),
+        subtitle: tr('Updated successfully. Please click to continue.'),
+        primaryLabel: tr('Got it'),
+        singleAction: true,
+        onPrimary: onPrimary,
+      ),
+    );
+  }
+}
+
+//Confirm changes modal
+class ConfirmChangesModal {
+  static Future<void> show(
+    BuildContext context, {
+    required Function onPrimary,
+    VoidCallback? onSecondary,
+  }) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.info_outline_rounded,
+        iconColor: const Color(0xFF3B82F6),
+        iconBgColor: _kIconBgBlue,
+        title: tr('Confirm Changes'),
+        subtitle: tr('Are you sure you want to save changes?'),
+        primaryLabel: tr('Yes'),
+        primaryColor: const Color(0xFF3B82F6),
+        onPrimary: onPrimary,
+        secondaryLabel: tr('Cancel'),
+        onSecondary: onSecondary ?? () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
+//Check email modal
+class CheckEmailModal {
+  static Future<void> show(BuildContext context, {required Function onPrimary}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.check_circle_outline_rounded,
+        iconColor: _kGreen,
+        iconBgColor: _kIconBgGreen,
+        title: tr('Check your Email'),
+        subtitle: tr('A recovery code has been sent to your email. Please check your inbox.'),
+        primaryLabel: tr('Got it'),
+        singleAction: true,
+        onPrimary: onPrimary,
+      ),
+    );
+  }
+}
+
+//Require sign in modal
+class RequireSignInModal {
+  static Future<void> show(BuildContext context, {Function? onPrimary, required String title}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.person_rounded,
+        iconColor: const Color(0xFF3B82F6),
+        iconBgColor: _kIconBgBlue,
+        title: title == "Profile"
+            ? tr('Profile Requires Authentication')
+            : title == 'Chatbot'
+            ? tr('GaBayan Bot Requires Authentication')
+            : title == 'Navigate'
+            ? tr('Navigation Requires Authentication')
+            : tr('Service History Requires Authentication'),
+        subtitle: tr("You'll be directed to sign in screen. Are you sure you want to continue?"),
+        primaryLabel: tr('Yes'),
+        primaryColor: const Color(0xFF3B82F6),
+        secondaryLabel: tr('Cancel'),
+        onPrimary: () async {
+          // Instantly displays the loading spinner for 800ms
+          await Future.delayed(const Duration(milliseconds: 800));
+          if (onPrimary != null) {
+            var res = onPrimary();
+            if (res is Future) await res;
+          } else {
+            Navigator.of(context, rootNavigator: true).pop();
+          }
+        },
+        onSecondary: () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
+//Verified modal
+class VerifiedModal {
+  static Future<void> show(BuildContext context, {required Function onPrimary}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.check_circle_outline_rounded,
+        iconColor: _kGreen,
+        iconBgColor: _kIconBgGreen,
+        title: tr('Verified'),
+        subtitle: tr('Code verified successfully. You may now change your password.'),
+        primaryLabel: tr('Got it'),
+        singleAction: true,
+        onPrimary: onPrimary,
+      ),
+    );
+  }
+}
+
+//Resend Recovery Code Modal
+class ResendCodeModal {
+  static Future<void> show(BuildContext context, {required Function onPrimary}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.check_circle_outline_rounded,
+        iconColor: _kGreen,
+        iconBgColor: _kIconBgGreen,
+        title: tr('New Code Sent'),
+        subtitle: tr(
+          "We've sent a new recovery code. Please check your inbox for the updated 6-digit recovery code.",
+        ),
+        primaryLabel: tr('Got it'),
+        singleAction: true,
+        onPrimary: onPrimary,
+      ),
+    );
+  }
+}
+
+//Logout modal
+class LogoutModal {
+  static Future<void> show(
+    BuildContext context, {
+    Function? onPrimary,
+    bool hasUnsavedChanges = false,
+    bool isGuest = false,
+  }) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.logout_rounded,
+        iconColor: _kRed,
+        iconBgColor: _kIconBgRed,
+        title: !isGuest
+            ? tr('Are you sure you want to logout?')
+            : tr('Are you sure you want to exit?'),
+        subtitle: hasUnsavedChanges
+            ? tr('You have unsaved Settings changes that will be lost.')
+            : null,
+        primaryLabel: tr('Yes'),
+        primaryColor: _kRed,
+        secondaryLabel: tr('Cancel'),
+        onPrimary: () async {
+          // Instantly displays the loading spinner for 800ms
+          await Future.delayed(const Duration(milliseconds: 800));
+          if (onPrimary != null) {
+            var res = onPrimary();
+            if (res is Future) await res;
+          } else {
+            Navigator.of(context, rootNavigator: true).pop();
+          }
+        },
+        onSecondary: () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
+//Loading modal (no buttons - shown while an async auth action runs, then
+//dismissed programmatically via LoadingModal.hide once it finishes)
+class LoadingModal {
+  static Future<void> show(BuildContext context, {required String title, String? subtitle}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? Theme.of(context).colorScheme.primary
+              : Colors.white,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: CircularProgressIndicator(strokeWidth: 3, color: _kBlue),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  tr(title),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Colors.black,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    tr(subtitle),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : const Color(0xFF4B5563),
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Closes the loading modal. Safe to call even if nothing is showing.
+  static void hide(BuildContext context) {
+    final navigator = Navigator.of(context, rootNavigator: true);
+    if (navigator.canPop()) navigator.pop();
+  }
+}
+
+//Generic auth error modal (e.g. Google account already used, invalid
+//Google account, sign-in/sign-up failed)
+class AuthErrorModal {
+  static Future<void> show(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+  }) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.error_outline_rounded,
+        iconColor: _kRed,
+        iconBgColor: _kIconBgRed,
+        title: tr(title),
+        subtitle: tr(subtitle),
+        primaryLabel: tr('Got it'),
+        singleAction: true,
+        onPrimary: () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
+//Generic auth success modal (e.g. Signed In!, Account Created!) - shown
+//before redirecting, for a smoother transition instead of an instant jump
+class AuthSuccessModal {
+  static Future<void> show(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required Function onPrimary,
+  }) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.check_circle_outline_rounded,
+        iconColor: _kGreen,
+        iconBgColor: _kIconBgGreen,
+        title: tr(title),
+        subtitle: tr(subtitle),
+        primaryLabel: tr('Continue'),
+        singleAction: true,
+        onPrimary: onPrimary,
+      ),
+    );
+  }
+}
+
+//ProfileChanges modal
+class ProfileChangesModal {
+  static Future<void> show(BuildContext context, {VoidCallback? onPrimary}) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.logout_rounded,
+        iconColor: _kRed,
+        iconBgColor: _kIconBgRed,
+        title: tr('Are you sure you want to back?'),
+        subtitle: tr('Changes will not be saved if you leave this page.'),
+        primaryLabel: tr('Yes'),
+        primaryColor: _kRed,
+        secondaryLabel: tr('Cancel'),
+        onPrimary: onPrimary ?? () => Navigator.of(context, rootNavigator: true).pop(),
+        onSecondary: () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
+class DeleteAccountModal {
+  static Future<void> show(
+    BuildContext context, {
+    required Function onPrimary,
+    VoidCallback? onSecondary,
+  }) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.warning_amber_rounded,
+        iconColor: _kRed,
+        iconBgColor: _kIconBgRed,
+        title: tr('Delete Account?'),
+        subtitle: tr(
+          'This will completely remove or delete your account, as well as your credentials and service history.',
+        ),
+        primaryLabel: tr('Yes, Delete'),
+        primaryColor: _kRed,
+        secondaryLabel: tr('No'),
+        onPrimary: onPrimary,
+        onSecondary: onSecondary ?? () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
+class OfficeNotificationModal {
+  static Future<void> show(
+    BuildContext context, {
+    required String title,
+    required String body,
+    Function? onPrimary,
+  }) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.business_rounded,
+        iconColor: _kBlue,
+        iconBgColor: _kIconBgBlue,
+        title: tr(title),
+        subtitle: tr(body),
+        primaryLabel: tr('Got it'),
+        singleAction: true,
+        onPrimary: onPrimary ?? () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
+class NotificationPopupRoute {
+  static Future<T?> show<T>({required BuildContext context, required Widget child}) {
+    return Navigator.of(context, rootNavigator: true).push<T>(
+      PageRouteBuilder<T>(
+        opaque: false,
+        barrierColor: Colors.black54,
+        barrierDismissible: false,
+        transitionDuration: const Duration(milliseconds: 250),
+        reverseTransitionDuration: const Duration(milliseconds: 200),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return child;
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          // Animate scaling and fading from the top-right position of the bell icon
+          return ScaleTransition(
+            alignment: const Alignment(
+              -0.85,
+              -0.85,
+            ), // Aligns scale origin near the top-right app bar actions
+            scale: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+              reverseCurve: Curves.easeInCubic,
+            ),
+            child: FadeTransition(
+              opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+              child: child,
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class StepLockedModal {
+  static Future<void> show(BuildContext context) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.lock_outline_rounded,
+        iconColor: const Color(0xFF2563EB),
+        iconBgColor: const Color(0xFFDBEAFE),
+        title: tr('Complete the Previous Step'),
+        subtitle: tr('Please mark the previous step as done before proceeding to the next step.'),
+        primaryLabel: tr('Got it'),
+        singleAction: true,
+        onPrimary: () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
+//Shown when an action needs internet but the phone is offline
+class NoInternetModal {
+  static Future<void> show(BuildContext context) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.wifi_off_rounded,
+        iconColor: _kRed,
+        iconBgColor: _kIconBgRed,
+        title: tr('No Internet Connection'),
+        subtitle: tr('Please check your internet connection and try again.'),
+        primaryLabel: tr('Got it'),
+        singleAction: true,
+        onPrimary: () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
+
+//Auth modal with a redirect button (e.g. "Go to Sign In")
+class AuthRedirectModal {
+  static Future<void> show(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required String primaryLabel,
+    required VoidCallback onPrimary,
+  }) {
+    final lang = Provider.of<SettingsProvider>(context, listen: false).language;
+    String tr(String key) => AppLocalizations.translate(key, lang);
+
+    return _showAppModal<void>(
+      context: context,
+      child: _AppModalBase(
+        iconData: Icons.info_outline_rounded,
+        iconColor: _kBlue,
+        iconBgColor: _kIconBgBlue,
+        title: tr(title),
+        subtitle: tr(subtitle),
+        primaryLabel: tr(primaryLabel),
+        secondaryLabel: tr('Cancel'),
+        onPrimary: onPrimary,
+        onSecondary: () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    );
+  }
+}
